@@ -1,0 +1,24 @@
+access-drift-pipeline:
+  name: access-drift-pipeline
+  tasks:
+    - task_key: synthetic_data_task
+      description: 실제 API 스키마 기반 합성 데이터 생성 → Landing
+      notebook_task:
+        notebook_path: /Shared/access-drift/notebooks/01_synthetic_data
+      existing_cluster_id: ${var.cluster_id}
+
+    - task_key: ingest_task
+      description: Auto Loader → Bronze
+      depends_on:
+        - task_key: synthetic_data_task
+      notebook_task:
+        notebook_path: /Shared/access-drift/notebooks/02_ingest
+      existing_cluster_id: ${var.cluster_id}
+
+    - task_key: silver_task
+      description: 정규화 + 품질 체크
+      depends_on:
+        - task_key: ingest_task
+      notebook_task:
+        notebook_path: /Shared/access-drift/notebooks/03_silver
+      existing_cluster_id: ${var.cluster_id}
