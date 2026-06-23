@@ -2,7 +2,7 @@ param location string
 param accountName string
 param tags object
 
-var containers = ['landing', 'bronze', 'silver', 'intermediate', 'gold']
+var containers = ['lakehouse']
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: accountName

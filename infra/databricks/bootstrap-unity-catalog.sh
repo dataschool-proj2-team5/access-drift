@@ -6,11 +6,15 @@ ACCESS_CONNECTOR_NAME="${ACCESS_CONNECTOR_NAME:-acdrift-uc-access}"
 STORAGE_ACCOUNT_NAME="${STORAGE_ACCOUNT_NAME:-acdriftadls}"
 CATALOG_NAME="${CATALOG_NAME:-access_drift}"
 STORAGE_CREDENTIAL_NAME="${STORAGE_CREDENTIAL_NAME:-access_drift_storage_cred}"
-CATALOG_STORAGE_ROOT="${CATALOG_STORAGE_ROOT:-abfss://gold@${STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/managed/${CATALOG_NAME}}"
+CONTAINER_NAME="${CONTAINER_NAME:-lakehouse}"
+EXTERNAL_LOCATION_NAME="${EXTERNAL_LOCATION_NAME:-access_drift_lakehouse_ext}"
+EXTERNAL_LOCATION_URL="${EXTERNAL_LOCATION_URL:-abfss://${CONTAINER_NAME}@${STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/}"
+CATALOG_STORAGE_ROOT="${CATALOG_STORAGE_ROOT:-abfss://${CONTAINER_NAME}@${STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/managed/${CATALOG_NAME}}"
 WORKSPACE_ID="${WORKSPACE_ID:-7405615323116390}"
+DATABRICKS_HOST="${DATABRICKS_HOST:-https://adb-${WORKSPACE_ID}.10.azuredatabricks.net}"
+export DATABRICKS_HOST
 SKIP_VALIDATION="${SKIP_VALIDATION:-false}"
 
-CONTAINERS=(landing bronze silver intermediate gold)
 
 PROFILE_ARGS=()
 if [[ -n "${DATABRICKS_CONFIG_PROFILE:-}" ]]; then
@@ -41,6 +45,15 @@ with_validation_args() {
     "$@"
   fi
 }
+
+echo "Checking Azure CLI authentication..."
+az account show >/dev/null 2>&1 || { echo "az login이 필요합니다." >&2; exit 1; }
+
+TENANT_ID="$(az account show --query tenantId -o tsv)"
+export ARM_TENANT_ID="$TENANT_ID"
+export DATABRICKS_AUTH_TYPE=azure-cli
+unset DATABRICKS_CONFIG_PROFILE
+export DATABRICKS_CONFIG_FILE=/dev/null
 
 echo "Checking Databricks authentication..."
 dbx current-user me >/dev/null
@@ -75,18 +88,13 @@ else
     --json "$credential_json"
 fi
 
-for container in "${CONTAINERS[@]}"; do
-  location_name="access_drift_${container}_ext"
-  location_url="abfss://${container}@${STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/"
-
-  if exists dbx external-locations get "$location_name"; then
-    echo "External location exists: $location_name"
-  else
-    echo "Creating external location: $location_name -> $location_url"
-    with_validation_args dbx external-locations create "$location_name" "$location_url" "$STORAGE_CREDENTIAL_NAME" \
-      --comment "Access Drift ${container} container"
-  fi
-done
+if exists dbx external-locations get "$EXTERNAL_LOCATION_NAME"; then
+  echo "External location exists: $EXTERNAL_LOCATION_NAME"
+else
+  echo "Creating external location: $EXTERNAL_LOCATION_NAME -> $EXTERNAL_LOCATION_URL"
+  with_validation_args dbx external-locations create "$EXTERNAL_LOCATION_NAME" "$EXTERNAL_LOCATION_URL" "$STORAGE_CREDENTIAL_NAME" \
+    --comment "Access Drift lakehouse container"
+fi
 
 if exists dbx catalogs get "$CATALOG_NAME"; then
   echo "Catalog exists: $CATALOG_NAME"
@@ -102,14 +110,4 @@ dbx catalogs update "$CATALOG_NAME" --isolation-mode ISOLATED >/dev/null
 dbx workspace-bindings update-bindings catalog "$CATALOG_NAME" \
   --json "{\"add\":[{\"workspace_id\":${WORKSPACE_ID},\"binding_type\":\"BINDING_TYPE_READ_WRITE\"}]}" >/dev/null
 
-for schema in "${CONTAINERS[@]}"; do
-  full_name="${CATALOG_NAME}.${schema}"
-  if exists dbx schemas get "$full_name"; then
-    echo "Schema exists: $full_name"
-  else
-    echo "Creating schema: $full_name"
-    dbx schemas create "$schema" "$CATALOG_NAME" --comment "Access Drift ${schema} schema"
-  fi
-done
-
-echo "Unity Catalog bootstrap complete."
+echo "Bootstrap complete. Schema creation is handled separately via DDL."
