@@ -20,11 +20,6 @@
 # COMMAND ----------
 # MAGIC %sql
 # MAGIC SHOW GRANTS ON CATALOG access_drift;
-# MAGIC SHOW GRANTS ON SCHEMA access_drift.landing;
-# MAGIC SHOW GRANTS ON SCHEMA access_drift.bronze;
-# MAGIC SHOW GRANTS ON SCHEMA access_drift.silver;
-# MAGIC SHOW GRANTS ON SCHEMA access_drift.intermediate;
-# MAGIC SHOW GRANTS ON SCHEMA access_drift.gold;
 
 # COMMAND ----------
 # MAGIC %md
@@ -32,8 +27,4 @@
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC DESCRIBE EXTERNAL LOCATION access_drift_landing_ext;
-# MAGIC DESCRIBE EXTERNAL LOCATION access_drift_bronze_ext;
-# MAGIC DESCRIBE EXTERNAL LOCATION access_drift_silver_ext;
-# MAGIC DESCRIBE EXTERNAL LOCATION access_drift_intermediate_ext;
-# MAGIC DESCRIBE EXTERNAL LOCATION access_drift_gold_ext;
+# MAGIC DESCRIBE EXTERNAL LOCATION access_drift_lakehouse_ext;
