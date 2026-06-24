@@ -36,3 +36,31 @@ df = (spark.read.json(EVAL_SEED_PATH)
 count = spark.table(f"{CATALOG}.eval.ground_truth_case").count()
 print(f"ground_truth_case: {count} rows")
 spark.table(f"{CATALOG}.eval.ground_truth_case").show(truncate=False)
+
+# COMMAND ----------
+# MAGIC %md ## eval ↔ Silver 매칭 검증
+# subject_id = silver_principals.source_principal_id 로 조인 가능해야 함
+# Silver 적재 전이면 결과가 비어 있을 수 있음 (정상)
+
+# COMMAND ----------
+spark.sql(f"""
+  SELECT
+    g.case_id,
+    g.subject_id,
+    g.asset_id,
+    g.is_planted_risk,
+    g.expected_severity,
+    p.principal_id   AS silver_principal_id,
+    p.principal_kind,
+    p.status         AS principal_status,
+    a.asset_id       AS silver_asset_id,
+    a.sensitivity
+  FROM {CATALOG}.eval.ground_truth_case g
+  LEFT JOIN {CATALOG}.silver.silver_principals p
+    ON g.subject_id = p.source_principal_id AND p.principal_kind = 'NHI'
+  LEFT JOIN {CATALOG}.silver.silver_assets a
+    ON g.asset_id = a.source_asset_id
+  ORDER BY g.case_id
+""").show(truncate=False)
+
+print("eval↔silver match check complete — silver_principal_id/silver_asset_id가 null이면 Silver 미적재 상태")
