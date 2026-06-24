@@ -6,8 +6,8 @@ workspace:
 
 sync:
   paths:
-    - .
-    - ../../notebooks
+    - notebooks
+    - data/poc/landing/raw
 
 variables:
   storage_account_name:
@@ -31,23 +31,23 @@ resources:
       name: access-drift-pipeline
       tasks:
         - task_key: synthetic_data_task
-          description: 실제 API 스키마 기반 합성 데이터 생성 → Landing
+          description: seed 데이터를 ADLS raw/ 에 적재 + DDL 적용
           notebook_task:
-            notebook_path: ../../notebooks/01_synthetic_data.py
+            notebook_path: ./notebooks/01_synthetic_data.py
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: ingest_task
-          description: Auto Loader → Bronze
+          description: ADLS raw/ → Bronze Delta
           depends_on:
             - task_key: synthetic_data_task
           notebook_task:
-            notebook_path: ../../notebooks/02_ingest.py
+            notebook_path: ./notebooks/02_ingest.py
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: silver_task
-          description: 정규화 + 품질 체크
+          description: Bronze → Silver 정규화
           depends_on:
             - task_key: ingest_task
           notebook_task:
-            notebook_path: ../../notebooks/03_silver.py
+            notebook_path: ./notebooks/03_silver.py
           existing_cluster_id: ${var.cluster_id}
