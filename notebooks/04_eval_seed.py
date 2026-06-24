@@ -6,18 +6,18 @@
 dbutils.widgets.text("catalog", "access_drift")
 
 CATALOG = dbutils.widgets.get("catalog")
-EVAL_SEED_PATH = "/Workspace/Shared/access-drift/files/data/poc/eval/ground_truth_case.jsonl"
+EVAL_SEED_LOCAL_PATH = "/Workspace/Shared/access-drift/files/data/poc/eval/ground_truth_case.jsonl"
+EVAL_SEED_PATH = f"file:{EVAL_SEED_LOCAL_PATH}"
 
 # COMMAND ----------
-try:
-    dbutils.fs.ls(EVAL_SEED_PATH)
-    print(f"eval seed path OK: {EVAL_SEED_PATH}")
-except Exception as e:
+import os
+
+if not os.path.isfile(EVAL_SEED_LOCAL_PATH):
     raise RuntimeError(
-        f"Eval seed 파일을 찾을 수 없습니다: {EVAL_SEED_PATH}\n"
-        "bundle deploy가 완료됐는지 확인하세요.\n"
-        f"원인: {e}"
+        f"Eval seed 파일을 찾을 수 없습니다: {EVAL_SEED_LOCAL_PATH}\n"
+        "bundle deploy가 완료됐는지 확인하세요."
     )
+print(f"eval seed path OK: {EVAL_SEED_LOCAL_PATH}")
 
 # COMMAND ----------
 from pyspark.sql import functions as F
