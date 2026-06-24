@@ -74,23 +74,30 @@ az login
 | External Location | `access_drift_lakehouse_ext` |
 | Catalog | `access_drift` |
 
-스키마(`bronze`, `silver`, `intermediate`, `gold`)는 DDL(`00_bootstrap_admin.sql`)로 별도 생성합니다.
+스키마(`bronze`, `silver`, `intermediate`, `gold`, `eval`)는 DDL로 별도 생성합니다.
+
+`eval`은 PoC 정답/평가용 격리 스키마이며 ADLS raw 경로를 추가하지 않고 UC managed table로 시작합니다.
 
 ### 배포 전 설정
 
-클러스터를 먼저 생성한 뒤 ID를 `databricks.yml`에 채웁니다.
+클러스터를 먼저 생성한 뒤 ID를 레포 루트의 `databricks.yml`에 채웁니다.
 
 ```bash
 databricks clusters create --json @infra/databricks/resources/clusters.yml
-# 출력된 cluster_id를 databricks.yml의 cluster_id 변수에 입력
+# 출력된 cluster_id를 databricks.yml > targets.dev.variables.cluster_id 에 입력
 ```
 
 ### 배포
 
+`databricks.yml`은 레포 루트에 있습니다. **레포 루트에서 실행합니다.**
+
 ```bash
+# 레포 루트에서
 databricks bundle deploy
 databricks bundle run access-drift-pipeline
 ```
+
+bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`이 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
 
 ### 셋업 검증
 

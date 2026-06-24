@@ -1,0 +1,71 @@
+bundle:
+  name: access-drift
+
+workspace:
+  root_path: /Shared/access-drift
+
+sync:
+  paths:
+    - notebooks
+    - data/poc/landing/raw
+    - data/poc/eval
+    - sql/databricks/migrations
+
+variables:
+  storage_account_name:
+    description: ADLS Gen2 storage account name (Bicep output)
+  openai_endpoint:
+    description: Azure OpenAI endpoint (Bicep output)
+  cluster_id:
+    default: ""
+
+targets:
+  dev:
+    default: true
+    variables:
+      storage_account_name: acdriftadls
+      openai_endpoint: "https://acdrift-oai.openai.azure.com/"
+      cluster_id: "0623-064735-g02akt45"
+
+resources:
+  jobs:
+    access-drift-pipeline:
+      name: access-drift-pipeline
+      tasks:
+        - task_key: migration_task
+          description: DDL 적용 — sql/databricks/migrations/*.sql 순서대로 실행
+          notebook_task:
+            notebook_path: ./notebooks/00_apply_migrations.py
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: synthetic_data_task
+          description: seed 파일을 ADLS raw/ 에 복사 (10건 × 6종)
+          depends_on:
+            - task_key: migration_task
+          notebook_task:
+            notebook_path: ./notebooks/01_synthetic_data.py
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: ingest_task
+          description: ADLS raw/ JSONL → Bronze Delta
+          depends_on:
+            - task_key: synthetic_data_task
+          notebook_task:
+            notebook_path: ./notebooks/02_ingest.py
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: silver_task
+          description: Bronze → Silver 정규화 (principals=20, credentials=10, assets=10, edges=20)
+          depends_on:
+            - task_key: ingest_task
+          notebook_task:
+            notebook_path: ./notebooks/03_silver.py
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: eval_seed_task
+          description: eval ground_truth_case seed 적재 + Silver 매칭 검증 (탐지 파이프라인과 독립)
+          depends_on:
+            - task_key: silver_task
+          notebook_task:
+            notebook_path: ./notebooks/04_eval_seed.py
+          existing_cluster_id: ${var.cluster_id}

@@ -1,0 +1,10 @@
+{"principalId":"a1b2c3d4-1234-5678-abcd-ef0123456789","assetId":"asset-payment-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"b2c3d4e5-2345-6789-bcde-f01234567890","assetId":"asset-hr-portal","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"c3d4e5f6-3456-7890-cdef-012345678901","assetId":"asset-analytics-engine","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"d4e5f6a7-4567-8901-defa-123456789012","assetId":"asset-inventory-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"e5f6a7b8-5678-9012-efab-234567890123","assetId":"asset-notification-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"f6a7b8c9-6789-0123-fabc-345678901234","assetId":"asset-auth-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"a7b8c9d0-7890-1234-abcd-456789012345","assetId":"asset-reporting-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"b8c9d0e1-8901-2345-bcde-567890123456","assetId":"asset-ml-pipeline-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"c9d0e1f2-9012-3456-cdef-678901234567","assetId":"asset-data-export-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
+{"principalId":"d0e1f2a3-0123-4567-defa-789012345678","assetId":"asset-search-api","relationship":"accesses_asset","permission":"invoke","status":"active"}
