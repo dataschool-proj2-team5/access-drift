@@ -8,9 +8,7 @@
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC SELECT
-# MAGIC   current_user() AS current_user,
-# MAGIC   current_catalog() AS current_catalog;
+# MAGIC SELECT current_user();
 # MAGIC
 # MAGIC SHOW CATALOGS LIKE 'access_drift';
 # MAGIC SHOW SCHEMAS IN access_drift;
