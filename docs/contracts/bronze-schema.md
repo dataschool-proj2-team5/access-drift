@@ -25,12 +25,12 @@ Bronze에서는 source별 구조를 허용한다. 이 단계에서는 위험 점
 Landing 입력은 source/API/export 응답 형태에 가깝게 분리된 JSONL 파일이다.
 
 ```text
-data/poc/landing/raw/azure/applications.jsonl
-data/poc/landing/raw/azure/application_owners.jsonl
-data/poc/landing/raw/azure/password_credentials.jsonl
-data/poc/landing/raw/identity/lifecycle_seed.jsonl
-data/poc/landing/raw/assets/assets_seed.jsonl
-data/poc/landing/raw/access/access_edges_seed.jsonl
+data/landing/raw/azure/applications.jsonl
+data/landing/raw/azure/application_owners.jsonl
+data/landing/raw/azure/password_credentials.jsonl
+data/landing/raw/identity/lifecycle_seed.jsonl
+data/landing/raw/assets/assets_seed.jsonl
+data/landing/raw/access/access_edges_seed.jsonl
 ```
 
 ## 공통 컬럼
