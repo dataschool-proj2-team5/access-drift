@@ -1,6 +1,14 @@
 bundle:
   name: access-drift
 
+workspace:
+  root_path: /Shared/access-drift
+
+sync:
+  paths:
+    - .
+    - ../../notebooks
+
 variables:
   storage_account_name:
     description: ADLS Gen2 storage account name (Bicep output)
@@ -11,7 +19,6 @@ variables:
 
 targets:
   dev:
-    mode: development
     default: true
     variables:
       storage_account_name: acdriftadls
@@ -26,7 +33,7 @@ resources:
         - task_key: synthetic_data_task
           description: 실제 API 스키마 기반 합성 데이터 생성 → Landing
           notebook_task:
-            notebook_path: /Shared/access-drift/notebooks/01_synthetic_data
+            notebook_path: ../../notebooks/01_synthetic_data.py
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: ingest_task
@@ -34,7 +41,7 @@ resources:
           depends_on:
             - task_key: synthetic_data_task
           notebook_task:
-            notebook_path: /Shared/access-drift/notebooks/02_ingest
+            notebook_path: ../../notebooks/02_ingest.py
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: silver_task
@@ -42,5 +49,5 @@ resources:
           depends_on:
             - task_key: ingest_task
           notebook_task:
-            notebook_path: /Shared/access-drift/notebooks/03_silver
+            notebook_path: ../../notebooks/03_silver.py
           existing_cluster_id: ${var.cluster_id}
