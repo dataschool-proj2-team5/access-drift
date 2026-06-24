@@ -29,7 +29,7 @@ def strip_line_comments(sql: str) -> str:
 migrations = [
     ("001_create_bronze_tables.sql", {"catalog": CATALOG, "schema": "bronze"}),
     ("002_create_silver_tables.sql", {"catalog": CATALOG, "schema": "silver"}),
-    ("003_create_eval_tables.sql",   {"catalog": CATALOG}),
+    ("003_create_eval_tables.sql",   {"catalog": CATALOG, "schema": "eval"}),
 ]
 
 for filename, variables in migrations:

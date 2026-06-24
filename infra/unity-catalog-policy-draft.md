@@ -21,11 +21,11 @@ Databricks에서 ADLS Gen2 데이터를 사용할 때 사람 계정의 자격증
 | 항목 | 값 |
 | --- | --- |
 | Catalog | `access_drift` |
-| Schemas | `bronze`, `silver`, `intermediate`, `gold` |
+| Schemas | `bronze`, `silver`, `intermediate`, `gold`, `eval` |
 | External Location | `access_drift_lakehouse_ext` 1개 |
 | Access Connector | 사용 (Managed Identity 기반) |
 
-스키마 생성은 `00_bootstrap_admin.sql` DDL로 별도 실행합니다.
+스키마 생성은 `sql/databricks/migrations/`의 DDL로 별도 실행합니다.
 
 ### 후속 적용 (PoC 범위 외)
 
@@ -63,11 +63,12 @@ Databricks Unity Catalog
   Catalog
     access_drift
 
-  Schemas (DDL로 생성 — 00_bootstrap_admin.sql)
+  Schemas (DDL로 생성 — sql/databricks/migrations/)
     access_drift.bronze
     access_drift.silver
     access_drift.intermediate
     access_drift.gold
+    access_drift.eval
 ```
 
 ## Identity 정책
@@ -125,3 +126,11 @@ PoC 공용 작업 클러스터는 `USER_ISOLATION`으로 시작합니다.
 - account-level group 기반 권한 정리
 - Job 실행 principal 결정 (개인 계정 vs service principal)
 - Column Masking 적용 (`principal_email`, `secret_name` 등 — 테이블 스키마 확정 후)
+
+## Eval 권한 원칙
+
+PoC에서는 workspace admin 중심으로 `access_drift.eval` 스키마를 생성할 수 있습니다.
+
+본개발에서는 정답 누수를 막기 위해 detection job principal에는 `eval` read 권한을 부여하지 않습니다. `eval`은 평가 담당자 또는 평가 job principal만 read할 수 있게 분리합니다.
+
+Eval은 UC managed table로 시작하며 별도 ADLS raw 경로를 추가하지 않습니다.

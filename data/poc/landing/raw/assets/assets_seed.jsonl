@@ -1,0 +1,10 @@
+{"assetId":"asset-payment-api","name":"payment-api","environment":"production","sensitivity":"high"}
+{"assetId":"asset-hr-portal","name":"hr-portal","environment":"staging","sensitivity":"medium"}
+{"assetId":"asset-analytics-engine","name":"analytics-engine","environment":"development","sensitivity":"low"}
+{"assetId":"asset-inventory-api","name":"inventory-api","environment":"production","sensitivity":"medium"}
+{"assetId":"asset-notification-api","name":"notification-api","environment":"development","sensitivity":"low"}
+{"assetId":"asset-auth-api","name":"auth-api","environment":"production","sensitivity":"high"}
+{"assetId":"asset-reporting-api","name":"reporting-api","environment":"staging","sensitivity":"medium"}
+{"assetId":"asset-ml-pipeline-api","name":"ml-pipeline-api","environment":"production","sensitivity":"high"}
+{"assetId":"asset-data-export-api","name":"data-export-api","environment":"development","sensitivity":"low"}
+{"assetId":"asset-search-api","name":"search-api","environment":"production","sensitivity":"medium"}
