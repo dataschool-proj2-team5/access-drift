@@ -11,11 +11,12 @@ RAW_BASE = f"abfss://lakehouse@{STORAGE}.dfs.core.windows.net/raw"
 
 # COMMAND ----------
 from pyspark.sql import functions as F
-import hashlib
 
 SCHEMA_VERSION = "0.1.0"
 
 def add_meta(df, src_system, src_object, file_path):
+    src_cols = df.columns  # 메타 추가 전 원본 컬럼 목록 캡처
+    raw_payload = F.to_json(F.struct(*src_cols))
     return (
         df
         .withColumn("_src_system",     F.lit(src_system))
@@ -24,8 +25,8 @@ def add_meta(df, src_system, src_object, file_path):
         .withColumn("_ingestion_ts",   F.current_timestamp())
         .withColumn("_run_id",         F.lit(dbutils.notebook.entry_point.getDbutils().notebook().getContext().currentRunId().getOrElse(None)))
         .withColumn("_batch_id",       F.date_format(F.current_timestamp(), "yyyyMMddHHmmss"))
-        .withColumn("_raw_payload",    F.to_json(F.struct([c for c in df.columns])))
-        .withColumn("_checksum",       F.md5(F.to_json(F.struct([c for c in df.columns]))))
+        .withColumn("_raw_payload",    raw_payload)
+        .withColumn("_checksum",       F.md5(raw_payload))
         .withColumn("_schema_version", F.lit(SCHEMA_VERSION))
     )
 
@@ -119,11 +120,7 @@ print(f"bronze_identity_lifecycle_seed: {df.count()} rows")
 path = f"{RAW_BASE}/assets/assets_seed.jsonl"
 df = spark.read.json(path)
 df = add_meta(df, "assets_seed", "assets_seed", path)
-df = (df
-      .withColumnRenamed("assetId", "asset_id")
-      .withColumnRenamed("name", "name")
-      .withColumnRenamed("environment", "environment")
-      .withColumnRenamed("sensitivity", "sensitivity"))
+df = df.withColumnRenamed("assetId", "asset_id")
 
 (df.select(
     "_src_system","_src_object","_src_file_path","_ingestion_ts",
@@ -142,10 +139,7 @@ df = spark.read.json(path)
 df = add_meta(df, "access_seed", "access_edges_seed", path)
 df = (df
       .withColumnRenamed("principalId", "principal_id")
-      .withColumnRenamed("assetId", "asset_id")
-      .withColumnRenamed("relationship", "relationship")
-      .withColumnRenamed("permission", "permission")
-      .withColumnRenamed("status", "status"))
+      .withColumnRenamed("assetId", "asset_id"))
 
 (df.select(
     "_src_system","_src_object","_src_file_path","_ingestion_ts",

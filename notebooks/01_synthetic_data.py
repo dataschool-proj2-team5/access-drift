@@ -31,32 +31,32 @@ META = """
   _batch_id         STRING,
   _checksum         STRING,
   _raw_payload      STRING NOT NULL,
-  _schema_version   STRING NOT NULL
+  _schema_version   STRING NOT NULL,
 """
 
 bronze_ddl = [
     f"""CREATE TABLE IF NOT EXISTS {CATALOG}.bronze.bronze_azure_applications (
-      {META},
+      {META}
       app_id STRING, display_name STRING, created_at TIMESTAMP
     ) USING DELTA""",
     f"""CREATE TABLE IF NOT EXISTS {CATALOG}.bronze.bronze_azure_application_owners (
-      {META},
+      {META}
       app_id STRING, user_principal_name STRING
     ) USING DELTA""",
     f"""CREATE TABLE IF NOT EXISTS {CATALOG}.bronze.bronze_azure_password_credentials (
-      {META},
+      {META}
       app_id STRING, key_id STRING, display_name STRING, end_date_time TIMESTAMP, status STRING
     ) USING DELTA""",
     f"""CREATE TABLE IF NOT EXISTS {CATALOG}.bronze.bronze_identity_lifecycle_seed (
-      {META},
+      {META}
       user_principal_name STRING, employment_status STRING, termination_date DATE
     ) USING DELTA""",
     f"""CREATE TABLE IF NOT EXISTS {CATALOG}.bronze.bronze_assets_seed (
-      {META},
+      {META}
       asset_id STRING, name STRING, environment STRING, sensitivity STRING
     ) USING DELTA""",
     f"""CREATE TABLE IF NOT EXISTS {CATALOG}.bronze.bronze_access_edges_seed (
-      {META},
+      {META}
       principal_id STRING, asset_id STRING, relationship STRING, permission STRING, status STRING
     ) USING DELTA""",
 ]
