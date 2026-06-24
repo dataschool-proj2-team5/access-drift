@@ -8,6 +8,7 @@ sync:
   paths:
     - notebooks
     - data/poc/landing/raw
+    - data/poc/eval
 
 variables:
   storage_account_name:
