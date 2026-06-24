@@ -105,7 +105,37 @@ for ddl in silver_ddl:
 print("silver tables ready")
 
 # COMMAND ----------
-# MAGIC %md ## 4. Seed 파일 → ADLS raw/ 복사
+# MAGIC %md ## 4. Eval DDL
+# 권위 있는 원본: sql/databricks/migrations/003_create_eval_tables.sql
+
+# COMMAND ----------
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.eval")
+spark.sql(f"""
+  CREATE TABLE IF NOT EXISTS {CATALOG}.eval.ground_truth_case (
+    case_id STRING NOT NULL, scenario_id STRING, scenario_family STRING,
+    subject_type STRING NOT NULL, subject_id STRING NOT NULL, asset_id STRING NOT NULL,
+    drift_type STRING NOT NULL, is_planted_risk BOOLEAN NOT NULL, is_distractor BOOLEAN NOT NULL,
+    pattern STRING, expected_severity STRING, label_reason STRING, created_at TIMESTAMP NOT NULL
+  ) USING DELTA
+""")
+print("eval tables ready")
+
+# COMMAND ----------
+# MAGIC %md ## 5. Seed 경로 확인
+
+# COMMAND ----------
+try:
+    dbutils.fs.ls(SEED_BASE)
+    print(f"seed path OK: {SEED_BASE}")
+except Exception as e:
+    raise RuntimeError(
+        f"Seed 파일을 찾을 수 없습니다: {SEED_BASE}\n"
+        "bundle deploy가 완료됐는지 확인하세요.\n"
+        f"원인: {e}"
+    )
+
+# COMMAND ----------
+# MAGIC %md ## 6. Seed 파일 → ADLS raw/ 복사
 
 # COMMAND ----------
 seed_mappings = [

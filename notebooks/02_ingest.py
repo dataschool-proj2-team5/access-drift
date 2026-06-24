@@ -14,6 +14,12 @@ from pyspark.sql import functions as F
 
 SCHEMA_VERSION = "0.1.0"
 
+def _get_run_id():
+    try:
+        return dbutils.notebook.entry_point.getDbutils().notebook().getContext().currentRunId().get()
+    except Exception:
+        return None
+
 def add_meta(df, src_system, src_object, file_path):
     src_cols = df.columns  # 메타 추가 전 원본 컬럼 목록 캡처
     raw_payload = F.to_json(F.struct(*src_cols))
@@ -23,7 +29,7 @@ def add_meta(df, src_system, src_object, file_path):
         .withColumn("_src_object",     F.lit(src_object))
         .withColumn("_src_file_path",  F.lit(file_path))
         .withColumn("_ingestion_ts",   F.current_timestamp())
-        .withColumn("_run_id",         F.lit(dbutils.notebook.entry_point.getDbutils().notebook().getContext().currentRunId().getOrElse(None)))
+        .withColumn("_run_id",         F.lit(_get_run_id()))
         .withColumn("_batch_id",       F.date_format(F.current_timestamp(), "yyyyMMddHHmmss"))
         .withColumn("_raw_payload",    raw_payload)
         .withColumn("_checksum",       F.md5(raw_payload))
