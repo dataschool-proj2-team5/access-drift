@@ -46,3 +46,6 @@ temp/
 
 # Generated assets
 *.tsbuildinfo
+
+# Databricks config
+.databrickscfg

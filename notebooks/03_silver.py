@@ -165,9 +165,21 @@ print(f"silver_edges: {spark.table(f'{CATALOG}.silver.silver_edges').count()} ro
 # MAGIC %md ## 검증
 
 # COMMAND ----------
-for tbl in ["silver_principals", "silver_credentials", "silver_assets", "silver_edges"]:
-    n = spark.table(f"{CATALOG}.silver.{tbl}").count()
-    print(f"{tbl}: {n} rows")
+expected_counts = {
+    "silver_principals": 20,
+    "silver_credentials": 10,
+    "silver_assets": 10,
+    "silver_edges": 20,
+}
+
+for table, expected in expected_counts.items():
+    actual = spark.table(f"{CATALOG}.silver.{table}").count()
+    assert actual == expected, f"{table} expected {expected}, got {actual}"
+    print(f"{table}: {actual} rows")
+
+active_credentials = spark.table(f"{CATALOG}.silver.silver_credentials").where("is_active = true").count()
+assert active_credentials > 0, "expected at least one active credential"
 
 spark.table(f"{CATALOG}.silver.silver_principals").select("principal_id","principal_kind","principal_type","status").show(truncate=False)
+print("silver smoke test passed")
 print("silver transform complete")

@@ -156,4 +156,21 @@ df = (df
 print(f"bronze_access_edges_seed: {df.count()} rows")
 
 # COMMAND ----------
+# MAGIC %md ## Smoke test
+
+# COMMAND ----------
+expected_counts = {
+    "bronze_azure_applications": 10,
+    "bronze_azure_application_owners": 10,
+    "bronze_azure_password_credentials": 10,
+    "bronze_identity_lifecycle_seed": 10,
+    "bronze_assets_seed": 10,
+    "bronze_access_edges_seed": 10,
+}
+
+for table, expected in expected_counts.items():
+    actual = spark.table(f"{CATALOG}.bronze.{table}").count()
+    assert actual == expected, f"{table} expected {expected}, got {actual}"
+
+print("ingest smoke test passed")
 print("ingest complete")

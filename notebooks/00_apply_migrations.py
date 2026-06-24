@@ -20,6 +20,12 @@ if not os.path.isdir(MIGRATIONS_BASE):
 
 # COMMAND ----------
 # migration 파일별 변수 치환 정의
+def strip_line_comments(sql: str) -> str:
+    return "\n".join(
+        line for line in sql.splitlines()
+        if not line.strip().startswith("--")
+    )
+
 migrations = [
     ("001_create_bronze_tables.sql", {"catalog": CATALOG, "schema": "bronze"}),
     ("002_create_silver_tables.sql", {"catalog": CATALOG, "schema": "silver"}),
@@ -34,9 +40,10 @@ for filename, variables in migrations:
     for key, value in variables.items():
         sql = sql.replace(f"${{{key}}}", value)
 
+    sql = strip_line_comments(sql)
     statements = [
         s.strip() for s in sql.split(";")
-        if s.strip() and not s.strip().startswith("--")
+        if s.strip()
     ]
 
     for stmt in statements:
@@ -44,4 +51,37 @@ for filename, variables in migrations:
 
     print(f"{filename}: {len(statements)} statements applied")
 
+# COMMAND ----------
+# MAGIC %md ## Smoke test
+
+# COMMAND ----------
+expected_tables = {
+    "bronze": [
+        "bronze_azure_applications",
+        "bronze_azure_application_owners",
+        "bronze_azure_password_credentials",
+        "bronze_identity_lifecycle_seed",
+        "bronze_assets_seed",
+        "bronze_access_edges_seed",
+    ],
+    "silver": [
+        "silver_principals",
+        "silver_credentials",
+        "silver_assets",
+        "silver_edges",
+    ],
+    "eval": [
+        "ground_truth_case",
+    ],
+}
+
+for schema, tables in expected_tables.items():
+    existing = {
+        row.tableName
+        for row in spark.sql(f"SHOW TABLES IN {CATALOG}.{schema}").collect()
+    }
+    missing = sorted(set(tables) - existing)
+    assert not missing, f"Missing tables in {CATALOG}.{schema}: {missing}"
+
+print("migration smoke test passed")
 print("migrations complete")

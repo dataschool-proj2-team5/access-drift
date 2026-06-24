@@ -43,4 +43,13 @@ for rel_path, dst in seed_mappings:
     dbutils.fs.cp(src, dst, recurse=False)
     print(f"copied: {rel_path} → {dst}")
 
+# COMMAND ----------
+# MAGIC %md ## Smoke test
+
+# COMMAND ----------
+for _, dst in seed_mappings:
+    files = dbutils.fs.ls(dst)
+    assert len(files) == 1, f"raw seed file not found: {dst}"
+
+print("seed upload smoke test passed")
 print("seed upload complete")

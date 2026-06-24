@@ -65,7 +65,7 @@ resources:
         - task_key: eval_seed_task
           description: eval ground_truth_case seed 적재 + Silver 매칭 검증 (탐지 파이프라인과 독립)
           depends_on:
-            - task_key: migration_task
+            - task_key: silver_task
           notebook_task:
             notebook_path: ./notebooks/04_eval_seed.py
           existing_cluster_id: ${var.cluster_id}

@@ -34,16 +34,22 @@ df = (spark.read.json(EVAL_SEED_PATH)
  .saveAsTable(f"{CATALOG}.eval.ground_truth_case"))
 
 count = spark.table(f"{CATALOG}.eval.ground_truth_case").count()
+assert count == 3, f"ground_truth_case expected 3, got {count}"
 print(f"ground_truth_case: {count} rows")
 spark.table(f"{CATALOG}.eval.ground_truth_case").show(truncate=False)
+
+positive_count = spark.table(f"{CATALOG}.eval.ground_truth_case").where("is_planted_risk = true").count()
+normal_count = spark.table(f"{CATALOG}.eval.ground_truth_case").where("is_planted_risk = false AND is_distractor = false").count()
+assert positive_count == 2, f"positive ground truth expected 2, got {positive_count}"
+assert normal_count == 1, f"normal ground truth expected 1, got {normal_count}"
 
 # COMMAND ----------
 # MAGIC %md ## eval ↔ Silver 매칭 검증
 # subject_id = silver_principals.source_principal_id 로 조인 가능해야 함
-# Silver 적재 전이면 결과가 비어 있을 수 있음 (정상)
+# 이 notebook은 silver_task 이후 실행되므로 매칭 결과가 존재해야 함
 
 # COMMAND ----------
-spark.sql(f"""
+match_df = spark.sql(f"""
   SELECT
     g.case_id,
     g.subject_id,
@@ -61,6 +67,11 @@ spark.sql(f"""
   LEFT JOIN {CATALOG}.silver.silver_assets a
     ON g.asset_id = a.source_asset_id
   ORDER BY g.case_id
-""").show(truncate=False)
+""")
+match_df.show(truncate=False)
 
-print("eval↔silver match check complete — silver_principal_id/silver_asset_id가 null이면 Silver 미적재 상태")
+missing_matches = match_df.where("silver_principal_id IS NULL OR silver_asset_id IS NULL").count()
+assert missing_matches == 0, f"eval↔silver unmatched rows: {missing_matches}"
+
+print("eval seed smoke test passed")
+print("eval↔silver match check complete")
