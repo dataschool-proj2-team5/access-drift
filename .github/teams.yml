@@ -1,0 +1,32 @@
+teams:
+  PO:
+    name: PO
+    issue_title_prefix: "[PO][M/S/C]"
+    default_labels:
+      - S1
+      - area:product
+      - priority:must
+    members:
+      - ShinDuck
+
+  DE:
+    name: DE팀
+    issue_title_prefix: "[DE][M/S/C]"
+    default_labels:
+      - S1
+      - area:data
+      - priority:must
+    members:
+      - Pexy99
+      - Kihun-N
+
+  DS:
+    name: DS팀
+    issue_title_prefix: "[DS][M/S/C]"
+    default_labels:
+      - S1
+      - area:ds
+      - priority:must
+    members:
+      - danakim1004au-prog
+      - moses415-cell
