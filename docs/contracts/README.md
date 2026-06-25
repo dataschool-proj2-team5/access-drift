@@ -12,6 +12,7 @@
 | [Silver Schema Contract](./silver-schema.md) | 원본 데이터를 공통 모델로 정규화한 Silver 테이블 계약 |
 | [Eval Schema Contract](./eval-schema.md) | DS 초안 기준 PoC 정답/평가용 라벨을 격리하는 Eval 테이블 계약 |
 | [PoC Intermediate/Gold Schema Contract](./poc-intermediate-gold-schema.md) | NHI residual access 탐지 후보와 Risk Card용 Gold 최소 계약 |
+| [Schema Consistency Review](./schema-consistency-review.md) | Bronze/Silver/Eval 계약, DDL, notebook, seed 정합성 검토 결과 |
 
 ## Landing 계약
 

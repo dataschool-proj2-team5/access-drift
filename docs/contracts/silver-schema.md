@@ -228,7 +228,7 @@ Principal, credential, asset 사이의 관계를 담는다.
   "relationship": "accesses_asset",
   "permission": "invoke",
   "status": "active",
-  "evidence_source": "bronze_azure_app_registrations",
+  "evidence_source": "bronze_access_edges_seed",
   "observed_at": "2026-06-23T00:00:00Z"
 }
 ```
