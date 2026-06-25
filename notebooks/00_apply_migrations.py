@@ -30,6 +30,8 @@ migrations = [
     ("001_create_bronze_tables.sql", {"catalog": CATALOG, "schema": "bronze"}),
     ("002_create_silver_tables.sql", {"catalog": CATALOG, "schema": "silver"}),
     ("003_create_eval_tables.sql",   {"catalog": CATALOG, "schema": "eval"}),
+    ("004_create_intermediate_tables.sql", {"catalog": CATALOG, "schema": "intermediate"}),
+    ("005_create_gold_tables.sql",         {"catalog": CATALOG, "schema": "gold"}),
 ]
 
 for filename, variables in migrations:
@@ -73,6 +75,8 @@ expected_tables = {
     "eval": [
         "ground_truth_case",
     ],
+    "intermediate": [],
+    "gold": [],
 }
 
 for schema, tables in expected_tables.items():
