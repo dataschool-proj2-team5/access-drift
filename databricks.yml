@@ -75,7 +75,7 @@ resources:
           depends_on:
             - task_key: silver_task
           notebook_task:
-            notebook_path: ./notebooks/05_intermediate.py
+            notebook_path: ./notebooks/05_intermediate.ipynb
             base_parameters:
               run_id: "{{job.run_id}}"
           existing_cluster_id: ${var.cluster_id}
@@ -85,7 +85,7 @@ resources:
           depends_on:
             - task_key: intermediate_task
           notebook_task:
-            notebook_path: ./notebooks/06_gold.py
+            notebook_path: ./notebooks/06_gold.ipynb
             base_parameters:
               run_id: "{{job.run_id}}"
           existing_cluster_id: ${var.cluster_id}
