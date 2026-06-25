@@ -87,8 +87,24 @@ PoC 검증은 단순히 잡이 성공했는지만 보지 않는다.
 - Gold 결과가 Risk Card로 표시 가능한 최소 필드를 갖는지
 - 동일 입력을 재실행해도 Gold 결과가 중복 증가하지 않는지
 
-## 다음 단계
+## 완료 기준 대비 현재 결과
 
-PoC에서 Gold 테이블 적재가 확인되면 이후 단계에서 UI, 조치 흐름, source 확장, eval 기반 검증을 별도 범위로 다룬다.
+2026-06-25 기준 공용 Databricks workspace에서 다음 결과가 확인됐다.
 
-Eval 정답과 Intermediate 또는 Gold 결과를 비교하는 검증은 PoC 완료 필수 경로가 아니라 별도 태스크로 다룬다.
+| 완료 기준 | 확인 결과 | 상태 |
+| --- | --- | --- |
+| Landing/Bronze 적재 | PoC seed 기반 Bronze 적재 완료 | 충족 |
+| Bronze -> Silver 정규화 | Silver 4테이블 생성 및 기존 검증 완료 | 충족 |
+| Silver -> Intermediate finding 생성 | `intermediate.nhi_residual_access_findings` 2건 생성 | 충족 |
+| Intermediate -> Gold 적재 | `gold.gold_core` 2건 생성 | 충족 |
+| Gold Risk Card 최소 결과 존재 | HIGH 1건, MEDIUM 1건 Gold 샘플 출력 확인 | 충족 |
+| 공용 Databricks workspace 조회 | `07_verify_gold_core_pipeline` read-only 검증 노트북 실행 완료 | 충족 |
+| 의도한 리스크 탐지 | eval positive 2건이 Gold 2건과 모두 매칭 | 충족 |
+| 정상 케이스 제외 | eval normal 1건은 Gold에 생성되지 않음 | 충족 |
+| severity 정합성 | `HIGH`, `MEDIUM`이 eval `expected_severity`와 일치 | 충족 |
+| 중복 방지 | `risk_case_key` 중복 0건 | 충족 |
+| 필수 필드 | Risk Card 필수 필드 null 0건 | 충족 |
+
+따라서 현재 PoC seed와 공용 Databricks workspace 기준으로는 `Landing/Bronze -> Silver -> Intermediate -> Gold` 파이프라인이 정상 동작했고, Gold 테이블에 Risk Card용 최소 결과가 생성된 것으로 판단한다.
+
+단, 이 결과는 PoC 합성 데이터와 최소 eval seed 기준의 검증이다. 실제 source 연동, 대량 데이터, DLT 기반 품질검증, 운영용 재처리, UI/Databricks Apps, RAG, 조치 흐름은 본개발 또는 후속 범위에서 다룬다.
