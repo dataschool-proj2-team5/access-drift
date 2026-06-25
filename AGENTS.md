@@ -29,11 +29,12 @@
 ## 커밋 메시지 규칙
 
 - 커밋 메시지는 변경 성격이 드러나게 작성합니다.
-- 권장 형식은 `type: summary` 입니다.
-  - 예: `docs: update agent instructions`
-  - 예: `fix: correct urgency calculation`
-  - 예: `feat: add procurement parser`
-  - 예: `spike: verify api feasibility`
+- 권장 형식은 `type: 한국어 요약` 입니다.
+- `type`은 아래 영문 키워드를 사용하고, 요약은 한국어로 작성합니다.
+  - 예: `docs: 에이전트 지침 정리`
+  - 예: `fix: 긴급도 계산 오류 수정`
+  - 예: `feat: 조달청 공고 파서 추가`
+  - 예: `spike: API 연동 가능성 검토`
 - 자주 쓰는 type:
   - `feat`: 기능 추가
   - `fix`: 버그 수정
