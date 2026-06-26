@@ -51,7 +51,7 @@ Unity Catalog bootstrap에 필요한 Access Connector ID는 Bicep output `unityC
 | 오브젝트 | 내용 |
 |----------|------|
 | Cluster | Single Node, Standard_DS3_v2, 30분 자동 종료 |
-| Job | `access-drift-pipeline` (synthetic_data → ingest → silver) |
+| Job | `access-drift-pipeline` (migration → synthetic_data → ingest → silver → intermediate → gold, eval은 silver 이후 독립 실행) |
 
 ### Unity Catalog
 

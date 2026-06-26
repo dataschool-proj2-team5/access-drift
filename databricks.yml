@@ -49,7 +49,7 @@ resources:
         - task_key: migration_task
           description: DDL 적용 — sql/databricks/migrations/*.sql 순서대로 실행
           notebook_task:
-            notebook_path: ./notebooks/00_apply_migrations.py
+            notebook_path: ./notebooks/00_apply_migrations.ipynb
             base_parameters:
               catalog: ${var.catalog}
           existing_cluster_id: ${var.cluster_id}
@@ -59,7 +59,7 @@ resources:
           depends_on:
             - task_key: migration_task
           notebook_task:
-            notebook_path: ./notebooks/01_synthetic_data.py
+            notebook_path: ./notebooks/01_synthetic_data.ipynb
             base_parameters:
               catalog: ${var.catalog}
               storage_account: ${var.storage_account_name}
@@ -70,7 +70,7 @@ resources:
           depends_on:
             - task_key: synthetic_data_task
           notebook_task:
-            notebook_path: ./notebooks/02_ingest.py
+            notebook_path: ./notebooks/02_ingest.ipynb
             base_parameters:
               catalog: ${var.catalog}
               storage_account: ${var.storage_account_name}
@@ -81,7 +81,7 @@ resources:
           depends_on:
             - task_key: ingest_task
           notebook_task:
-            notebook_path: ./notebooks/03_silver.py
+            notebook_path: ./notebooks/03_silver.ipynb
             base_parameters:
               catalog: ${var.catalog}
           existing_cluster_id: ${var.cluster_id}
@@ -91,7 +91,29 @@ resources:
           depends_on:
             - task_key: silver_task
           notebook_task:
-            notebook_path: ./notebooks/04_eval_seed.py
+            notebook_path: ./notebooks/04_eval_seed.ipynb
             base_parameters:
               catalog: ${var.catalog}
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: intermediate_task
+          description: Silver → NHI residual access finding 후보 생성
+          depends_on:
+            - task_key: silver_task
+          notebook_task:
+            notebook_path: ./notebooks/05_intermediate.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: gold_task
+          description: Intermediate finding → Risk Card용 Gold Core 적재
+          depends_on:
+            - task_key: intermediate_task
+          notebook_task:
+            notebook_path: ./notebooks/06_gold.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              run_id: "{{job.run_id}}"
           existing_cluster_id: ${var.cluster_id}
