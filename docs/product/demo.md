@@ -21,12 +21,12 @@
 
 ## 2. 데모 시나리오 주요 개념
 
-이 시나리오는 Azure 기반 자동 배치와 NHI credential이 남아 있는 상황을 다룬다.
+이 시나리오는 Azure 기반 자동 배치와 NHI client secret이 남아 있는 상황을 다룬다.
 
 - **Service Principal:** 자동 배치나 외부 연동이 사람 계정 대신 Azure 리소스에 접근할 때 사용하는 NHI다.
-- **Client secret:** Service Principal이 Entra ID에서 access token을 발급받을 때 사용하는 credential이다. Secret 값 자체는 Access Drift에 저장하지 않는다.
+- **Client secret:** Service Principal이 Entra ID에서 access token을 발급받을 때 사용하는 인증 수단이다. Secret 값 자체는 Access Drift에 저장하지 않는다.
 - **Export Storage:** CRM, CS, 데이터 분석을 위해 고객 데이터를 추출해 저장하는 Azure Storage/ADLS 영역이다. 운영 DB를 외부 도구나 업무팀에 직접 노출하지 않고, 필요한 데이터만 파일 형태로 분리해 후속 업무에서 재사용하기 위해 사용한다.
-- **Public network access:** Storage endpoint가 외부 네트워크에서 접근 가능한 설정이다. 실제 접근 가능 여부는 Storage 권한, 네트워크 정책, credential 상태가 함께 결정한다.
+- **Public network access:** Storage endpoint가 외부 네트워크에서 접근 가능한 설정이다. 실제 접근 가능 여부는 Storage 권한, 네트워크 정책, client secret 상태가 함께 결정한다.
 
 데모의 고객 데이터 Export Storage는 고객 이름, 전화번호, 배송지, 주문내역을 포함하므로 PRD의 민감 자산 분류 기준상 Critical로 본다. 상세 기준은 [PRD 8.4 민감 자산 영향 기준 위험 설명 및 우선순위](./prd.md#84-민감-자산-영향-기준-위험-설명-및-우선순위)를 따른다.
 
@@ -55,7 +55,7 @@ Export Storage는 업무별로 제한된 경로 권한을 부여받아 사용한
 | 데이터 분석팀 | 캠페인 성과와 고객군별 주문 패턴 분석 | `analytics-export/` 경로 `read/list` |
 | `sp-crm-customer-export-prod` | 고객 분석 테이블에서 데이터를 추출해 Export Storage에 적재 | export 경로 `write`, 재처리·검증용 `read/list` |
 
-이번 리스크는 정상 업무팀 권한이 아니라, 퇴사자와 연결된 자동화 Service Principal의 credential과 Storage 권한이 함께 남아 있는 경우다.
+이번 리스크는 정상 업무팀 권한이 아니라, 퇴사자와 연결된 자동화 Service Principal의 client secret과 Storage 권한이 함께 남아 있는 경우다.
 
 #### 보안 전제
 
@@ -63,17 +63,17 @@ Export Storage는 업무별로 제한된 경로 권한을 부여받아 사용한
 
 - 김민수는 2026년 6월 10일 퇴사했고 HR/IdP 계정은 비활성화됐다.
 - 김민수가 owner로 등록되어 있던 Service Principal `sp-crm-customer-export-prod`는 별도 비활성화되지 않았다.
-- 해당 Service Principal의 client secret은 active 상태로 남아 있다.
-- Service Principal은 고객 데이터 Export Storage `crm-customer-export-prod`에 `read/list` 권한을 가지고 있다.
+- `sp-crm-customer-export-prod`의 client secret은 active 상태로 남아 있다.
+- `sp-crm-customer-export-prod`는 고객 데이터 Export Storage `crm-customer-export-prod`에 `read/list` 권한을 가지고 있다.
 - 신규 Storage는 private endpoint와 IP 제한을 적용하지만, 과거 CRM/CS 연동용 Export Storage는 외부 연동을 위해 public network access가 허용된 상태로 남아 있다.
-- 네트워크 통제와 권한 구성이 맞물려, 해당 credential은 Storage API 인증에 사용할 수 있고 export 파일 조회가 가능한 접근 경로를 만든다.
-- Access Drift는 secret 값을 저장하거나 노출하지 않고, credential metadata와 권한 관계만 사용한다.
+- 네트워크 통제와 권한 구성이 맞물려, 해당 client secret은 Storage API 인증에 사용할 수 있고 export 파일 조회가 가능한 접근 경로를 만든다.
+- Access Drift는 secret 값을 저장하거나 노출하지 않고, client secret metadata와 권한 관계만 사용한다.
 
 #### 문제
 
-김민수의 사람 계정은 비활성화됐지만, 김민수가 owner로 남아 있던 Service Principal과 client secret은 계속 active 상태다.
+김민수의 사람 계정은 비활성화됐지만, 김민수가 owner로 남아 있던 `sp-crm-customer-export-prod`와 해당 client secret은 계속 active 상태다.
 
-이 Service Principal은 고객 데이터 Export Storage에 접근할 수 있으므로, 퇴사자와 연결된 NHI가 Critical 고객 데이터에 닿는 잔존 접근 경로로 판단된다.
+`sp-crm-customer-export-prod`는 고객 데이터 Export Storage에 접근할 수 있으므로, 퇴사자와 연결된 NHI가 Critical 고객 데이터에 닿는 잔존 접근 경로로 판단된다.
 
 #### 접근 경로
 
@@ -91,10 +91,10 @@ Export Storage는 업무별로 제한된 경로 권한을 부여받아 사용한
 - **드리프트 유형:** NHI Access Drift
 - **권한 주체:** Service Principal `sp-crm-customer-export-prod`
 - **연결 인물:** 김민수, 전 CRM 데이터 운영팀
-- **활성 credential:** active client secret metadata
+- **활성 client secret:** active client secret metadata
 - **민감 자산:** 고객 데이터 Export Storage `crm-customer-export-prod`
 - **심각도:** Critical
-- **왜 위험한가:** 퇴사자와 연결된 NHI credential이 active 상태로 남아 있으며, 고객 식별 정보와 주문내역이 포함된 export storage에 접근 가능하다.
+- **왜 위험한가:** 퇴사자와 연결된 NHI client secret이 active 상태로 남아 있으며, 고객 식별 정보와 주문내역이 포함된 export storage에 접근 가능하다.
 - **검토 담당자:** 박지연, SecOps
 - **조치 담당 후보:** 이다영, CRM 데이터 운영팀 Lead
 - **권장 조치:** client secret rotation, Service Principal owner 재지정, Storage 권한 재검토, legacy public access 정책 점검
@@ -106,8 +106,8 @@ Export Storage는 업무별로 제한된 경로 권한을 부여받아 사용한
 1. 보안 담당자가 Risk Overview에서 Critical 리스크를 확인한다.
 2. High-Priority list에서 고객 데이터 Export Storage 접근 리스크를 선택한다.
 3. Risk Card 상세에서 다음 정보를 확인한다.
-   - 어떤 NHI credential이 남아 있는지
-   - 해당 credential이 어떤 사람 owner와 연결되는지
+   - 어떤 NHI client secret이 남아 있는지
+   - 해당 client secret이 어떤 사람 owner와 연결되는지
    - 어떤 권한을 통해 어떤 민감 자산에 닿는지
    - 왜 Critical 리스크인지
 4. 접근 경로를 확인한다.
