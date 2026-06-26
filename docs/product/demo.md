@@ -30,11 +30,13 @@
 
 데모의 Export Storage `crm-customer-export-prod`는 고객 이름, 전화번호, 배송지, 주문내역을 포함하므로 PRD의 민감 자산 분류 기준상 Critical로 본다. 상세 기준은 [PRD 8.4 민감 자산 영향 기준 위험 설명 및 우선순위](./prd.md#84-민감-자산-영향-기준-위험-설명-및-우선순위)를 따른다.
 
+이 케이스에서 탐지 소스는 Service Principal/App Registration, client secret metadata, Storage 권한 metadata다. `crm-customer-export-prod`는 탐지 소스가 아니라 접근 경로의 최종 민감 자산이다.
+
 ---
 
 ## 3. S1 대표 리스크 케이스
 
-### `crm-customer-export-prod` 접근 NHI 잔존
+### 고객 데이터 Export Storage 접근 NHI 잔존
 
 #### 상황
 
@@ -43,6 +45,8 @@
 운영 DB를 외부 도구나 업무팀에 직접 노출하지 않기 위해, 이 배치는 필요한 데이터만 추출해 Export Storage `crm-customer-export-prod`에 저장한다. CRM, CS, 데이터 분석 도구는 이 Storage의 파일을 기준으로 후속 업무를 수행한다.
 
 이 배치는 Service Principal `sp-crm-customer-export-prod`로 인증해 `crm-customer-export-prod`에 접근한다. `crm-customer-export-prod`에는 CRM 캠페인, CS 응대, 데이터 분석을 위해 추출된 고객 이름, 전화번호, 배송지, 주문내역 파일이 저장된다.
+
+Access Drift는 `sp-crm-customer-export-prod`와 client secret metadata, Storage 권한 관계를 이용해 이 NHI가 `crm-customer-export-prod`에 닿는지 확인한다.
 
 #### 정상 접근 주체와 권한
 
