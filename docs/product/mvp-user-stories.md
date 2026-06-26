@@ -14,7 +14,7 @@
 |  | F1.2 | 최우선 검토 대상 목록 (High-Priority list) | P0 | S1 |
 | Epic 2. 위험 탐지 및 분석 | F2.1 | 잔존 권한 목록 | P0 | S1 |
 |  | F2.2 | 접근 경로 | P0 | S1 |
-|  | F2.3 | 아이덴티티 기준 자산 매핑 (Identity-Centric Asset Mapping) | P1 | S2 |
+|  | F2.3 | 아이덴티티 기준 자산 매핑 (Identity-Centric Asset Mapping) | P2 | Backlog |
 | Epic 3. 조치 워크플로우 | F3.1 | AI 조치 권고안 조회 (AI Recommendation Review) | P0 | S1 |
 |  | F3.2 | Jira 티켓 초안 자동 생성 (Jira Ticket Auto-Generation) | P1 | S2 |
 |  | F3.3 | 권장 조치 내용 수정 (Draft Customization) | P1 | S2 |
@@ -53,8 +53,10 @@ Target Sprint 기준: P0는 S1, P1은 S2, P2/P3는 Backlog로 둔다. 단, 팀 �
 - **User Story:** 보안 담당자로서 남아있는 권한의 전체 목록을 알고 싶다.
 - **Acceptance Criteria**
     - 각 권한에 위험 점수 또는 등급이 표시되어야 한다.
+    - 각 권한에는 SaaS Access Drift 또는 NHI Access Drift 등 드리프트 유형이 표시되어야 한다.
     - 각 권한은 Critical/High/Medium 등급으로 분류되어야 한다.
         - Low 등급은 탐지는 하나, 대시보드에선 제외한다.
+    - 가능한 경우 잔존 접근 기간 또는 산정 기준일이 표시되어야 한다.
     - 각 권한을 선택하면 상세 분석 화면으로 이동할 수 있어야 한다.
 
 #### **F2.2. 접근 경로**
@@ -64,6 +66,7 @@ Target Sprint 기준: P0는 S1, P1은 S2, P2/P3는 Backlog로 둔다. 단, 팀 �
     - 선택한 위험 권한의 접근 경로가 시각화되어야 한다.
     - 접근 가능한 시스템과 데이터 유형이 표시되어야 한다.
     - 민감 자산 접근 여부가 표시되어야 한다.
+    - 접근 이벤트/로그가 있는 경우, 탐지 판정 기준이 아닌 상세 분석 참고 정보로 표시할 수 있어야 한다. 단, 이 항목은 S2에서 고려한다.
 
 #### **F2.3. 아이덴티티 기준 자산 매핑 (Identity-Centric Asset Mapping)**
 
@@ -79,6 +82,9 @@ Target Sprint 기준: P0는 S1, P1은 S2, P2/P3는 Backlog로 둔다. 단, 팀 �
 - **Acceptance Criteria**
     - 시스템은 위험 요인을 분석한 바탕으로 권장 조치를 생성해야 한다.
     - 권장 조치 유형은 Secret Rotation, 권한 회수, Owner 재지정, 접근 권한 축소, 담당자 확인 요청 등을 포함해야 한다.
+    - 권고안은 수동 권한 회수 절차를 포함할 수 있어야 한다.
+    - AI 권고안은 탐지 근거에 없는 사실을 생성하지 않아야 한다.
+    - AI 권고안은 secret 값을 출력하지 않아야 하며, 침해 사실을 단정하지 않아야 한다.
     - AI가 생성한 권고안임이 표시되어야 한다.
 
 #### F3.2. Jira 티켓 초안 자동 생성 (Jira Ticket Auto-Generation)
