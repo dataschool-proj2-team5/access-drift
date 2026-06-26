@@ -22,7 +22,7 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 
 | 영역 | 비교 대상 | 결과 | 메모 |
 | --- | --- | --- | --- |
-| Bronze | Bronze 계약, Bronze DDL, `data/poc/landing/raw/**`, `02_ingest.py` | PASS | PoC raw 샘플 필드명과 Bronze 적재 컬럼이 일치한다. |
+| Bronze | Bronze 계약, Bronze DDL, `data/poc/landing/raw/**`, `02_ingest.py` | PASS | raw 필드명과 Bronze 적재 컬럼이 일치한다. |
 | Silver | Silver 계약, Silver DDL, `03_silver.py` | PASS | `principal_id`, `source_principal_id`, `asset_id`, `source_asset_id`, `relationship` 값이 계약과 맞는다. |
 | Eval | Eval 계약, Eval DDL, `ground_truth_case.jsonl`, `04_eval_seed.py` | PASS | eval key `(subject_type, subject_id, asset_id, drift_type)`와 적재 컬럼이 일치한다. |
 
@@ -92,7 +92,7 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 
 ## 확인한 정정 사항
 
-- Bronze 계약의 논리 Landing 경로와 현재 저장소의 PoC 샘플 경로를 구분해 해석해야 한다.
+- Bronze 계약의 Landing 경로를 실제 PoC 경로인 `data/poc/landing/raw/...`로 맞췄다.
 - Silver 예시의 `evidence_source` 값을 실제 브론즈 테이블명 `bronze_azure_applications`로 맞췄다.
 
 ## 참고
