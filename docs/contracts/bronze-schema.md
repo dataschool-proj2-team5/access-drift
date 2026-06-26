@@ -3,7 +3,7 @@
 ## 버전
 
 ```text
-version: 0.1.1
+version: 0.1.2
 status: draft
 updated_at: 2026-06-26
 ```
@@ -12,6 +12,7 @@ updated_at: 2026-06-26
 
 | 버전 | 날짜 | 변경 내용 |
 | --- | --- | --- |
+| 0.1.2 | 2026-06-26 | Landing 입력 경로를 논리 경계 기준으로 되돌리고 PoC 샘플 위치를 별도로 분리 |
 | 0.1.1 | 2026-06-26 | Landing 입력 경로를 실제 `data/poc/landing/raw` 기준으로 정정 |
 | 0.1.0 | 2026-06-24 | source 단위 landing JSONL 기준 Bronze 계약 초안 추가 |
 
@@ -24,6 +25,19 @@ Bronze에서는 source별 구조를 허용한다. 이 단계에서는 위험 점
 ## Landing 입력
 
 Landing 입력은 source/API/export 응답 형태에 가깝게 분리된 JSONL 파일이다.
+
+계약 문서의 Landing 경로는 본개발 기준의 논리 경계를 나타낸다.
+
+```text
+data/landing/raw/azure/applications.jsonl
+data/landing/raw/azure/application_owners.jsonl
+data/landing/raw/azure/password_credentials.jsonl
+data/landing/raw/identity/lifecycle_seed.jsonl
+data/landing/raw/assets/assets_seed.jsonl
+data/landing/raw/access/access_edges_seed.jsonl
+```
+
+현재 저장소의 PoC 샘플 파일은 아래 경로에 둔다.
 
 ```text
 data/poc/landing/raw/azure/applications.jsonl

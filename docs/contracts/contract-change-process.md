@@ -55,7 +55,7 @@ updated_at: 2026-06-26
 | Intermediate notebook | `notebooks/05_intermediate.ipynb` | Silver 조인 기반 탐지 후보 생성 로직 |
 | Gold notebook | `notebooks/06_gold.ipynb` | Gold 최소 결과 생성 로직 |
 | 검증 notebook | `notebooks/07_verify_gold_core_pipeline.ipynb` | Gold 검증 실행 흐름 |
-| Landing seed | `data/poc/landing/raw/**` | Bronze 입력이 되는 raw JSONL 샘플 |
+| Landing sample | `data/poc/landing/raw/**` | 현재 저장소에서 Bronze 입력 예시로 쓰는 PoC raw JSONL 샘플 |
 | Eval seed | `data/poc/eval/ground_truth_case.jsonl` | Eval 정답 seed |
 | 검증 SQL | `sql/databricks/queries/*.sql` | 계약/탐지 결과 확인 SQL |
 
@@ -214,7 +214,7 @@ raw JSONL 또는 eval seed의 필드명이 계약 문서와 DDL에 없는 필드
 
 - 계약 문서의 컬럼 표와 DDL 컬럼 diff를 비교하는 정적 검사
 - `information_schema.columns` 기반 schema validation SQL 묶음 추가
-- `data/poc/landing/raw/**`와 Bronze 계약 필드 매핑 검사를 스크립트화
+- `data/poc/landing/raw/**` PoC 샘플과 Bronze 계약 필드 매핑 검사를 스크립트화
 - Eval seed와 Eval DDL 정합성 검사를 스크립트화
 - PR 템플릿에 데이터 계약 변경 체크 섹션을 추가
 - Databricks job에 validation query 실행 단계를 추가
