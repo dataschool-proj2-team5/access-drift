@@ -51,7 +51,7 @@ Unity Catalog bootstrap에 필요한 Access Connector ID는 Bicep output `unityC
 | 오브젝트 | 내용 |
 |----------|------|
 | Cluster | Single Node, Standard_DS3_v2, 30분 자동 종료 |
-| Job | `access-drift-pipeline` (migration → synthetic_data → ingest → silver → intermediate → gold, eval은 silver 이후 독립 실행) |
+| Job | `access-drift-pipeline` (migration → synthetic_data → ingest → silver → intermediate → gold, eval은 silver 이후 검증용 task로 분리) |
 
 ### Unity Catalog
 
@@ -98,7 +98,7 @@ az login
 | dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 fixture가 복사되는 개발·탐색용 입력 경로 |
 | 본개발 원본 | ADLS `lakehouse/raw/<source>/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
 
-fixture는 `01_synthetic_data.py`가 target별 ADLS raw 경로로 복사하며, 이후 `02_ingest.py`가 같은 raw 경로를 읽어 Bronze로 적재합니다.
+fixture는 `01_synthetic_data.ipynb`가 target별 ADLS raw 경로로 복사하며, 이후 `02_ingest.ipynb`가 같은 raw 경로를 읽어 Bronze로 적재합니다.
 
 #### `access_drift` catalog (demo)
 
@@ -123,7 +123,7 @@ GRANT_PRINCIPAL="access-drift-team" \
 ./infra/databricks/bootstrap-unity-catalog.sh
 ```
 
-`GRANT_PRINCIPAL`은 Unity Catalog grants API가 해석할 수 있는 principal이어야 합니다. Workspace-local group이 조회되더라도 UC grant 대상이 아니면 권한 부여가 실패할 수 있으므로, 실패 시 account-level group 또는 사용자 principal 기준으로 다시 확인합니다.
+`GRANT_PRINCIPAL`은 Unity Catalog grants API가 해석할 수 있는 principal이어야 합니다. `databricks groups list`에서 workspace group이 조회되더라도 UC grant 대상 principal로 해석되지 않으면 `Could not find principal` 오류가 발생할 수 있습니다. 이 경우 account-level group 동기화 여부를 확인하거나, 명시적인 사용자/service principal 기준으로 권한을 부여합니다.
 
 스크립트는 지정된 principal에 다음 권한을 부여합니다.
 

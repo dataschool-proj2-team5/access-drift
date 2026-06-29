@@ -1,11 +1,11 @@
 name: "Task - DE"
 description: "데이터 수집, 적재, 스키마, 파이프라인, 인프라 관련 작업을 작성합니다."
-title: "[DE][M] "
+title: "[DE][P0] "
 labels:
   - task
   - S1
-  - area:data
-  - priority:must
+  - team:de
+  - priority:p0
 body:
   - type: textarea
     id: task
@@ -57,7 +57,7 @@ body:
       label: 완료 기준
       value: |
         - [ ] 기대 결과가 충족된다.
-        - [ ] Must / Should / Could 우선순위가 제목 또는 본문에 명확히 표시된다.
+        - [ ] P0 / P1 / P2 우선순위가 제목 또는 본문에 명확히 표시된다.
         - [ ] 데이터 건수뿐 아니라 샘플 내용, 필드 매핑, 누락, 중복, 타입 또는 포맷 오류 여부를 확인한다.
         - [ ] 필요한 확인 결과가 PR 또는 이슈 댓글에 기록된다.
         - [ ] 확인하지 못한 항목이 있으면 이유가 기록된다.
