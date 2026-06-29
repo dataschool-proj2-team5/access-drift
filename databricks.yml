@@ -29,13 +29,21 @@ variables:
   raw_base_path:
     description: ADLS raw input base path
     default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
+  seed_data_path:
+    description: Bundle-deployed Landing seed directory
+    default: data/dev/landing/raw
+  eval_seed_path:
+    description: Bundle-deployed eval ground truth JSONL path
+    default: data/dev/eval/ground_truth_case.jsonl
 
 targets:
-  # poc: PoC 재현/검증용 target. access_drift catalog와 raw/poc 경로를 사용한다.
+  # poc: PoC 재현/검증용 target. 기존 access_drift catalog와 raw/ 경로를 사용한다.
   poc:
     variables:
       catalog: access_drift
-      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/poc
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw
+      seed_data_path: data/poc/landing/raw
+      eval_seed_path: data/poc/eval/ground_truth_case.jsonl
 
   # dev: 본개발 실행 target. 대표 데모 케이스도 dev 합성 데이터에 포함한다.
   dev:
@@ -55,7 +63,7 @@ resources:
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: synthetic_data_task
-          description: seed 파일을 ADLS raw/ 에 복사 (10건 × 6종)
+          description: bundle seed 파일을 target별 ADLS raw 경로에 복사
           depends_on:
             - task_key: migration_task
           notebook_task:
@@ -64,6 +72,7 @@ resources:
               catalog: ${var.catalog}
               storage_account: ${var.storage_account_name}
               raw_base: ${var.raw_base_path}
+              seed_data_path: ${var.seed_data_path}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: ingest_task
@@ -79,7 +88,7 @@ resources:
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: silver_task
-          description: Bronze → Silver 정규화 (principals=20, credentials=10, assets=10, edges=20)
+          description: Bronze → Silver 정규화 및 기본 품질 검증
           depends_on:
             - task_key: ingest_task
           notebook_task:
@@ -96,6 +105,7 @@ resources:
             notebook_path: ./notebooks/04_eval_seed.ipynb
             base_parameters:
               catalog: ${var.catalog}
+              eval_seed_path: ${var.eval_seed_path}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: intermediate_task

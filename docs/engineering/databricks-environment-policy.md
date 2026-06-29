@@ -28,7 +28,7 @@
 
 | 구분 | Databricks target | Catalog | ADLS raw 경로 | 용도 |
 | --- | --- | --- | --- | --- |
-| PoC 재현 | `poc` | `access_drift` | `lakehouse/raw/poc/` | PoC 완료 기준 재확인 |
+| PoC 재현 | `poc` | `access_drift` | `lakehouse/raw/` | PoC 완료 기준 재확인 |
 | 본개발 | `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | S1 개발, 탐색, 대표 데모 케이스 검증 |
 
 `poc` target은 과거 PoC 결과를 다시 확인할 때 사용한다. S1 구현과 데모 준비는 `dev` target을 기준으로 한다.
@@ -106,22 +106,25 @@ access_drift_dev.eval
 
 ### 8.1 dev seed 경로 변수화
 
-현재 bundle에는 `data/dev`가 sync path로 추가되어 있지만, `01_synthetic_data.ipynb`가 실제로 어떤 repo seed 경로를 읽을지는 별도 정리가 필요하다.
+bundle에는 `data/dev`가 sync path로 추가되어 있고, seed 입력 경로는 `databricks.yml`의 `seed_data_path` 변수로 제어한다.
 
-후속 작업에서는 `databricks.yml`에 seed 입력 경로 변수를 추가하고, notebook이 해당 값을 widget으로 받아 사용하게 한다.
-
-예상 방향:
+기본값:
 
 ```yaml
 variables:
   seed_data_path:
     description: Repo-relative seed data path deployed with the bundle
     default: data/dev/landing/raw
+  eval_seed_path:
+    description: Repo-relative eval seed JSONL path deployed with the bundle
+    default: data/dev/eval/ground_truth_case.jsonl
 
 targets:
   poc:
     variables:
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw
       seed_data_path: data/poc/landing/raw
+      eval_seed_path: data/poc/eval/ground_truth_case.jsonl
   dev:
     default: true
 ```

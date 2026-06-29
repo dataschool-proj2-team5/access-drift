@@ -84,7 +84,7 @@ az login
 
 | target | catalog | ADLS raw 경로 | 용도 | 데이터 성격 |
 |--------|---------|--------------|------|------------|
-| `poc` | `access_drift` | `lakehouse/raw/poc/` | PoC 재현·검증 | PoC seed 데이터(10건 × 6종), PoC 완료 기준 재확인 |
+| `poc` | `access_drift` | `lakehouse/raw/` | PoC 재현·검증 | PoC seed 데이터(10건 × 6종), PoC 완료 기준 재확인 |
 | `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | 본개발·탐색·대표 데모 케이스 검증 | 확장 합성 데이터, 대표 리스크 케이스, 스키마 실험 |
 
 **중요**: `poc`와 `dev`는 catalog와 raw 경로가 분리된 실행 환경입니다. 데모 케이스는 환경이 아니라 데이터 케이스이므로, 발표에서 보여줄 대표 리스크는 `access_drift_dev`의 개발용 합성 데이터 안에서 `scenario_id`, `case_id` 등으로 식별할 수 있게 관리합니다.
@@ -94,11 +94,11 @@ az login
 | 구분 | 위치 | 설명 |
 |------|------|------|
 | PoC fixture | `data/poc/landing/raw/` (레포) | 10건 × 6종 seed. bundle deploy 시 워크스페이스에 배포 |
-| poc raw | ADLS `lakehouse/raw/poc/...` | `poc` target 실행 시 PoC seed가 적재되는 입력 경로 |
+| poc raw | ADLS `lakehouse/raw/...` | 기존 PoC와 동일하게 source별 폴더가 바로 위치하는 입력 경로 |
 | dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 S1 개발 데이터와 대표 데모 케이스가 적재되는 입력 경로 |
 | 본개발 원본 | ADLS `lakehouse/raw/<source>/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
 
-현재 `data/poc/landing/raw/`는 PoC seed 경로 이름을 유지합니다. `poc` target은 이 seed를 PoC 재현용 raw 경로로 적재하고, `dev` target은 S1 확장 합성 데이터 생성/적재 기준에 맞춰 dev raw 경로를 사용합니다. 이후 `02_ingest.ipynb`가 target별 raw 경로를 읽어 Bronze로 적재합니다.
+현재 `data/poc/landing/raw/`는 PoC seed 경로 이름을 유지합니다. `poc` target은 기존 PoC와 동일하게 `lakehouse/raw/{source}/...` 경로로 적재하고, `dev` target은 S1 확장 합성 데이터 생성/적재 기준에 맞춰 `lakehouse/raw/dev/{source}/...` 경로를 사용합니다. 이후 `02_ingest.ipynb`가 target별 raw 경로를 읽어 Bronze로 적재합니다.
 
 #### `access_drift` catalog (PoC)
 
@@ -187,6 +187,7 @@ databricks bundle deploy -t poc
 databricks bundle run access-drift-pipeline -t poc
 
 # dev target (S1 본개발·대표 데모 케이스 검증용 — access_drift_dev catalog, 기본값)
+# data/dev/landing/raw 및 data/dev/eval seed가 준비된 뒤 실행합니다.
 databricks bundle deploy -t dev
 databricks bundle run access-drift-pipeline -t dev
 
@@ -195,7 +196,40 @@ databricks bundle deploy
 databricks bundle run access-drift-pipeline
 ```
 
-bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`이 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+
+#### Landing/Bronze/Silver 부분 실행
+
+DE가 Landing/Bronze/Silver 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
+
+```bash
+databricks bundle validate -t dev
+databricks bundle deploy -t dev
+databricks bundle run -t dev access-drift-pipeline \
+  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task
+```
+
+`data/dev/landing/raw/`와 `data/dev/eval/ground_truth_case.jsonl`이 아직 준비되지 않은 동안에는 PoC-shaped seed를 dev catalog/raw 경로에 적재해 파이프라인 smoke test만 수행할 수 있습니다.
+
+```bash
+databricks bundle deploy -t dev \
+  --var="seed_data_path=data/poc/landing/raw" \
+  --var="eval_seed_path=data/poc/eval/ground_truth_case.jsonl"
+
+databricks bundle run -t dev access-drift-pipeline \
+  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task
+
+# smoke test 후 dev 기본 seed 경로로 job parameter를 되돌립니다.
+databricks bundle deploy -t dev
+```
+
+이 override는 `access_drift_dev`와 `lakehouse/raw/dev/`에 PoC-shaped seed를 적재하는 검증용 실행이다. 대표 dev 데이터 검증 완료를 의미하지 않는다.
+
+실행 후 row count, required key null, enum, relationship, 참조 무결성, eval 매칭은 아래 SQL로 확인합니다.
+
+```text
+sql/databricks/queries/de_lbs_validation.sql
+```
 
 ### 셋업 검증
 
