@@ -2,6 +2,7 @@ bundle:
   name: access-drift
 
 workspace:
+  host: https://adb-7405615323116390.10.azuredatabricks.net
   root_path: /Shared/access-drift
 
 sync:

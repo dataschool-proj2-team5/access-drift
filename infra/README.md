@@ -72,9 +72,9 @@ az login
 |-------------|------|
 | Storage Credential | `access_drift_storage_cred` |
 | External Location | `access_drift_lakehouse_ext` |
-| Catalog | `access_drift` |
+| Catalog | `access_drift`, `access_drift_dev` |
 
-스키마(`bronze`, `silver`, `intermediate`, `gold`, `eval`)는 DDL로 별도 생성합니다.
+스키마(`bronze`, `silver`, `intermediate`, `gold`, `eval`)는 bootstrap 스크립트에서 먼저 생성하고, DDL은 테이블 정의를 적용합니다.
 
 `eval`은 PoC 정답/평가용 격리 스키마이며 ADLS raw 경로를 추가하지 않고 UC managed table로 시작합니다.
 
@@ -113,6 +113,36 @@ fixture는 `01_synthetic_data.py`가 target별 ADLS raw 경로로 복사하며, 
 ```bash
 az login
 CATALOG_NAME=access_drift_dev ./infra/databricks/bootstrap-unity-catalog.sh
+```
+
+팀 또는 실행 주체에 dev schema 작업 권한을 같이 부여하려면 `GRANT_PRINCIPAL`을 지정합니다.
+
+```bash
+CATALOG_NAME=access_drift_dev \
+GRANT_PRINCIPAL="access-drift-team" \
+./infra/databricks/bootstrap-unity-catalog.sh
+```
+
+`GRANT_PRINCIPAL`은 Unity Catalog grants API가 해석할 수 있는 principal이어야 합니다. Workspace-local group이 조회되더라도 UC grant 대상이 아니면 권한 부여가 실패할 수 있으므로, 실패 시 account-level group 또는 사용자 principal 기준으로 다시 확인합니다.
+
+스크립트는 지정된 principal에 다음 권한을 부여합니다.
+
+| 범위 | 권한 |
+|------|------|
+| Catalog | `USE_CATALOG` |
+| Schema | `USE_SCHEMA`, `CREATE_TABLE`, `SELECT`, `MODIFY` |
+
+적용 후 아래 항목을 확인합니다.
+
+```sql
+SHOW CATALOGS LIKE 'access_drift_dev';
+SHOW SCHEMAS IN access_drift_dev;
+SHOW GRANTS ON CATALOG access_drift_dev;
+SHOW GRANTS ON SCHEMA access_drift_dev.bronze;
+SHOW GRANTS ON SCHEMA access_drift_dev.silver;
+SHOW GRANTS ON SCHEMA access_drift_dev.intermediate;
+SHOW GRANTS ON SCHEMA access_drift_dev.gold;
+SHOW GRANTS ON SCHEMA access_drift_dev.eval;
 ```
 
 ### 배포 전 설정

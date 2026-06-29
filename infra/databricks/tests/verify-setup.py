@@ -12,6 +12,9 @@
 # MAGIC
 # MAGIC SHOW CATALOGS LIKE 'access_drift';
 # MAGIC SHOW SCHEMAS IN access_drift;
+# MAGIC
+# MAGIC SHOW CATALOGS LIKE 'access_drift_dev';
+# MAGIC SHOW SCHEMAS IN access_drift_dev;
 
 # COMMAND ----------
 # MAGIC %md
@@ -20,6 +23,19 @@
 # COMMAND ----------
 # MAGIC %sql
 # MAGIC SHOW GRANTS ON CATALOG access_drift;
+# MAGIC SHOW GRANTS ON CATALOG access_drift_dev;
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 2-1. dev 스키마 권한 확인
+
+# COMMAND ----------
+# MAGIC %sql
+# MAGIC SHOW GRANTS ON SCHEMA access_drift_dev.bronze;
+# MAGIC SHOW GRANTS ON SCHEMA access_drift_dev.silver;
+# MAGIC SHOW GRANTS ON SCHEMA access_drift_dev.intermediate;
+# MAGIC SHOW GRANTS ON SCHEMA access_drift_dev.gold;
+# MAGIC SHOW GRANTS ON SCHEMA access_drift_dev.eval;
 
 # COMMAND ----------
 # MAGIC %md
