@@ -102,6 +102,45 @@ Demo Scenario가 변경되면 아래 항목을 함께 확인한다.
 - `data/dev/landing/raw/...`의 source-like 입력 파일
 - `data/dev/eval/...`의 eval case
 
+### 대표 Landing fixture
+
+이슈 #40에서는 대표 데모 케이스를 사람이 한 눈에 따라갈 수 있는 단일 Landing 흐름으로 둔다.
+
+```text
+김민수(terminated, 2026-06-10)
+  -> sp-crm-customer-export-prod
+  -> active credential metadata
+  -> crm-customer-export-prod storage
+```
+
+구성 파일:
+
+```text
+data/dev/landing/raw/azure/applications.jsonl
+data/dev/landing/raw/azure/application_owners.jsonl
+data/dev/landing/raw/azure/password_credentials.jsonl
+data/dev/landing/raw/identity/lifecycle_seed.jsonl
+data/dev/landing/raw/assets/assets_seed.jsonl
+data/dev/landing/raw/access/access_edges_seed.jsonl
+```
+
+주요 ID와 키:
+
+| 항목 | 값 |
+| --- | --- |
+| owner userPrincipalName | `kim.minsu@company.com` |
+| application appId | `d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f` |
+| credential keyId | `c0ffee12-3456-7890-abcd-1234567890ab` |
+| assetId | `asset-customer-export-storage-prod` |
+
+수동 확인:
+
+- 각 JSONL은 한 줄에 하나의 JSON 객체만 둔다.
+- `appId`, `userPrincipalName`, `keyId`, `assetId`가 서로 연결되는지 확인한다.
+- access edge는 `read/list` 권한만 표현한다.
+- `is_planted_risk`, `is_distractor`, `expected_severity`, `truth_class`는 넣지 않는다.
+- secret value, token value, private key value는 저장하지 않는다.
+
 ## 케이스 구성 기준
 
 ### Positive
