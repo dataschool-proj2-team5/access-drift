@@ -28,7 +28,7 @@
 
 | 구분 | Databricks target | Catalog | ADLS raw 경로 | 용도 |
 | --- | --- | --- | --- | --- |
-| PoC 재현 | `poc` | `access_drift` | `lakehouse/raw/poc/` | PoC 완료 기준 재확인 |
+| PoC 재현 | `poc` | `access_drift` | `lakehouse/raw/` | PoC 완료 기준 재확인 |
 | 본개발 | `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | S1 개발, 탐색, 대표 데모 케이스 검증 |
 
 `poc` target은 과거 PoC 결과를 다시 확인할 때 사용한다. S1 구현과 데모 준비는 `dev` target을 기준으로 한다.
@@ -122,6 +122,7 @@ variables:
 targets:
   poc:
     variables:
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw
       seed_data_path: data/poc/landing/raw
       eval_seed_path: data/poc/eval/ground_truth_case.jsonl
   dev:
