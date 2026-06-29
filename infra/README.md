@@ -123,14 +123,33 @@ GRANT_PRINCIPAL="access-drift-team" \
 ./infra/databricks/bootstrap-unity-catalog.sh
 ```
 
-`GRANT_PRINCIPAL`은 Unity Catalog grants API가 해석할 수 있는 principal이어야 합니다. `databricks groups list`에서 workspace group이 조회되더라도 UC grant 대상 principal로 해석되지 않으면 `Could not find principal` 오류가 발생할 수 있습니다. 이 경우 account-level group 동기화 여부를 확인하거나, 명시적인 사용자/service principal 기준으로 권한을 부여합니다.
+`GRANT_PRINCIPAL`은 Unity Catalog grants API가 해석할 수 있는 principal이어야 합니다. `databricks groups list`에서 workspace group이 조회되더라도 workspace-local group이면 UC grant 대상 principal로 해석되지 않아 `Could not find principal` 오류가 발생할 수 있습니다.
 
-스크립트는 지정된 principal에 다음 권한을 부여합니다.
+이 경우 기존 workspace-local group은 이름을 바꾸거나 삭제하고, Databricks Account Console에서 같은 이름의 account-level group을 만든 뒤 workspace에 assign합니다. 이후 account-level group 이름으로 다시 grant를 적용합니다. 급한 검증에서는 개별 사용자 또는 service principal을 `GRANT_PRINCIPAL`로 사용할 수 있지만, workspace 전체 `users` 그룹 grant는 권한 범위가 넓어 사용하지 않습니다.
+
+bootstrap 스크립트는 지정된 principal에 다음 권한을 부여합니다.
 
 | 범위 | 권한 |
 |------|------|
 | Catalog | `USE_CATALOG` |
 | Schema | `USE_SCHEMA`, `CREATE_TABLE`, `SELECT`, `MODIFY` |
+
+Account-level group 구성이 바로 어렵다면, dev catalog 검증을 위해 개별 사용자 이메일에 권한을 부여할 수 있습니다.
+
+```bash
+PRINCIPALS="4dt002@msacademy.msai.kr 4dt014@msacademy.msai.kr" \
+./infra/databricks/grant-dev-user-permissions.sh
+```
+
+이 스크립트는 기본적으로 `access_drift_dev` catalog, 하위 schema, `access_drift_lakehouse_ext` external location에 대해 Unity Catalog `ALL_PRIVILEGES`를 부여합니다. External Location은 raw 파일 읽기/쓰기와 외부 테이블 생성에 필요한 권한을 포함합니다.
+
+필요하면 권한 범위를 좁혀 실행할 수 있습니다.
+
+```bash
+PRINCIPALS="4dt002@msacademy.msai.kr" \
+EXTERNAL_LOCATION_PRIVILEGES="READ_FILES WRITE_FILES" \
+./infra/databricks/grant-dev-user-permissions.sh
+```
 
 적용 후 아래 항목을 확인합니다.
 
@@ -143,6 +162,7 @@ SHOW GRANTS ON SCHEMA access_drift_dev.silver;
 SHOW GRANTS ON SCHEMA access_drift_dev.intermediate;
 SHOW GRANTS ON SCHEMA access_drift_dev.gold;
 SHOW GRANTS ON SCHEMA access_drift_dev.eval;
+SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
 ### 배포 전 설정

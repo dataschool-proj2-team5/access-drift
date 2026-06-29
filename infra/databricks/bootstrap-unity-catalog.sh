@@ -82,7 +82,7 @@ if exists dbx storage-credentials get "$STORAGE_CREDENTIAL_NAME"; then
 else
   echo "Creating storage credential: $STORAGE_CREDENTIAL_NAME"
   credential_json="$(
-    printf '{"name":"%s","azure_managed_identity":{"access_connector_id":"%s"},"comment":"Access Drift PoC ADLS credential"}' \
+    printf '{"name":"%s","azure_managed_identity":{"access_connector_id":"%s"},"comment":"Access Drift ADLS credential"}' \
       "$STORAGE_CREDENTIAL_NAME" \
       "$ACCESS_CONNECTOR_ID"
   )"
@@ -103,7 +103,7 @@ if exists dbx catalogs get "$CATALOG_NAME"; then
 else
   echo "Creating catalog: $CATALOG_NAME"
   dbx catalogs create "$CATALOG_NAME" \
-    --comment "Access Drift PoC catalog" \
+    --comment "Access Drift catalog" \
     --storage-root "$CATALOG_STORAGE_ROOT"
 fi
 
@@ -127,7 +127,8 @@ if [[ -n "$GRANT_PRINCIPAL" ]]; then
   if ! dbx grants update catalog "$CATALOG_NAME" \
     --json "{\"changes\":[{\"principal\":\"${GRANT_PRINCIPAL}\",\"add\":[\"USE_CATALOG\"]}]}" >/dev/null; then
     echo "Failed to grant catalog permissions to: $GRANT_PRINCIPAL" >&2
-    echo "Use a principal name that Unity Catalog grants can resolve, such as an account-level group or user." >&2
+    echo "Use a Unity Catalog resolvable principal, such as an account-level group, user, or service principal." >&2
+    echo "Workspace-local groups can appear in 'databricks groups list' but still fail UC grants with 'Could not find principal'." >&2
     exit 1
   fi
 
@@ -135,7 +136,8 @@ if [[ -n "$GRANT_PRINCIPAL" ]]; then
     if ! dbx grants update schema "${CATALOG_NAME}.${schema_name}" \
       --json "{\"changes\":[{\"principal\":\"${GRANT_PRINCIPAL}\",\"add\":[\"USE_SCHEMA\",\"CREATE_TABLE\",\"SELECT\",\"MODIFY\"]}]}" >/dev/null; then
       echo "Failed to grant schema permissions to: $GRANT_PRINCIPAL on ${CATALOG_NAME}.${schema_name}" >&2
-      echo "Use a principal name that Unity Catalog grants can resolve, such as an account-level group or user." >&2
+      echo "Use a Unity Catalog resolvable principal, such as an account-level group, user, or service principal." >&2
+      echo "Workspace-local groups can appear in 'databricks groups list' but still fail UC grants with 'Could not find principal'." >&2
       exit 1
     fi
   done
