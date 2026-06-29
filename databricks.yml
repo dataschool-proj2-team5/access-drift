@@ -2,6 +2,7 @@ bundle:
   name: access-drift
 
 workspace:
+  host: https://adb-7405615323116390.10.azuredatabricks.net
   root_path: /Shared/access-drift
 
 sync:
@@ -9,42 +10,36 @@ sync:
     - notebooks
     - data/poc/landing/raw
     - data/poc/eval
+    - data/dev
     - sql/databricks/migrations
 
 variables:
   storage_account_name:
     description: ADLS Gen2 storage account name (Bicep output)
+    default: acdriftadls
   openai_endpoint:
     description: Azure OpenAI endpoint (Bicep output)
+    default: https://acdrift-oai.openai.azure.com/
   cluster_id:
-    default: ""
+    description: Databricks existing all-purpose cluster id
+    default: "0623-064735-g02akt45"
   catalog:
-    description: Unity Catalog catalog name (demo=access_drift / dev=access_drift_dev)
+    description: Unity Catalog catalog name
     default: access_drift_dev
   raw_base_path:
-    description: ADLS raw input base path (demo/dev separated)
+    description: ADLS raw input base path
     default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
 
 targets:
-  # demo: 발표·검증용 고정 fixture. access_drift catalog의 PoC 데이터를 재사용한다.
-  # 이 target을 실행하면 access_drift catalog의 데이터가 덮어 쓰이므로 dev 데이터와 혼용하지 않는다.
-  demo:
+  # poc: PoC 재현/검증용 target. access_drift catalog와 raw/poc 경로를 사용한다.
+  poc:
     variables:
-      storage_account_name: acdriftadls
-      openai_endpoint: "https://acdrift-oai.openai.azure.com/"
-      cluster_id: "0623-064735-g02akt45"
       catalog: access_drift
-      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/demo
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/poc
 
-  # dev: 본개발·탐색용. access_drift_dev catalog를 사용해 demo fixture와 분리한다.
+  # dev: 본개발 실행 target. 대표 데모 케이스도 dev 합성 데이터에 포함한다.
   dev:
     default: true
-    variables:
-      storage_account_name: acdriftadls
-      openai_endpoint: "https://acdrift-oai.openai.azure.com/"
-      cluster_id: "0623-064735-g02akt45"
-      catalog: access_drift_dev
-      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
 
 resources:
   jobs:

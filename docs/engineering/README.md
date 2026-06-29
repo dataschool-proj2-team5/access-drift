@@ -11,6 +11,7 @@
 | 문서 | 내용 |
 | --- | --- |
 | [sprint1-de-scope.md](./sprint1-de-scope.md) | Sprint 1에서 DE팀이 책임질 데이터, Databricks 실행, 품질검증, 재처리 기준 |
+| [databricks-environment-policy.md](./databricks-environment-policy.md) | PoC/dev catalog, Databricks target, raw 경로, 대표 데모 케이스 관리 기준 |
 
 ---
 
