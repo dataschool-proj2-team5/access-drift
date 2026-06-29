@@ -3,15 +3,16 @@
 ## 버전
 
 ```text
-version: 0.1.0
+version: 0.1.1
 status: draft
-updated_at: 2026-06-24
+updated_at: 2026-06-29
 ```
 
 ## 변경이력
 
 | 버전 | 날짜 | 변경 내용 |
 | --- | --- | --- |
+| 0.1.1 | 2026-06-29 | 컬럼별 품질검증 기준과 미확정 정책 표시 추가 |
 | 0.1.0 | 2026-06-24 | 최소 Silver 4테이블 계약, deterministic id, relationship 매트릭스, 처리 방식 추가 |
 
 ## 목적
@@ -102,22 +103,24 @@ edge_id       = sha256(source_system + ':' + from_id + ':' + relationship + ':' 
 
 MVP에서는 동일 `from_id` / `relationship` / `to_id` 조합을 하나의 access edge로 본다. 같은 자산에 대해 여러 권한이 동시에 존재하더라도 `permission`은 대표 권한 또는 가장 강한 권한 하나로 정규화한다. 권한별 row 분리는 후속 확장에서 별도 `source_edge_id` 또는 `permission` 포함 key로 검토한다.
 
+Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안에서 논리적으로 unique해야 한다. 동일한 ID가 둘 이상이면 source 중복 또는 변환 deduplication 문제로 분류한다. `source_*` 값은 내부 ID로 대체하지 않고 Bronze source ID를 그대로 보존한다. 별도로 명시하지 않은 나머지 컬럼에는 단일 컬럼 unique를 요구하지 않는다.
+
 ## silver_principals
 
 권한을 가질 수 있는 주체를 담는다.
 
-| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 |
-| --- | --- | --- | --- | --- |
-| principal_id | string | yes | Silver 파생 | 내부 stable id |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 |
-| source_principal_id | string | yes | Bronze 매핑 | source의 원본 principal id |
-| principal_kind | string | yes | Silver 파생 | `HI` 또는 `NHI` |
-| principal_type | string | yes | Bronze 매핑 | `user`, `group`, `service_principal`, `app_registration`, `github_app`, `service_account`, `unknown` |
-| display_name | string | no | Bronze 매핑 | 표시 이름 |
-| email | string | no | Bronze 매핑 | 사람 계정의 email 또는 UPN |
-| status | string | yes | Bronze 매핑 | `active`, `inactive`, `terminated`, `unknown` |
-| termination_date | date | no | Bronze 매핑 | 퇴사일 또는 비활성 기준일 |
-| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
+| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
+| --- | --- | --- | --- | --- | --- |
+| principal_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 principal source인 `entra_id`, `identity_seed` 중 하나여야 하며 source 확장 시 허용값 갱신이 필요하다. |
+| source_principal_id | string | yes | Bronze 매핑 | source의 원본 principal id | null 또는 빈 문자열이면 실패. 대응 Bronze `app_id` 또는 `user_principal_name`과 동일해야 한다. |
+| principal_kind | string | yes | Silver 파생 | `HI` 또는 `NHI` | null이면 실패. 값은 `HI`, `NHI` 중 하나여야 한다. 현재 `user`는 `HI`, `app_registration`은 `NHI`로 변환되며 나머지 type 매핑은 `확인 필요`. |
+| principal_type | string | yes | Bronze 매핑 | `user`, `group`, `service_principal`, `app_registration`, `github_app`, `service_account`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 하며 ID 재계산에 같은 값을 사용해야 한다. |
+| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze 표시 이름과 의미가 같아야 한다. |
+| email | string | no | Bronze 매핑 | 사람 계정의 email 또는 UPN | 값이 있으면 대응 Bronze UPN/email을 보존해야 한다. 허용 포맷은 `확인 필요`. |
+| status | string | yes | Bronze 매핑 | `active`, `inactive`, `terminated`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 상태를 Silver enum으로 매핑하는 전체 규칙은 `확인 필요`. |
+| termination_date | date | no | Bronze 매핑 | 퇴사일 또는 비활성 기준일 | 값이 있으면 date 타입이며 대응 Bronze 날짜와 같아야 한다. `terminated` 상태에서 필수인지 여부는 `확인 필요`. |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` | null이면 실패. 대응 Bronze `_ingestion_ts`와 같은 시점을 나타내야 한다. |
 
 예시:
 
@@ -142,18 +145,18 @@ Principal을 행사할 수 있게 하는 credential metadata를 담는다.
 
 Secret value, token value, private key value는 저장하지 않는다.
 
-| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 |
-| --- | --- | --- | --- | --- |
-| credential_id | string | yes | Silver 파생 | 내부 stable id |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 |
-| source_credential_id | string | yes | Bronze 매핑 | source의 원본 credential id |
-| bound_principal_id | string | yes | Silver 파생 | credential이 연결된 principal id |
-| credential_type | string | yes | Bronze 매핑 | `client_secret`, `certificate`, `pat`, `deploy_key`, `api_key`, `unknown` |
-| display_name | string | no | Bronze 매핑 | 표시 이름 |
-| status | string | yes | Bronze 매핑 | `active`, `expired`, `revoked`, `unknown` |
-| expires_at | timestamp | no | Bronze 매핑 | 만료 시각 |
-| is_active | boolean | yes | Silver 파생 | 현재 유효한 credential인지 여부 |
-| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
+| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
+| --- | --- | --- | --- | --- | --- |
+| credential_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 credential source인 `entra_id`여야 하며 source 확장 시 허용값 갱신이 필요하다. |
+| source_credential_id | string | yes | Bronze 매핑 | source의 원본 credential id | null 또는 빈 문자열이면 실패. 대응 Bronze `key_id`와 동일해야 한다. |
+| bound_principal_id | string | yes | Silver 파생 | credential이 연결된 principal id | null이면 실패. `silver_principals.principal_id`에 존재하고 대응 Bronze `app_id`로 재계산한 principal ID와 같아야 한다. |
+| credential_type | string | yes | Bronze 매핑 | `client_secret`, `certificate`, `pat`, `deploy_key`, `api_key`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. 현재 password credential은 `client_secret`으로 변환된다. |
+| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze `display_name`과 의미가 같아야 한다. |
+| status | string | yes | Bronze 매핑 | `active`, `expired`, `revoked`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 상태 매핑의 전체 규칙은 `확인 필요`. |
+| expires_at | timestamp | no | Bronze 매핑 | 만료 시각 | 값이 있으면 대응 Bronze `end_date_time`과 같은 시점을 나타내야 한다. |
+| is_active | boolean | yes | Silver 파생 | 현재 유효한 credential인지 여부 | null이면 실패. `status == 'active' AND (expires_at IS NULL OR expires_at > observed_at)` 계산 결과와 같아야 한다. |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` | null이면 실패. 대응 Bronze `_ingestion_ts`와 같은 시점을 나타내야 하며 `is_active`의 기준일로 사용한다. |
 
 예시:
 
@@ -184,16 +187,16 @@ is_active = status == 'active' AND (expires_at IS NULL OR expires_at > observed_
 
 접근 대상이 되는 자산을 담는다.
 
-| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 |
-| --- | --- | --- | --- | --- |
-| asset_id | string | yes | Silver 파생 | 내부 stable id |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 |
-| source_asset_id | string | yes | Bronze 매핑 | source의 원본 asset id |
-| asset_type | string | yes | Bronze 매핑 | `cloud_resource`, `repo`, `database`, `workspace`, `saas_app`, `unknown` |
-| display_name | string | no | Bronze 매핑 | 표시 이름 |
-| environment | string | yes | Bronze 매핑 | `production`, `staging`, `development`, `unknown` |
-| sensitivity | string | yes | Bronze 매핑 | `high`, `medium`, `low`, `unknown` |
-| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
+| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
+| --- | --- | --- | --- | --- | --- |
+| asset_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 asset source인 `assets_seed`여야 하며 source 확장 시 허용값 갱신이 필요하다. |
+| source_asset_id | string | yes | Bronze 매핑 | source의 원본 asset id | null 또는 빈 문자열이면 실패. 대응 Bronze `asset_id`와 동일해야 한다. |
+| asset_type | string | yes | Bronze 매핑 | `cloud_resource`, `repo`, `database`, `workspace`, `saas_app`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. 현재 asset seed는 `cloud_resource`로 변환된다. |
+| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze `name`과 의미가 같아야 한다. |
+| environment | string | yes | Bronze 매핑 | `production`, `staging`, `development`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 값 매핑의 전체 규칙은 `확인 필요`. |
+| sensitivity | string | yes | Bronze 매핑 | `high`, `medium`, `low`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 값 매핑의 전체 규칙은 `확인 필요`. |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` | null이면 실패. 대응 Bronze `_ingestion_ts`와 같은 시점을 나타내야 한다. |
 
 예시:
 
@@ -214,19 +217,19 @@ is_active = status == 'active' AND (expires_at IS NULL OR expires_at > observed_
 
 Principal, credential, asset 사이의 관계를 담는다.
 
-| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 |
-| --- | --- | --- | --- | --- |
-| edge_id | string | yes | Silver 파생 | 내부 stable id |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 |
-| from_id | string | yes | Silver 파생 | 출발 노드 id |
-| from_type | string | yes | Silver 파생 | `principal`, `credential`, `asset` |
-| to_id | string | yes | Silver 파생 | 도착 노드 id |
-| to_type | string | yes | Silver 파생 | `principal`, `credential`, `asset` |
-| relationship | string | yes | Silver 파생 | `owns_principal`, `owns_credential`, `manages_principal`, `manages_credential`, `accesses_credential`, `manages_asset`, `accesses_asset`, `unknown` |
-| permission | string | no | Bronze 매핑 | role 또는 permission 이름 |
-| status | string | yes | Bronze 매핑 | `active`, `inactive`, `unknown` |
-| evidence_source | string | no | Silver 파생 | 관계를 확인한 source 또는 방법 |
-| observed_at | timestamp | yes | Bronze 매핑 | 이 관계를 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
+| 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
+| --- | --- | --- | --- | --- | --- |
+| edge_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 owner edge는 `entra_id`, access edge는 `access_seed`여야 한다. |
+| from_id | string | yes | Silver 파생 | 출발 노드 id | null이면 실패. `from_type`이 가리키는 Silver 테이블에 존재해야 한다. |
+| from_type | string | yes | Silver 파생 | `principal`, `credential`, `asset` | null이면 실패. 명시된 enum 안의 값이고 `relationship` 방향 규칙과 일치해야 한다. |
+| to_id | string | yes | Silver 파생 | 도착 노드 id | null이면 실패. `to_type`이 가리키는 Silver 테이블에 존재해야 한다. |
+| to_type | string | yes | Silver 파생 | `principal`, `credential`, `asset` | null이면 실패. 명시된 enum 안의 값이고 `relationship` 방향 규칙과 일치해야 한다. |
+| relationship | string | yes | Silver 파생 | `owns_principal`, `owns_credential`, `manages_principal`, `manages_credential`, `accesses_credential`, `manages_asset`, `accesses_asset`, `unknown` | null이면 실패. 명시된 enum 안의 값이며 아래 관계유형 규칙의 `from_type -> to_type` 조합을 만족해야 한다. |
+| permission | string | no | Bronze 매핑 | role 또는 permission 이름 | 값이 있으면 대응 Bronze permission을 정규화한 결과여야 한다. 동일 edge의 대표 권한 선택 규칙은 `확인 필요`. |
+| status | string | yes | Bronze 매핑 | `active`, `inactive`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. owner edge의 현재 고정값은 `active`다. |
+| evidence_source | string | no | Silver 파생 | 관계를 확인한 source 또는 방법 | 값이 있으면 관계를 만든 Bronze source 또는 테이블을 식별할 수 있어야 한다. 허용값 목록은 `확인 필요`. |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 관계를 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` | null이면 실패. 관계의 근거가 된 Bronze row의 `_ingestion_ts`와 같은 시점을 나타내야 한다. |
 
 예시:
 
@@ -315,6 +318,8 @@ secret value
 token value
 private key value
 ```
+
+검증 시 Silver 스키마와 저장 row에 위 정답 라벨 및 secret, token, private key의 실제 값이 포함되지 않았는지 확인한다. 필드명 탐지 범위와 마스킹 판정 방식은 `확인 필요`다.
 
 ## 다음 레이어로 넘기는 기준
 
