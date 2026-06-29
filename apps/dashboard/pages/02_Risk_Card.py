@@ -20,7 +20,6 @@ st.set_page_config(page_title="Access Drift Risk Card", page_icon="AD", layout="
 
 def main() -> None:
     st.title("Risk Card")
-    st.caption("Single risk review scaffold.")
 
     result = load_access_drift_data()
     if result.using_mock:
@@ -29,6 +28,7 @@ def main() -> None:
     data = result.data.sort_values("risk_score", ascending=False)
     selected_case_id = st.selectbox("Case", data["case_id"].tolist())
     case = data.loc[data["case_id"] == selected_case_id].iloc[0]
+    st.caption(f"{case['case_id']} · {case['risk_title']}")
 
     render_risk_header_card(case)
 

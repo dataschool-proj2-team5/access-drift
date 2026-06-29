@@ -26,10 +26,14 @@ The final CSV, database, or Gold Layer source contract is not fixed yet. Until t
 | `credential_status` | Credential lifecycle status. |
 | `owner_status` | Owner lifecycle status. |
 | `owner_name` | Owner display name. |
+| `owner_team` | Owner team display name. |
 | `related_person_status` | Related human identity status. |
+| `linked_owner_label` | Display label for linked owner evidence. |
 | `asset_name` | Asset display name. |
 | `asset_type` | Asset category. |
 | `asset_sensitivity` | Asset sensitivity label. |
+| `data_scope` | Data scope label shown in Risk Card. |
+| `data_categories` | Sensitive data category text shown in Risk Card. |
 | `permission_level` | Permission or role level. |
 | `last_accessed_at` | Last known access timestamp. |
 | `detected_at` | Finding detection timestamp. |
@@ -40,6 +44,11 @@ The final CSV, database, or Gold Layer source contract is not fixed yet. Until t
 | `reviewer` | Assigned reviewer. |
 | `action_owner` | Person or team expected to take action. |
 | `recommended_action` | Placeholder recommendation text. |
+| `risk_summary` | Risk summary text shown in the analysis tab. |
+| `risk_factors` | Risk factor checklist items. |
+| `action_plan` | Recommended action plan steps. |
+| `ai_agent_messages` | Mock AI Agent chat messages. |
+| `overview_title` | Short title used in the Overview priority list. |
 | `ai_summary` | Placeholder AI/RAG summary text. |
 | `reference_docs` | Reference policy, runbook, or evidence links. |
 
