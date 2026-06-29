@@ -1,5 +1,20 @@
 # Dashboard App
 
-Sprint 1 dashboard app 구현 위치다.
+Sprint 1 dashboard app implementation area.
 
-초기 구현은 Streamlit 또는 Databricks Apps 기준으로 진행한다. 실제 실행 방식, 의존성, 배포 절차는 대시보드 구현 이슈에서 확정한다.
+The current scaffold uses Streamlit and mock data. It keeps data loading separate so a future CSV, DB, or Gold Layer source can be mapped into the internal dashboard schema.
+
+## Run Locally
+
+```powershell
+cd apps/dashboard
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+## Data Loading
+
+- If `data/sample_access_drift.csv` exists, the app reads that CSV.
+- If the CSV is missing, `src/mock_data.py` generates temporary mock rows.
+- Pages show `Using mock data` when mock rows are active.
+- Final source column mapping should be added in `src/data_loader.py`.
