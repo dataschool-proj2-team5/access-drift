@@ -78,6 +78,43 @@ az login
 
 `eval`은 PoC 정답/평가용 격리 스키마이며 ADLS raw 경로를 추가하지 않고 UC managed table로 시작합니다.
 
+### demo / dev target 구분
+
+`databricks.yml`은 `demo`와 `dev` 두 target을 정의합니다. 목적에 따라 `-t` 플래그로 target을 선택합니다.
+
+| target | catalog | ADLS raw 경로 | 용도 | 데이터 성격 |
+|--------|---------|--------------|------|------------|
+| `demo` | `access_drift` | `lakehouse/raw/demo/` | 발표·검증용 고정 fixture | PoC seed 데이터(10건 × 6종), 재실행해도 같은 결과 |
+| `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | 본개발·탐색용 | 파이프라인 변경 검증, seed 재생성, 스키마 실험 |
+
+**중요**: `demo` target을 실행하면 `access_drift` catalog와 `lakehouse/raw/demo/` 입력 데이터를 덮어씁니다. 발표 직전에는 `dev` target으로만 작업하고, `demo`는 fixture 재적재 시에만 사용합니다.
+
+#### PoC fixture vs 본개발 데이터
+
+| 구분 | 위치 | 설명 |
+|------|------|------|
+| PoC fixture | `data/poc/landing/raw/` (레포) | 10건 × 6종 seed. bundle deploy 시 워크스페이스에 배포 |
+| demo raw | ADLS `lakehouse/raw/demo/...` | `demo` target 실행 시 fixture가 복사되는 발표·검증용 입력 경로 |
+| dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 fixture가 복사되는 개발·탐색용 입력 경로 |
+| 본개발 원본 | ADLS `lakehouse/raw/<source>/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
+
+fixture는 `01_synthetic_data.py`가 target별 ADLS raw 경로로 복사하며, 이후 `02_ingest.py`가 같은 raw 경로를 읽어 Bronze로 적재합니다.
+
+#### `access_drift` catalog (demo)
+
+- bootstrap 스크립트로 이미 생성된 catalog입니다.
+- PoC fixture 데이터가 적재된 상태로 유지합니다.
+- 발표 영상 촬영 전 `demo` target으로 한 번 실행해 fixture를 최신화합니다.
+
+#### `access_drift_dev` catalog (dev)
+
+처음 사용 전 별도로 생성합니다.
+
+```bash
+az login
+CATALOG_NAME=access_drift_dev ./infra/databricks/bootstrap-unity-catalog.sh
+```
+
 ### 배포 전 설정
 
 클러스터를 먼저 생성한 뒤 ID를 레포 루트의 `databricks.yml`에 채웁니다.
@@ -87,12 +124,20 @@ databricks clusters create --json @infra/databricks/resources/clusters.yml
 # 출력된 cluster_id를 databricks.yml > targets.dev.variables.cluster_id 에 입력
 ```
 
-### 배포
+### 배포 및 실행
 
 `databricks.yml`은 레포 루트에 있습니다. **레포 루트에서 실행합니다.**
 
 ```bash
-# 레포 루트에서
+# demo target (발표·검증용 — access_drift catalog)
+databricks bundle deploy -t demo
+databricks bundle run access-drift-pipeline -t demo
+
+# dev target (본개발용 — access_drift_dev catalog, 기본값)
+databricks bundle deploy -t dev
+databricks bundle run access-drift-pipeline -t dev
+
+# -t 생략 시 dev가 기본 target으로 적용됩니다
 databricks bundle deploy
 databricks bundle run access-drift-pipeline
 ```

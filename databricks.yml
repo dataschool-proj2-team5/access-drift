@@ -18,14 +18,33 @@ variables:
     description: Azure OpenAI endpoint (Bicep output)
   cluster_id:
     default: ""
+  catalog:
+    description: Unity Catalog catalog name (demo=access_drift / dev=access_drift_dev)
+    default: access_drift_dev
+  raw_base_path:
+    description: ADLS raw input base path (demo/dev separated)
+    default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
 
 targets:
+  # demo: 발표·검증용 고정 fixture. access_drift catalog의 PoC 데이터를 재사용한다.
+  # 이 target을 실행하면 access_drift catalog의 데이터가 덮어 쓰이므로 dev 데이터와 혼용하지 않는다.
+  demo:
+    variables:
+      storage_account_name: acdriftadls
+      openai_endpoint: "https://acdrift-oai.openai.azure.com/"
+      cluster_id: "0623-064735-g02akt45"
+      catalog: access_drift
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/demo
+
+  # dev: 본개발·탐색용. access_drift_dev catalog를 사용해 demo fixture와 분리한다.
   dev:
     default: true
     variables:
       storage_account_name: acdriftadls
       openai_endpoint: "https://acdrift-oai.openai.azure.com/"
       cluster_id: "0623-064735-g02akt45"
+      catalog: access_drift_dev
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
 
 resources:
   jobs:
@@ -36,6 +55,8 @@ resources:
           description: DDL 적용 — sql/databricks/migrations/*.sql 순서대로 실행
           notebook_task:
             notebook_path: ./notebooks/00_apply_migrations.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: synthetic_data_task
@@ -44,6 +65,10 @@ resources:
             - task_key: migration_task
           notebook_task:
             notebook_path: ./notebooks/01_synthetic_data.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              storage_account: ${var.storage_account_name}
+              raw_base: ${var.raw_base_path}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: ingest_task
@@ -52,6 +77,10 @@ resources:
             - task_key: synthetic_data_task
           notebook_task:
             notebook_path: ./notebooks/02_ingest.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              storage_account: ${var.storage_account_name}
+              raw_base: ${var.raw_base_path}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: silver_task
@@ -60,6 +89,8 @@ resources:
             - task_key: ingest_task
           notebook_task:
             notebook_path: ./notebooks/03_silver.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: eval_seed_task
@@ -68,6 +99,8 @@ resources:
             - task_key: silver_task
           notebook_task:
             notebook_path: ./notebooks/04_eval_seed.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: intermediate_task
@@ -77,6 +110,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/05_intermediate.ipynb
             base_parameters:
+              catalog: ${var.catalog}
               run_id: "{{job.run_id}}"
           existing_cluster_id: ${var.cluster_id}
 
@@ -87,5 +121,6 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/06_gold.ipynb
             base_parameters:
+              catalog: ${var.catalog}
               run_id: "{{job.run_id}}"
           existing_cluster_id: ${var.cluster_id}
