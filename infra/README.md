@@ -78,33 +78,36 @@ az login
 
 `eval`은 PoC 정답/평가용 격리 스키마이며 ADLS raw 경로를 추가하지 않고 UC managed table로 시작합니다.
 
-### demo / dev target 구분
+### PoC / dev target 구분
 
-`databricks.yml`은 `demo`와 `dev` 두 target을 정의합니다. 목적에 따라 `-t` 플래그로 target을 선택합니다.
+`databricks.yml`은 PoC 재현용 `poc` target과 본개발용 `dev` target을 정의합니다. `demo.md`의 대표 데모 케이스는 별도 Databricks target이 아니라, 본개발용 `dev` 합성 데이터 안에 고정 시나리오 또는 식별자로 포함해 관리합니다.
 
 | target | catalog | ADLS raw 경로 | 용도 | 데이터 성격 |
 |--------|---------|--------------|------|------------|
-| `demo` | `access_drift` | `lakehouse/raw/demo/` | 발표·검증용 고정 fixture | PoC seed 데이터(10건 × 6종), 재실행해도 같은 결과 |
-| `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | 본개발·탐색용 | 파이프라인 변경 검증, seed 재생성, 스키마 실험 |
+| `poc` | `access_drift` | `lakehouse/raw/poc/` | PoC 재현·검증 | PoC seed 데이터(10건 × 6종), PoC 완료 기준 재확인 |
+| `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | 본개발·탐색·대표 데모 케이스 검증 | 확장 합성 데이터, 대표 리스크 케이스, 스키마 실험 |
 
-**중요**: `demo` target을 실행하면 `access_drift` catalog와 `lakehouse/raw/demo/` 입력 데이터를 덮어씁니다. 발표 직전에는 `dev` target으로만 작업하고, `demo`는 fixture 재적재 시에만 사용합니다.
+**중요**: `poc`와 `dev`는 catalog와 raw 경로가 분리된 실행 환경입니다. 데모 케이스는 환경이 아니라 데이터 케이스이므로, 발표에서 보여줄 대표 리스크는 `access_drift_dev`의 개발용 합성 데이터 안에서 `scenario_id`, `case_id` 등으로 식별할 수 있게 관리합니다.
 
-#### PoC fixture vs 본개발 데이터
+#### PoC fixture vs S1 개발 데이터
 
 | 구분 | 위치 | 설명 |
 |------|------|------|
 | PoC fixture | `data/poc/landing/raw/` (레포) | 10건 × 6종 seed. bundle deploy 시 워크스페이스에 배포 |
-| demo raw | ADLS `lakehouse/raw/demo/...` | `demo` target 실행 시 fixture가 복사되는 발표·검증용 입력 경로 |
-| dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 fixture가 복사되는 개발·탐색용 입력 경로 |
+| poc raw | ADLS `lakehouse/raw/poc/...` | `poc` target 실행 시 PoC seed가 적재되는 입력 경로 |
+| dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 S1 개발 데이터와 대표 데모 케이스가 적재되는 입력 경로 |
 | 본개발 원본 | ADLS `lakehouse/raw/<source>/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
 
-fixture는 `01_synthetic_data.ipynb`가 target별 ADLS raw 경로로 복사하며, 이후 `02_ingest.ipynb`가 같은 raw 경로를 읽어 Bronze로 적재합니다.
+현재 `data/poc/landing/raw/`는 PoC seed 경로 이름을 유지합니다. `poc` target은 이 seed를 PoC 재현용 raw 경로로 적재하고, `dev` target은 S1 확장 합성 데이터 생성/적재 기준에 맞춰 dev raw 경로를 사용합니다. 이후 `02_ingest.ipynb`가 target별 raw 경로를 읽어 Bronze로 적재합니다.
 
-#### `access_drift` catalog (demo)
+#### `access_drift` catalog (PoC)
 
-- bootstrap 스크립트로 이미 생성된 catalog입니다.
-- PoC fixture 데이터가 적재된 상태로 유지합니다.
-- 발표 영상 촬영 전 `demo` target으로 한 번 실행해 fixture를 최신화합니다.
+PoC 재현 또는 과거 완료 기준 확인이 필요할 때 사용합니다.
+
+```bash
+az login
+CATALOG_NAME=access_drift ./infra/databricks/bootstrap-unity-catalog.sh
+```
 
 #### `access_drift_dev` catalog (dev)
 
@@ -179,11 +182,11 @@ databricks clusters create --json @infra/databricks/resources/clusters.yml
 `databricks.yml`은 레포 루트에 있습니다. **레포 루트에서 실행합니다.**
 
 ```bash
-# demo target (발표·검증용 — access_drift catalog)
-databricks bundle deploy -t demo
-databricks bundle run access-drift-pipeline -t demo
+# poc target (PoC 재현·검증용 — access_drift catalog)
+databricks bundle deploy -t poc
+databricks bundle run access-drift-pipeline -t poc
 
-# dev target (본개발용 — access_drift_dev catalog, 기본값)
+# dev target (S1 본개발·대표 데모 케이스 검증용 — access_drift_dev catalog, 기본값)
 databricks bundle deploy -t dev
 databricks bundle run access-drift-pipeline -t dev
 
