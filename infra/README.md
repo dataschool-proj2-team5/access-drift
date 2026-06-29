@@ -82,21 +82,23 @@ az login
 
 `databricks.yml`은 `demo`와 `dev` 두 target을 정의합니다. 목적에 따라 `-t` 플래그로 target을 선택합니다.
 
-| target | catalog | 용도 | 데이터 성격 |
-|--------|---------|------|------------|
-| `demo` | `access_drift` | 발표·검증용 고정 fixture | PoC seed 데이터(10건 × 6종), 재실행해도 같은 결과 |
-| `dev` | `access_drift_dev` | 본개발·탐색용 | 파이프라인 변경 검증, seed 재생성, 스키마 실험 |
+| target | catalog | ADLS raw 경로 | 용도 | 데이터 성격 |
+|--------|---------|--------------|------|------------|
+| `demo` | `access_drift` | `lakehouse/raw/demo/` | 발표·검증용 고정 fixture | PoC seed 데이터(10건 × 6종), 재실행해도 같은 결과 |
+| `dev` | `access_drift_dev` | `lakehouse/raw/dev/` | 본개발·탐색용 | 파이프라인 변경 검증, seed 재생성, 스키마 실험 |
 
-**중요**: `demo` target을 실행하면 `access_drift` catalog의 데이터를 덮어씁니다. 발표 직전에는 `dev` target으로만 작업하고, `demo`는 fixture 재적재 시에만 사용합니다.
+**중요**: `demo` target을 실행하면 `access_drift` catalog와 `lakehouse/raw/demo/` 입력 데이터를 덮어씁니다. 발표 직전에는 `dev` target으로만 작업하고, `demo`는 fixture 재적재 시에만 사용합니다.
 
 #### PoC fixture vs 본개발 데이터
 
 | 구분 | 위치 | 설명 |
 |------|------|------|
 | PoC fixture | `data/poc/landing/raw/` (레포) | 10건 × 6종 seed. bundle deploy 시 워크스페이스에 배포 |
-| 본개발 원본 | ADLS `lakehouse/raw/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
+| demo raw | ADLS `lakehouse/raw/demo/...` | `demo` target 실행 시 fixture가 복사되는 발표·검증용 입력 경로 |
+| dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 fixture가 복사되는 개발·탐색용 입력 경로 |
+| 본개발 원본 | ADLS `lakehouse/raw/<source>/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
 
-fixture는 `01_synthetic_data.py`가 ADLS raw/ 로 복사하며, 이후 `02_ingest.py`가 Bronze로 적재합니다.
+fixture는 `01_synthetic_data.py`가 target별 ADLS raw 경로로 복사하며, 이후 `02_ingest.py`가 같은 raw 경로를 읽어 Bronze로 적재합니다.
 
 #### `access_drift` catalog (demo)
 

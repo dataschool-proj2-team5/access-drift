@@ -21,6 +21,9 @@ variables:
   catalog:
     description: Unity Catalog catalog name (demo=access_drift / dev=access_drift_dev)
     default: access_drift_dev
+  raw_base_path:
+    description: ADLS raw input base path (demo/dev separated)
+    default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
 
 targets:
   # demo: 발표·검증용 고정 fixture. access_drift catalog의 PoC 데이터를 재사용한다.
@@ -31,6 +34,7 @@ targets:
       openai_endpoint: "https://acdrift-oai.openai.azure.com/"
       cluster_id: "0623-064735-g02akt45"
       catalog: access_drift
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/demo
 
   # dev: 본개발·탐색용. access_drift_dev catalog를 사용해 demo fixture와 분리한다.
   dev:
@@ -40,6 +44,7 @@ targets:
       openai_endpoint: "https://acdrift-oai.openai.azure.com/"
       cluster_id: "0623-064735-g02akt45"
       catalog: access_drift_dev
+      raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
 
 resources:
   jobs:
@@ -63,6 +68,7 @@ resources:
             base_parameters:
               catalog: ${var.catalog}
               storage_account: ${var.storage_account_name}
+              raw_base: ${var.raw_base_path}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: ingest_task
@@ -74,6 +80,7 @@ resources:
             base_parameters:
               catalog: ${var.catalog}
               storage_account: ${var.storage_account_name}
+              raw_base: ${var.raw_base_path}
           existing_cluster_id: ${var.cluster_id}
 
         - task_key: silver_task
