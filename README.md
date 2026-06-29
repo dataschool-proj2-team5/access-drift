@@ -53,3 +53,30 @@
 1. 어떤 권한이 남아 있는가
 2. 그 권한이 어떤 중요한 자산에 닿는가
 3. 다음 조치가 무엇인가
+
+## 프로젝트 구조
+
+```text
+.
+├── apps/
+│   └── dashboard/              # S1 dashboard app 구현 위치
+├── data/
+│   ├── poc/                    # PoC fixture seed
+│   └── dev/                    # 본개발/dev seed와 합성 데이터 입력 위치
+├── docs/
+│   ├── product/                # PRD, Sprint scope, demo scenario
+│   ├── engineering/            # 개발 실행 기준, DE scope, Databricks 환경 정책
+│   ├── contracts/              # 데이터 계약, 스키마, 민감 자산 taxonomy
+│   ├── architecture/           # 시스템 구성과 데이터 흐름 개요
+│   └── adr/                    # 주요 기술·운영 결정 기록
+├── infra/
+│   ├── azure/                  # Azure 리소스 정의
+│   └── databricks/             # Databricks bootstrap, 검증, 리소스 설정
+├── notebooks/                  # Databricks notebook 기반 pipeline task
+├── sql/
+│   └── databricks/
+│       ├── migrations/         # Databricks DDL migration
+│       └── queries/            # 검증·분석 SQL
+├── spikes/                     # 기술 검증 결과
+└── databricks.yml              # Databricks Asset Bundle 설정
+```
