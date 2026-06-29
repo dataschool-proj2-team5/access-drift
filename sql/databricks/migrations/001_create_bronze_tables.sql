@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_access_edges_seed (
   asset_id STRING,
   relationship STRING,
   permission STRING,
-  status STRING
+  status STRING,
+  last_used_at TIMESTAMP
 )
 USING DELTA;

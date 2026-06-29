@@ -25,12 +25,12 @@ Bronze에서는 source별 구조를 허용한다. 이 단계에서는 위험 점
 Landing 입력은 source/API/export 응답 형태에 가깝게 분리된 JSONL 파일이다.
 
 ```text
-data/landing/raw/azure/applications.jsonl
-data/landing/raw/azure/application_owners.jsonl
-data/landing/raw/azure/password_credentials.jsonl
-data/landing/raw/identity/lifecycle_seed.jsonl
-data/landing/raw/assets/assets_seed.jsonl
-data/landing/raw/access/access_edges_seed.jsonl
+data/{poc|dev}/landing/raw/azure/applications.jsonl
+data/{poc|dev}/landing/raw/azure/application_owners.jsonl
+data/{poc|dev}/landing/raw/azure/password_credentials.jsonl
+data/{poc|dev}/landing/raw/identity/lifecycle_seed.jsonl
+data/{poc|dev}/landing/raw/assets/assets_seed.jsonl
+data/{poc|dev}/landing/raw/access/access_edges_seed.jsonl
 ```
 
 ## 공통 컬럼
@@ -128,6 +128,7 @@ Access edge seed 원본을 보존한다.
 | `relationship` | string | no | 관계 유형 |
 | `permission` | string | no | permission 또는 role |
 | `status` | string | no | 관계 상태 |
+| `last_used_at` | timestamp | no | 접근 관계의 마지막 사용 시각. 합성 입력에서는 source-like 보강 필드로 둘 수 있다. |
 
 ## Bronze에 두지 않는 것
 
@@ -140,6 +141,10 @@ finding_id
 recommended_action
 why_risky
 dashboard label
+is_planted_risk
+is_distractor
+expected_severity
+truth_class
 secret value
 token value
 private key value

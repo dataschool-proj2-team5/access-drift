@@ -80,6 +80,17 @@ Silver 파생: Silver 정규화 과정에서 id 생성, 타입 분류, 상태 �
 
 Silver의 내부 id는 deterministic해야 한다. 같은 source record는 재실행해도 같은 id를 가져야 한다.
 
+`source_*` 컬럼은 외부 source나 seed에 존재하는 원본 id를 보존한다. `principal_id`, `credential_id`, `asset_id`, `edge_id`는 Silver 내부에서 조인과 추적을 위해 만든 stable id다. 탐지나 eval 비교에서 source id와 내부 id를 혼용하지 않는다.
+
+`source_system` 값은 아래 값을 사용한다.
+
+| 값 | 의미 |
+| --- | --- |
+| `entra_id` | Microsoft Entra ID source shape |
+| `identity_seed` | HR/IdP lifecycle 합성 입력 |
+| `assets_seed` | asset inventory 합성 입력 |
+| `access_seed` | access edge 합성 입력 |
+
 기본 규칙:
 
 ```text
@@ -88,6 +99,8 @@ credential_id = sha256(source_system + ':' + source_credential_id + ':' + bound_
 asset_id      = sha256(source_system + ':' + source_asset_id + ':' + asset_type)
 edge_id       = sha256(source_system + ':' + from_id + ':' + relationship + ':' + to_id)
 ```
+
+MVP에서는 동일 `from_id` / `relationship` / `to_id` 조합을 하나의 access edge로 본다. 같은 자산에 대해 여러 권한이 동시에 존재하더라도 `permission`은 대표 권한 또는 가장 강한 권한 하나로 정규화한다. 권한별 row 분리는 후속 확장에서 별도 `source_edge_id` 또는 `permission` 포함 key로 검토한다.
 
 ## silver_principals
 
@@ -104,14 +117,14 @@ edge_id       = sha256(source_system + ':' + from_id + ':' + relationship + ':' 
 | email | string | no | Bronze 매핑 | 사람 계정의 email 또는 UPN |
 | status | string | yes | Bronze 매핑 | `active`, `inactive`, `terminated`, `unknown` |
 | termination_date | date | no | Bronze 매핑 | 퇴사일 또는 비활성 기준일 |
-| observed_at | timestamp | yes | Silver 파생 | 이 사실을 관측한 시각 |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
 
 예시:
 
 ```json
 {
-  "principal_id": "sha256(azure:kim.minsu@company.com:user)",
-  "source_system": "azure",
+  "principal_id": "sha256(identity_seed:kim.minsu@company.com:user)",
+  "source_system": "identity_seed",
   "source_principal_id": "kim.minsu@company.com",
   "principal_kind": "HI",
   "principal_type": "user",
@@ -140,14 +153,14 @@ Secret value, token value, private key value는 저장하지 않는다.
 | status | string | yes | Bronze 매핑 | `active`, `expired`, `revoked`, `unknown` |
 | expires_at | timestamp | no | Bronze 매핑 | 만료 시각 |
 | is_active | boolean | yes | Silver 파생 | 현재 유효한 credential인지 여부 |
-| observed_at | timestamp | yes | Silver 파생 | 이 사실을 관측한 시각 |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
 
 예시:
 
 ```json
 {
-  "credential_id": "sha256(azure:key-001:<payment-service-prod principal_id>)",
-  "source_system": "azure",
+  "credential_id": "sha256(entra_id:key-001:<payment-service-prod principal_id>)",
+  "source_system": "entra_id",
   "source_credential_id": "key-001",
   "bound_principal_id": "<payment-service-prod principal_id>",
   "credential_type": "client_secret",
@@ -162,7 +175,7 @@ Secret value, token value, private key value는 저장하지 않는다.
 `is_active` 파생 규칙:
 
 ```text
-is_active = status == 'active' AND (expires_at IS NULL OR expires_at > current_timestamp)
+is_active = status == 'active' AND (expires_at IS NULL OR expires_at > observed_at)
 ```
 
 `expires_at`이 없는 credential은 source에서 만료 개념을 제공하지 않는 경우로 보고, `status`가 `active`이면 active로 판단한다.
@@ -180,14 +193,14 @@ is_active = status == 'active' AND (expires_at IS NULL OR expires_at > current_t
 | display_name | string | no | Bronze 매핑 | 표시 이름 |
 | environment | string | yes | Bronze 매핑 | `production`, `staging`, `development`, `unknown` |
 | sensitivity | string | yes | Bronze 매핑 | `high`, `medium`, `low`, `unknown` |
-| observed_at | timestamp | yes | Silver 파생 | 이 사실을 관측한 시각 |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
 
 예시:
 
 ```json
 {
-  "asset_id": "sha256(azure:payment-api:cloud_resource)",
-  "source_system": "azure",
+  "asset_id": "sha256(assets_seed:payment-api:cloud_resource)",
+  "source_system": "assets_seed",
   "source_asset_id": "payment-api",
   "asset_type": "cloud_resource",
   "display_name": "payment-api",
@@ -213,14 +226,14 @@ Principal, credential, asset 사이의 관계를 담는다.
 | permission | string | no | Bronze 매핑 | role 또는 permission 이름 |
 | status | string | yes | Bronze 매핑 | `active`, `inactive`, `unknown` |
 | evidence_source | string | no | Silver 파생 | 관계를 확인한 source 또는 방법 |
-| observed_at | timestamp | yes | Silver 파생 | 이 관계를 관측한 시각 |
+| observed_at | timestamp | yes | Bronze 매핑 | 이 관계를 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` |
 
 예시:
 
 ```json
 {
-  "edge_id": "sha256(azure:<payment-service-prod principal_id>:accesses_asset:<payment-api asset_id>)",
-  "source_system": "azure",
+  "edge_id": "sha256(access_seed:<payment-service-prod principal_id>:accesses_asset:<payment-api asset_id>)",
+  "source_system": "access_seed",
   "from_id": "<payment-service-prod principal_id>",
   "from_type": "principal",
   "to_id": "<payment-api asset_id>",
@@ -294,6 +307,10 @@ recommended_action
 why_risky
 evidence_path_text
 dashboard label
+is_planted_risk
+is_distractor
+expected_severity
+truth_class
 secret value
 token value
 private key value
