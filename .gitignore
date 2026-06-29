@@ -38,6 +38,7 @@ venv/
 .mypy_cache/
 
 # Data / temporary files
+data/dev/landing/raw/
 tmp/
 temp/
 *.tmp
