@@ -128,6 +128,7 @@ data/dev/landing/raw/access/access_edges_seed.jsonl
 
 | 항목 | 값 |
 | --- | --- |
+| case_id | `eval-nhi-demo-001` |
 | owner userPrincipalName | `kim.minsu@company.com` |
 | application appId | `d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f` |
 | credential keyId | `c0ffee12-3456-7890-abcd-1234567890ab` |
