@@ -187,6 +187,7 @@ databricks bundle deploy -t poc
 databricks bundle run access-drift-pipeline -t poc
 
 # dev target (S1 본개발·대표 데모 케이스 검증용 — access_drift_dev catalog, 기본값)
+# data/dev/landing/raw 및 data/dev/eval seed가 준비된 뒤 실행합니다.
 databricks bundle deploy -t dev
 databricks bundle run access-drift-pipeline -t dev
 
@@ -195,7 +196,40 @@ databricks bundle deploy
 databricks bundle run access-drift-pipeline
 ```
 
-bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`이 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+
+#### Landing/Bronze/Silver 부분 실행
+
+DE가 Landing/Bronze/Silver 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
+
+```bash
+databricks bundle validate -t dev
+databricks bundle deploy -t dev
+databricks bundle run -t dev access-drift-pipeline \
+  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task
+```
+
+`data/dev/landing/raw/`와 `data/dev/eval/ground_truth_case.jsonl`이 아직 준비되지 않은 동안에는 PoC-shaped seed를 dev catalog/raw 경로에 적재해 파이프라인 smoke test만 수행할 수 있습니다.
+
+```bash
+databricks bundle deploy -t dev \
+  --var="seed_data_path=data/poc/landing/raw" \
+  --var="eval_seed_path=data/poc/eval/ground_truth_case.jsonl"
+
+databricks bundle run -t dev access-drift-pipeline \
+  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task
+
+# smoke test 후 dev 기본 seed 경로로 job parameter를 되돌립니다.
+databricks bundle deploy -t dev
+```
+
+이 override는 `access_drift_dev`와 `lakehouse/raw/dev/`에 PoC-shaped seed를 적재하는 검증용 실행이다. 대표 dev 데이터 검증 완료를 의미하지 않는다.
+
+실행 후 row count, required key null, enum, relationship, 참조 무결성, eval 매칭은 아래 SQL로 확인합니다.
+
+```text
+sql/databricks/queries/de_lbs_validation.sql
+```
 
 ### 셋업 검증
 

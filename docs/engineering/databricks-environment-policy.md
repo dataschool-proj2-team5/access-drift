@@ -106,22 +106,24 @@ access_drift_dev.eval
 
 ### 8.1 dev seed 경로 변수화
 
-현재 bundle에는 `data/dev`가 sync path로 추가되어 있지만, `01_synthetic_data.ipynb`가 실제로 어떤 repo seed 경로를 읽을지는 별도 정리가 필요하다.
+bundle에는 `data/dev`가 sync path로 추가되어 있고, seed 입력 경로는 `databricks.yml`의 `seed_data_path` 변수로 제어한다.
 
-후속 작업에서는 `databricks.yml`에 seed 입력 경로 변수를 추가하고, notebook이 해당 값을 widget으로 받아 사용하게 한다.
-
-예상 방향:
+기본값:
 
 ```yaml
 variables:
   seed_data_path:
     description: Repo-relative seed data path deployed with the bundle
     default: data/dev/landing/raw
+  eval_seed_path:
+    description: Repo-relative eval seed JSONL path deployed with the bundle
+    default: data/dev/eval/ground_truth_case.jsonl
 
 targets:
   poc:
     variables:
       seed_data_path: data/poc/landing/raw
+      eval_seed_path: data/poc/eval/ground_truth_case.jsonl
   dev:
     default: true
 ```
