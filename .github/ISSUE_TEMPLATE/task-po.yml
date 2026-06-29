@@ -1,11 +1,11 @@
 name: "Task - PO"
 description: "제품 범위, 사용자 시나리오, 데모 흐름 관련 작업을 작성합니다."
-title: "[PO][M] "
+title: "[PO][P0] "
 labels:
   - task
   - S1
-  - area:product
-  - priority:must
+  - team:po
+  - priority:p0
 body:
   - type: textarea
     id: task
@@ -56,7 +56,7 @@ body:
       label: 완료 기준
       value: |
         - [ ] 기대 결과가 충족된다.
-        - [ ] Must / Should / Could 우선순위가 제목 또는 본문에 명확히 표시된다.
+        - [ ] P0 / P1 / P2 우선순위가 제목 또는 본문에 명확히 표시된다.
         - [ ] 필요한 확인 결과가 PR 또는 이슈 댓글에 기록된다.
     validations:
       required: true

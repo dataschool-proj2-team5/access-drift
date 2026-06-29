@@ -1,11 +1,11 @@
 name: "Task - DS"
 description: "탐지 로직, 평가, Intermediate/Gold 결과 모델 관련 작업을 작성합니다."
-title: "[DS][M] "
+title: "[DS][P0] "
 labels:
   - task
   - S1
-  - area:ds
-  - priority:must
+  - team:ds
+  - priority:p0
 body:
   - type: textarea
     id: task
@@ -57,7 +57,7 @@ body:
       label: 완료 기준
       value: |
         - [ ] 기대 결과가 충족된다.
-        - [ ] Must / Should / Could 우선순위가 제목 또는 본문에 명확히 표시된다.
+        - [ ] P0 / P1 / P2 우선순위가 제목 또는 본문에 명확히 표시된다.
         - [ ] 입력 Silver 테이블과 사용 컬럼이 기록된다.
         - [ ] 결과 테이블의 핵심 key와 근거 추적 방법이 기록된다.
         - [ ] 필요한 확인 결과가 PR 또는 이슈 댓글에 기록된다.
