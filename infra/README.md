@@ -144,7 +144,7 @@ PRINCIPALS="4dt002@msacademy.msai.kr 4dt014@msacademy.msai.kr" \
 ./infra/databricks/grant-dev-user-permissions.sh
 ```
 
-이 스크립트는 기본적으로 `access_drift_dev` catalog, 하위 schema, `access_drift_lakehouse_ext` external location에 대해 Unity Catalog `ALL_PRIVILEGES`를 부여합니다. External Location은 raw 파일 읽기/쓰기와 외부 테이블 생성에 필요한 권한을 포함합니다.
+이 스크립트는 기본적으로 `access_drift_dev` catalog, 하위 schema, context 하위 table, `access_drift_lakehouse_ext` external location에 대해 Unity Catalog `ALL_PRIVILEGES`를 부여합니다. External Location은 raw 파일 읽기/쓰기와 외부 테이블 생성에 필요한 권한을 포함합니다.
 
 필요하면 권한 범위를 좁혀 실행할 수 있습니다.
 
@@ -165,6 +165,9 @@ SHOW GRANTS ON SCHEMA access_drift_dev.silver;
 SHOW GRANTS ON SCHEMA access_drift_dev.intermediate;
 SHOW GRANTS ON SCHEMA access_drift_dev.gold;
 SHOW GRANTS ON SCHEMA access_drift_dev.eval;
+SHOW GRANTS ON SCHEMA access_drift_dev.context;
+SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
+SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
@@ -187,7 +190,7 @@ databricks bundle deploy -t poc
 databricks bundle run access-drift-pipeline -t poc
 
 # dev target (S1 본개발·대표 데모 케이스 검증용 — access_drift_dev catalog, 기본값)
-# data/dev/landing/raw 및 data/dev/eval seed가 준비된 뒤 실행합니다.
+# data/dev/landing/raw, data/dev/eval, data/dev/context seed가 준비된 뒤 실행합니다.
 databricks bundle deploy -t dev
 databricks bundle run access-drift-pipeline -t dev
 
@@ -198,18 +201,31 @@ databricks bundle run access-drift-pipeline
 
 bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
 
-#### Landing/Bronze/Silver 부분 실행
+#### Landing/Bronze/Silver/Eval/Context 부분 실행
 
-DE가 Landing/Bronze/Silver 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
+DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
 
 ```bash
 databricks bundle validate -t dev
 databricks bundle deploy -t dev
 databricks bundle run -t dev access-drift-pipeline \
-  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task
+  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
 ```
 
-`data/dev/landing/raw/`와 `data/dev/eval/ground_truth_case.jsonl`이 아직 준비되지 않은 동안에는 PoC-shaped seed를 dev catalog/raw 경로에 적재해 파이프라인 smoke test만 수행할 수 있습니다.
+`data/dev/landing/raw/`, `data/dev/eval/*.jsonl`, `data/dev/context/*.jsonl`은 Git에 커밋하지 않는 생성 파일입니다. bundle deploy에서 누락되면 아래처럼 workspace에 직접 올린 뒤 실행합니다.
+
+```bash
+databricks workspace import-dir data/dev/landing/raw \
+  /Shared/access-drift/files/data/dev/landing/raw --overwrite
+databricks workspace import data/dev/eval/ground_truth_case.jsonl \
+  /Shared/access-drift/files/data/dev/eval/ground_truth_case.jsonl --format RAW --overwrite
+databricks workspace import data/dev/context/asset_context.jsonl \
+  /Shared/access-drift/files/data/dev/context/asset_context.jsonl --format RAW --overwrite
+databricks workspace import data/dev/context/assignment_routing.jsonl \
+  /Shared/access-drift/files/data/dev/context/assignment_routing.jsonl --format RAW --overwrite
+```
+
+`data/dev/landing/raw/`와 `data/dev/eval/ground_truth_case.jsonl`이 아직 준비되지 않은 동안에는 PoC-shaped seed를 dev catalog/raw 경로에 적재해 파이프라인 smoke test만 수행할 수 있습니다. 이 경우 context seed는 실행하지 않습니다.
 
 ```bash
 databricks bundle deploy -t dev \

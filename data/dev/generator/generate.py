@@ -30,6 +30,11 @@ LANDING_FILE_PATHS = {
     "access_edges": Path("access/access_edges_seed.jsonl"),
 }
 
+CONTEXT_FILE_PATHS = {
+    "asset_context": Path("asset_context.jsonl"),
+    "assignment_routing": Path("assignment_routing.jsonl"),
+}
+
 EXPECTED_FIELDS = {
     "applications": {"appId", "displayName", "createdDateTime"},
     "application_owners": {"appId", "userPrincipalName"},
@@ -49,6 +54,24 @@ EXPECTED_FIELDS = {
         "permission",
         "status",
         "lastUsedDateTime",
+    },
+}
+
+CONTEXT_EXPECTED_FIELDS = {
+    "asset_context": {
+        "source_asset_id",
+        "data_scope_label",
+        "sensitive_data_examples",
+        "sensitivity_reason",
+    },
+    "assignment_routing": {
+        "subject_type",
+        "subject_id",
+        "asset_id",
+        "drift_type",
+        "assignee_name",
+        "assignee_team",
+        "routing_reason",
     },
 }
 
@@ -517,6 +540,155 @@ def build_eval_records(
     return rows
 
 
+def _asset_context_for_spec(spec: CaseSpec) -> dict[str, object]:
+    if spec.asset_id == "asset-customer-export-storage-prod":
+        return {
+            "source_asset_id": spec.asset_id,
+            "data_scope_label": "고객 DB",
+            "sensitive_data_examples": ["고객 이름", "전화번호", "배송지", "주문내역"],
+            "sensitivity_reason": "고객 식별 정보와 배송지/주문내역을 포함하는 export storage",
+        }
+
+    asset_key = spec.asset_id.removeprefix("asset-")
+    context_by_pattern = (
+        (
+            ("customer-profile", "customer-order", "crm-audience", "loyalty-segment"),
+            (
+                "고객 CRM 데이터",
+                ["고객 식별 정보", "고객 세그먼트", "주문/프로필 속성"],
+                "고객 식별 정보와 CRM 세그먼트/프로필 속성을 포함하는 export 자산",
+            ),
+        ),
+        (
+            ("refund-report",),
+            (
+                "환불/결제 운영 데이터",
+                ["환불 금액", "환불 상태", "PG 거래 식별자"],
+                "결제·환불 처리와 거래 식별자를 포함하는 운영 자산",
+            ),
+        ),
+        (
+            ("seller-settlement",),
+            (
+                "판매자 정산 데이터",
+                ["판매자 ID", "정산 금액", "수수료", "지급 상태"],
+                "판매자 정산과 회계 원장 정보를 포함하는 재무 자산",
+            ),
+        ),
+        (
+            ("finance-ledger",),
+            (
+                "재무 원장 데이터",
+                ["회계 계정", "거래 금액", "정산 원장"],
+                "회계 처리와 정산 원장 정보를 포함하는 재무 자산",
+            ),
+        ),
+        (
+            ("finance-reporting",),
+            (
+                "재무 리포팅 데이터",
+                ["일별 매출", "환불 금액", "순매출"],
+                "전사 매출과 정산 리포팅에 사용되는 핵심 비즈니스 자산",
+            ),
+        ),
+        (
+            ("marketing-segment",),
+            (
+                "마케팅 세그먼트 데이터",
+                ["세그먼트 유형", "관심 카테고리", "캠페인 대상 조건"],
+                "고객 세그먼트와 캠페인 대상 조건을 포함하는 마케팅 자산",
+            ),
+        ),
+        (
+            ("support-case",),
+            (
+                "고객지원 케이스 데이터",
+                ["문의 유형", "처리 상태", "고객 연락처 참조"],
+                "고객 문의와 지원 처리 이력을 포함하는 운영 자산",
+            ),
+        ),
+        (
+            ("order-events",),
+            (
+                "주문 이벤트 데이터",
+                ["주문 이벤트", "주문 상태", "처리 시각"],
+                "주문 처리 흐름과 이벤트를 포함하는 핵심 비즈니스 자산",
+            ),
+        ),
+    )
+    for prefixes, context in context_by_pattern:
+        if asset_key.startswith(prefixes):
+            label, examples, reason = context
+            return {
+                "source_asset_id": spec.asset_id,
+                "data_scope_label": label,
+                "sensitive_data_examples": examples,
+                "sensitivity_reason": reason,
+            }
+
+    context_by_sensitivity = {
+        "medium": (
+            "내부 운영 데이터",
+            ["비식별 운영 지표", "스테이징 업무 정보"],
+            "사내 업무상 공유되지만 외부 공개 대상은 아닌 내부 운영 자산",
+        ),
+        "low": (
+            "비민감 개발 데이터",
+            ["개발 알림", "프리뷰 설정", "QA 대시보드"],
+            "민감 자산 taxonomy에 직접 매핑하지 않는 normal/distractor용 non-sensitive 자산",
+        ),
+    }
+    label, examples, reason = context_by_sensitivity[spec.sensitivity]
+    return {
+        "source_asset_id": spec.asset_id,
+        "data_scope_label": label,
+        "sensitive_data_examples": examples,
+        "sensitivity_reason": reason,
+    }
+
+
+def _assignment_routing_for_spec(spec: CaseSpec) -> dict[str, object]:
+    asset_key = spec.asset_id.removeprefix("asset-")
+    team_by_pattern = (
+        (("customer", "crm", "loyalty"), ("이다영", "CRM 데이터 운영팀")),
+        (("refund", "seller-settlement"), ("한지민", "정산 플랫폼팀")),
+        (("finance",), ("박서준", "재무 데이터팀")),
+        (("marketing",), ("오세훈", "마케팅 데이터팀")),
+        (("support",), ("김하나", "고객지원 데이터팀")),
+        (("order-events",), ("박서준", "비즈니스 플랫폼팀")),
+        (("operations",), ("최하은", "운영 데이터팀")),
+        (("team-notification", "catalog-preview", "qa-dashboard"), ("정우진", "개발 플랫폼팀")),
+    )
+    assignee_name = "최하은"
+    assignee_team = "운영 데이터팀"
+    for prefixes, assignee in team_by_pattern:
+        if asset_key.startswith(prefixes):
+            assignee_name, assignee_team = assignee
+            break
+    reason = (
+        f"{spec.app_name}와 {spec.asset_name}의 운영 책임 팀"
+        if spec.index == 1
+        else ""
+    )
+    return {
+        "subject_type": "nhi",
+        "subject_id": spec.app_id,
+        "asset_id": spec.asset_id,
+        "drift_type": DRIFT_TYPE,
+        "assignee_name": assignee_name,
+        "assignee_team": assignee_team,
+        "routing_reason": reason,
+    }
+
+
+def build_context_records(specs: Iterable[CaseSpec]) -> dict[str, list[dict[str, object]]]:
+    spec_list = list(specs)
+    return {
+        "asset_context": [_asset_context_for_spec(spec) for spec in spec_list],
+        "assignment_routing": [_assignment_routing_for_spec(spec) for spec in spec_list],
+    }
+
+
 def _validate_timestamp(value: object, label: str) -> None:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be a non-empty string")
@@ -668,6 +840,71 @@ def validate_eval_records(
         raise ValueError("unexpected distractor eval count")
 
 
+def validate_context_records(
+    context_records: dict[str, list[dict[str, object]]],
+    landing_records: dict[str, list[dict[str, object]]],
+    eval_rows: list[dict[str, object]],
+    expected_size: int,
+) -> None:
+    if set(context_records) != set(CONTEXT_FILE_PATHS):
+        raise ValueError("unexpected context record groups")
+
+    for group, rows in context_records.items():
+        if len(rows) != expected_size:
+            raise ValueError(f"{group} expected {expected_size}, got {len(rows)}")
+        for row in rows:
+            if set(row).intersection(FORBIDDEN_FIELDS):
+                raise ValueError(f"{group} contains a forbidden field")
+            if set(row) != CONTEXT_EXPECTED_FIELDS[group]:
+                raise ValueError(f"{group} has unexpected fields: {set(row)}")
+
+    asset_ids = {row["assetId"] for row in landing_records["assets"]}
+    app_ids = {row["appId"] for row in landing_records["applications"]}
+    eval_keys = {
+        (row["subject_type"], row["subject_id"], row["asset_id"], row["drift_type"])
+        for row in eval_rows
+    }
+
+    asset_context_ids = [row["source_asset_id"] for row in context_records["asset_context"]]
+    if len(set(asset_context_ids)) != expected_size:
+        raise ValueError("duplicate asset_context.source_asset_id")
+    if set(asset_context_ids) != asset_ids:
+        raise ValueError("asset_context source_asset_id must match landing assets")
+
+    for row in context_records["asset_context"]:
+        examples = row["sensitive_data_examples"]
+        if not isinstance(examples, list) or not examples:
+            raise ValueError("sensitive_data_examples must be a non-empty array")
+        if not all(isinstance(item, str) and item for item in examples):
+            raise ValueError("sensitive_data_examples must contain non-empty strings")
+        for field in ("data_scope_label", "sensitivity_reason"):
+            if not isinstance(row[field], str) or not row[field]:
+                raise ValueError(f"asset_context.{field} must be a non-empty string")
+
+    routing_keys = []
+    for row in context_records["assignment_routing"]:
+        key = (row["subject_type"], row["subject_id"], row["asset_id"], row["drift_type"])
+        routing_keys.append(key)
+        if row["subject_type"] != "nhi":
+            raise ValueError("assignment_routing.subject_type must be nhi")
+        if row["subject_id"] not in app_ids:
+            raise ValueError("assignment_routing.subject_id must match application appId")
+        if row["asset_id"] not in asset_ids:
+            raise ValueError("assignment_routing.asset_id must match landing assetId")
+        if row["drift_type"] != DRIFT_TYPE:
+            raise ValueError("assignment_routing.drift_type mismatch")
+        for field in ("assignee_name", "assignee_team"):
+            if not isinstance(row[field], str) or not row[field]:
+                raise ValueError(f"assignment_routing.{field} must be a non-empty string")
+        if not isinstance(row["routing_reason"], str):
+            raise ValueError("assignment_routing.routing_reason must be a string")
+
+    if len(set(routing_keys)) != expected_size:
+        raise ValueError("duplicate assignment_routing source key")
+    if set(routing_keys) != eval_keys:
+        raise ValueError("assignment_routing source keys must match eval source keys")
+
+
 def write_jsonl(rows: Iterable[dict[str, object]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     content = "".join(
@@ -679,6 +916,11 @@ def write_jsonl(rows: Iterable[dict[str, object]], path: Path) -> None:
 
 def write_landing_records(records: dict[str, list[dict[str, object]]], output_root: Path) -> None:
     for group, relative_path in LANDING_FILE_PATHS.items():
+        write_jsonl(records[group], output_root / relative_path)
+
+
+def write_context_records(records: dict[str, list[dict[str, object]]], output_root: Path) -> None:
+    for group, relative_path in CONTEXT_FILE_PATHS.items():
         write_jsonl(records[group], output_root / relative_path)
 
 
@@ -695,23 +937,35 @@ def generate(
     reference_date: date,
     landing_output_root: Path,
     eval_output_path: Path,
-) -> tuple[dict[str, list[dict[str, object]]], list[dict[str, object]]]:
+    context_output_root: Path,
+) -> tuple[
+    dict[str, list[dict[str, object]]],
+    list[dict[str, object]],
+    dict[str, list[dict[str, object]]],
+]:
     specs = build_case_specs(size, seed, reference_date)
     landing = build_landing_records(specs, reference_date)
     eval_rows = build_eval_records(specs, reference_date)
+    context = build_context_records(specs)
     validate_landing_records(landing, size, reference_date)
     validate_eval_records(eval_rows, landing, size)
+    validate_context_records(context, landing, eval_rows, size)
     write_landing_records(landing, landing_output_root)
     write_jsonl(eval_rows, eval_output_path)
-    return landing, eval_rows
+    write_context_records(context, context_output_root)
+    return landing, eval_rows, context
 
 
 def parse_reference_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
-def default_paths(size: int) -> tuple[Path, Path]:
-    return DEFAULT_OUTPUT_ROOT / "landing" / "raw", DEFAULT_OUTPUT_ROOT / "eval" / "ground_truth_case.jsonl"
+def default_paths(size: int) -> tuple[Path, Path, Path]:
+    return (
+        DEFAULT_OUTPUT_ROOT / "landing" / "raw",
+        DEFAULT_OUTPUT_ROOT / "eval" / "ground_truth_case.jsonl",
+        DEFAULT_OUTPUT_ROOT / "context",
+    )
 
 
 def main() -> None:
@@ -721,18 +975,21 @@ def main() -> None:
     parser.add_argument("--reference-date", type=parse_reference_date, default=DEFAULT_REFERENCE_DATE)
     parser.add_argument("--landing-output-root", type=Path)
     parser.add_argument("--eval-output-path", type=Path)
+    parser.add_argument("--context-output-root", type=Path)
     args = parser.parse_args()
 
-    default_landing, default_eval = default_paths(args.size)
+    default_landing, default_eval, default_context = default_paths(args.size)
     landing_output_root = args.landing_output_root or default_landing
     eval_output_path = args.eval_output_path or default_eval
+    context_output_root = args.context_output_root or default_context
 
-    landing, eval_rows = generate(
+    landing, eval_rows, context = generate(
         args.size,
         args.seed,
         args.reference_date,
         landing_output_root,
         eval_output_path,
+        context_output_root,
     )
 
     print(f"size={args.size}")
@@ -744,8 +1001,11 @@ def main() -> None:
     distractors = sum(1 for row in eval_rows if row["is_distractor"])
     normal = sum(1 for row in eval_rows if not row["is_planted_risk"] and not row["is_distractor"])
     print(f"eval: rows={len(eval_rows)}, positive={positives}, normal={normal}, distractor={distractors}")
+    for group, rows in context.items():
+        print(f"{group}: rows={len(rows)}")
     checksum_paths = [landing_output_root / path for path in LANDING_FILE_PATHS.values()]
     checksum_paths.append(eval_output_path)
+    checksum_paths.extend(context_output_root / path for path in CONTEXT_FILE_PATHS.values())
     for path, checksum in file_checksums(checksum_paths).items():
         print(f"sha256 {checksum}  {path}")
 
