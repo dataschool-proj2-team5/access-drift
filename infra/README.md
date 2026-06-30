@@ -51,7 +51,7 @@ Unity Catalog bootstrap에 필요한 Access Connector ID는 Bicep output `unityC
 | 오브젝트 | 내용 |
 |----------|------|
 | Cluster | Single Node, Standard_DS3_v2, 30분 자동 종료 |
-| Job | `access-drift-pipeline` (migration → synthetic_data → ingest → silver → intermediate → gold, eval은 silver 이후 검증용 task로 분리) |
+| Job | `access-drift-pipeline` (migration / dev seed 생성 / raw 배치 / ingest / silver / eval / context / intermediate / gold task로 분리) |
 
 ### Unity Catalog
 
@@ -206,6 +206,21 @@ databricks bundle run access-drift-pipeline
 
 bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
 
+#### Task 실행 기준
+
+`access-drift-pipeline`은 full run도 가능하지만, 기본 운영 기준은 필요한 task만 부분 실행하는 것이다.
+
+| 상황 | 실행 task |
+|------|-----------|
+| 환경 준비 또는 DDL 변경 | `migration_task` |
+| dev 합성 seed 재생성 | `generate_dev_seed_task` |
+| 생성된 seed를 ADLS raw/dev로 배치 | `synthetic_data_task` |
+| DE Landing/Bronze/Silver 재처리 | `ingest_task,silver_task` |
+| eval/context seed 갱신 | `eval_seed_task,context_seed_task` |
+| DS Intermediate/Gold 재처리 | `intermediate_task,gold_task` |
+
+`generate_dev_seed_task`는 workspace files 아래 `data/dev/landing/raw`, `data/dev/eval`, `data/dev/context`에 JSONL을 생성한다. `synthetic_data_task`는 생성된 Landing seed를 target별 ADLS raw 경로로 복사한다.
+
 #### Landing/Bronze/Silver/Eval/Context 부분 실행
 
 DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
@@ -214,10 +229,10 @@ DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는
 databricks bundle validate -t dev
 databricks bundle deploy -t dev
 databricks bundle run -t dev access-drift-pipeline \
-  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+  --only migration_task,generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
 ```
 
-`data/dev/landing/raw/`, `data/dev/eval/*.jsonl`, `data/dev/context/*.jsonl`은 Git에 커밋하지 않는 생성 파일입니다. bundle deploy에서 누락되면 아래처럼 workspace에 직접 올린 뒤 실행합니다.
+`data/dev/landing/raw/`, `data/dev/eval/*.jsonl`, `data/dev/context/*.jsonl`은 Git에 커밋하지 않는 생성 파일입니다. 기본 흐름에서는 `generate_dev_seed_task`가 Databricks workspace에서 생성한다. 로컬 생성 결과를 검증용으로 직접 올려야 할 때만 아래처럼 workspace에 import합니다.
 
 ```bash
 databricks workspace import-dir data/dev/landing/raw \
@@ -251,6 +266,8 @@ databricks bundle deploy -t dev
 ```text
 sql/databricks/queries/de_lbs_validation.sql
 ```
+
+이 SQL은 job task가 아니라 read-only 교차 검산 아티팩트다. 각 notebook의 smoke check는 해당 단계 산출물의 기본 품질을 확인하고, validation SQL은 task 재실행 후 Bronze/Silver/Eval/Context 산출물 간 정합성을 별도로 확인할 때 사용한다.
 
 ### 셋업 검증
 

@@ -41,8 +41,23 @@ variables:
   assignment_routing_path:
     description: Bundle-deployed Risk Card assignment routing JSONL path
     default: data/dev/context/assignment_routing.jsonl
+  context_output_root:
+    description: Bundle-deployed Risk Card context output directory
+    default: data/dev/context
   context_seed_required:
     description: Whether context seed files must exist for context_seed_task
+    default: "true"
+  dev_seed_size:
+    description: Number of dev synthetic cases to generate
+    default: "20"
+  dev_seed:
+    description: Deterministic seed for dev synthetic data generation
+    default: "35"
+  dev_reference_date:
+    description: Reference date for dev synthetic data generation
+    default: "2026-06-29"
+  generate_dev_seed_enabled:
+    description: Whether generate_dev_seed_task should create dev seed files
     default: "true"
 
 targets:
@@ -54,6 +69,7 @@ targets:
       seed_data_path: data/poc/landing/raw
       eval_seed_path: data/poc/eval/ground_truth_case.jsonl
       context_seed_required: "false"
+      generate_dev_seed_enabled: "false"
 
   # dev: 본개발 실행 target. 대표 데모 케이스도 dev 합성 데이터에 포함한다.
   dev:
@@ -72,10 +88,25 @@ resources:
               catalog: ${var.catalog}
           existing_cluster_id: ${var.cluster_id}
 
+        - task_key: generate_dev_seed_task
+          description: Databricks workspace에서 dev 합성 Landing/Eval/Context JSONL 생성
+          notebook_task:
+            notebook_path: ./notebooks/09_generate_dev_seed.ipynb
+            base_parameters:
+              seed_data_path: ${var.seed_data_path}
+              eval_seed_path: ${var.eval_seed_path}
+              context_output_root: ${var.context_output_root}
+              dev_seed_size: ${var.dev_seed_size}
+              dev_seed: ${var.dev_seed}
+              dev_reference_date: ${var.dev_reference_date}
+              generate_dev_seed_enabled: ${var.generate_dev_seed_enabled}
+          existing_cluster_id: ${var.cluster_id}
+
         - task_key: synthetic_data_task
-          description: bundle seed 파일을 target별 ADLS raw 경로에 복사
+          description: 생성된 bundle seed 파일을 target별 ADLS raw 경로에 복사
           depends_on:
             - task_key: migration_task
+            - task_key: generate_dev_seed_task
           notebook_task:
             notebook_path: ./notebooks/01_synthetic_data.ipynb
             base_parameters:
