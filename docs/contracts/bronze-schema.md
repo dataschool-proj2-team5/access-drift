@@ -51,7 +51,7 @@ Bronze row는 재수집과 재실행으로 같은 source record가 여러 번 �
 | `_run_id` | string | no | pipeline run id | 값이 있으면 같은 실행에서 일관되어야 한다. 포맷과 unique 범위는 `확인 필요`. |
 | `_batch_id` | string | no | batch id | 값이 있으면 같은 batch에서 일관되어야 한다. 포맷과 unique 범위는 `확인 필요`. |
 | `_checksum` | string | no | raw payload checksum | 값이 있으면 `md5(_raw_payload)`로 다시 계산한 값과 일치해야 한다. 같은 payload는 같은 checksum이어야 하며 checksum 자체는 unique가 아니다. |
-| `_raw_payload` | string | yes | 원본 JSON payload | null 또는 빈 문자열이면 실패. JSON object로 파싱 가능하고 변환 전 source 필드와 값이 보존되어야 한다. |
+| `_raw_payload` | string | yes | 파싱된 source 필드의 JSON payload | null 또는 빈 문자열이면 실패. JSON object로 파싱 가능하고 Spark가 읽은 source 필드와 값이 보존되어야 한다. 원본 파일의 byte-level 문자열 동일성은 보장하지 않는다. |
 | `_schema_version` | string | yes | Bronze row schema version | null 또는 빈 문자열이면 실패. 현재 ingest가 기록하는 `0.1.0`이어야 한다. 이 값은 문서 상단의 계약 문서 버전과 별개이며, 향후 허용 version 목록과 전환 기준은 `확인 필요`. |
 
 ## bronze_azure_applications

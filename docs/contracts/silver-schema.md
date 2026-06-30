@@ -98,10 +98,12 @@ Silver의 내부 id는 deterministic해야 한다. 같은 source record는 재�
 principal_id  = sha256(source_system + ':' + source_principal_id + ':' + principal_type)
 credential_id = sha256(source_system + ':' + source_credential_id + ':' + bound_principal_id)
 asset_id      = sha256(source_system + ':' + source_asset_id + ':' + asset_type)
-edge_id       = sha256(source_system + ':' + from_id + ':' + relationship + ':' + to_id)
+edge_id       = sha256(source_system + ':' + from_id + ':' + normalized_relationship + ':' + to_id)
 ```
 
 MVP에서는 동일 `from_id` / `relationship` / `to_id` 조합을 하나의 access edge로 본다. 같은 자산에 대해 여러 권한이 동시에 존재하더라도 `permission`은 대표 권한 또는 가장 강한 권한 하나로 정규화한다. 권한별 row 분리는 후속 확장에서 별도 `source_edge_id` 또는 `permission` 포함 key로 검토한다.
+
+S1 access edge는 Silver에서 `relationship = 'accesses_asset'`으로 정규화한다. `edge_id`는 source 원본 relationship이 아니라 Silver 정규화 후 relationship 기준으로 생성한다.
 
 Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안에서 논리적으로 unique해야 한다. 동일한 ID가 둘 이상이면 source 중복 또는 변환 deduplication 문제로 분류한다. `source_*` 값은 내부 ID로 대체하지 않고 Bronze source ID를 그대로 보존한다. 별도로 명시하지 않은 나머지 컬럼에는 단일 컬럼 unique를 요구하지 않는다.
 
@@ -219,7 +221,7 @@ Principal, credential, asset 사이의 관계를 담는다.
 
 | 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
 | --- | --- | --- | --- | --- | --- |
-| edge_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
+| edge_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 정규화된 relationship 기준 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
 | source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 owner edge는 `entra_id`, access edge는 `access_seed`여야 한다. |
 | from_id | string | yes | Silver 파생 | 출발 노드 id | null이면 실패. `from_type`이 가리키는 Silver 테이블에 존재해야 한다. |
 | from_type | string | yes | Silver 파생 | `principal`, `credential`, `asset` | null이면 실패. 명시된 enum 안의 값이고 `relationship` 방향 규칙과 일치해야 한다. |
