@@ -30,19 +30,20 @@
 [Databricks Data Platform]
 - Data Layers: Landing -> Bronze -> Silver -> Intermediate -> Gold
 - Eval: 검증 전용 데이터
-- Action State: 현재 조치 상태 저장
+- Risk Card Context: 자산 설명, 현재 조치 상태, 조치 담당자/담당 팀
 - AI 권고안: Gold 생성 시 탐지 근거 기반으로 생성
 
 Unity Catalog: Gold-only App 접근, Eval 격리
 
         |
-        | Gold 조회 / 현재 조치 상태 조회·변경
+        | Risk Card 조회 / 현재 조치 상태 조회·변경
         v
 
 [App / Dashboard]
 - 전체 리스크 현황
 - 최우선 검토 대상 목록
 - 리스크 카드
+- 접근 경로
 - AI 조치 권고안
 - 현재 조치 상태
 ```
@@ -61,7 +62,7 @@ Unity Catalog: Gold-only App 접근, Eval 격리
 
 ---
 
-## 4. Data Layers
+## 4. Data Layers and Risk Card Context
 
 | 레이어 | 역할 | 비고 | 주 오너 |
 |--------|------|------|---------|
@@ -71,7 +72,7 @@ Unity Catalog: Gold-only App 접근, Eval 격리
 | **Intermediate** | 탐지 후보 생성 | Silver 입력을 조합해 대표 리스크 후보 생성 | DS |
 | **Gold** | Risk Card용 결과 | App / Dashboard가 직접 조회하는 조치 판단용 결과 | DS |
 | **Eval** | 정답지와 검증 | pipeline에서 읽지 않고 검증 단계에서만 사용 | DS |
-| **Action State** | 현재 조치 상태 | Gold와 분리 | DE |
+| **Risk Card Context** | Risk Card 표시와 운영 상태 보강 | Gold와 분리 | DE / PO |
 
 ---
 
@@ -101,8 +102,13 @@ Gold
        ├─ Read-only Verification
        │  - Eval 데이터로 결과 검증
        │
+       ├─ Risk Card Context
+       │  - Asset Context: 자산 설명 / 데이터 범위
+       │  - Action State: 현재 조치 상태
+       │  - Assignment Routing: 조치 담당자 / 담당 팀
+       │
        └─ App / Dashboard
-          - Gold 조회
+          - Risk Card 조회
           - Action State 조회·변경
           - AI 조치 권고안 조회
 ```

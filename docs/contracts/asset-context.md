@@ -12,21 +12,20 @@ updated_at: 2026-06-30
 
 `asset_context`는 접근 사실이나 탐지 결과가 아니라 자산에 붙는 설명용 context다. 따라서 Landing/Bronze/Silver 원천 모델이나 Gold Core 본문에 직접 섞지 않고, Risk Card view 또는 app 조회 계층에서 별도로 조인한다.
 
-## 위치
+## 최소 필드
 
-```text
-gold_core
-  + asset_context       -- 자산 설명 / 데이터 범위
-  + action_state        -- 현재 조치 상태
-  + assignment_routing  -- 조치 담당자 / 담당 팀
-  = risk_card_view      -- 화면/API 조회용 Risk Card
-```
-
-`asset_context`는 자산 설명만 담당한다. 조치 담당자나 담당 팀 배정은 `assignment_routing` 후보로 분리한다.
+| 컬럼 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `source_asset_id` | string | yes | Gold/Silver와 조인할 source asset id |
+| `data_scope_label` | string | yes | 화면에 표시할 데이터 범위 이름 |
+| `sensitive_data_examples` | array<string> | yes | 자산에 포함되는 민감 데이터 예시 |
+| `sensitivity_reason` | string | yes | 해당 자산을 민감하게 보는 이유 |
 
 ## 조인 기준
 
-Risk Card view에서는 Gold Core의 source asset id와 조인한다.
+`asset_context.source_asset_id`는 context 기준 unique key로 관리한다. 같은 `source_asset_id`에 여러 context row를 만들지 않는다.
+
+Risk Card view에서는 Gold Core의 source asset id와 left join한다.
 
 ```text
 asset_context.source_asset_id = gold_core.asset_source_id
@@ -38,16 +37,9 @@ Silver 기준으로 확인할 때는 Silver asset의 source id와 조인한다.
 asset_context.source_asset_id = silver_assets.source_asset_id
 ```
 
+context가 없는 asset은 Risk Card에서 빈 값 또는 `unknown`으로 처리한다.
+
 `asset_context`는 Silver 내부 hash id인 `asset_id`를 직접 관리하지 않는다.
-
-## 최소 필드
-
-| 컬럼 | 타입 | 필수 | 설명 |
-| --- | --- | --- | --- |
-| `source_asset_id` | string | yes | Gold/Silver와 조인할 source asset id |
-| `data_scope_label` | string | yes | 화면에 표시할 데이터 범위 이름 |
-| `sensitive_data_examples` | array<string> | yes | 자산에 포함되는 민감 데이터 예시 |
-| `sensitivity_reason` | string | yes | 해당 자산을 민감하게 보는 이유 |
 
 ## 대표 데모 자산
 

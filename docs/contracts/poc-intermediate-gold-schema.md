@@ -122,20 +122,4 @@ Intermediate와 Gold는 현재 PoC 스냅샷을 `overwrite`한다. 결정적 `ri
 
 ## Risk Card view context
 
-Gold Core를 화면/API 조회용 Risk Card로 사용할 때는 다음 context를 별도로 붙일 수 있다.
-
-```text
-gold_core
-  + asset_context       -- 자산 설명 / 데이터 범위
-  + action_state        -- 현재 조치 상태
-  + assignment_routing  -- 조치 담당자 / 담당 팀
-  = risk_card_view
-```
-
-초기 asset context 조인 기준은 다음과 같다.
-
-```text
-asset_context.source_asset_id = gold_core.asset_source_id
-```
-
-`asset_context`는 자산 설명만 담당하며, 조치 담당자나 담당 팀 배정은 별도 `assignment_routing` 후보로 분리한다.
+Gold Core를 화면/API 조회용 Risk Card로 사용할 때 붙이는 context 구조는 [Architecture Overview](../architecture/arch-overview.md)에서 관리한다.
