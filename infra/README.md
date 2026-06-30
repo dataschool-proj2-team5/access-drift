@@ -51,7 +51,7 @@ Unity Catalog bootstrap에 필요한 Access Connector ID는 Bicep output `unityC
 | 오브젝트 | 내용 |
 |----------|------|
 | Cluster | Single Node, Standard_DS3_v2, 30분 자동 종료 |
-| Job | `access-drift-pipeline` (migration → synthetic_data → ingest → silver → intermediate → gold, eval은 silver 이후 검증용 task로 분리) |
+| Job | `access-drift-pipeline` (migration / dev seed 생성 / raw 배치 / ingest / silver / eval / context / intermediate / gold task로 분리) |
 
 ### Unity Catalog
 
@@ -204,11 +204,11 @@ databricks bundle deploy
 databricks bundle run access-drift-pipeline
 ```
 
-bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`, `data/dlt-test/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+일반 `poc`/`dev` target의 bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
 
 #### Bronze DLT expectation 검증
 
-Bronze DLT expectation은 기존 notebook job과 분리된 `bronze-dlt-expectations` pipeline으로 실행합니다. bundle 배포 상태도 기존 `dev` job과 충돌하지 않도록 `dlt-test` target과 `/Shared/access-drift-dlt-test` root를 사용합니다. pipeline의 기본 catalog/schema target은 `access_drift_dev.dlt_test`이며, DLT Python 코드에는 catalog나 schema를 하드코딩하지 않습니다. `dlt_test` schema는 bootstrap에서 준비된 상태를 전제로 하며 이 절차에서는 생성하지 않습니다.
+Bronze DLT expectation은 기존 notebook job과 분리된 `bronze-dlt-expectations` pipeline으로 실행합니다. bundle 배포 상태도 기존 `poc`/`dev` target과 충돌하지 않도록 DLT 리소스와 `data/dlt-test` fixture sync는 `dlt-test` target에만 둡니다. pipeline의 기본 catalog/schema target은 `access_drift_dev.dlt_test`이며, DLT Python 코드에는 catalog나 schema를 하드코딩하지 않습니다. `dlt_test` schema는 bootstrap에서 준비된 상태를 전제로 하며 이 절차에서는 생성하지 않습니다.
 
 실행 전 schema와 bundle 설정을 확인합니다.
 
@@ -291,6 +291,37 @@ fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data
 
 2026-06-30 실제 검증에서는 bundle validate와 fixture 18개 복사가 성공했고, valid/invalid/empty-source 동작을 모두 확인한 뒤 valid 상태로 복구했습니다. update ID, 테이블별 output/dropped/warned 건수, 기존 Bronze 불변 결과는 fixture README의 Databricks 검증 결과에 기록했습니다.
 
+#### Task 실행 기준
+
+`access-drift-pipeline`은 full run도 가능하지만, 기본 운영 기준은 필요한 task만 부분 실행하는 것이다.
+
+| 상황 | 실행 task |
+|------|-----------|
+| 환경 준비 또는 DDL 변경 | `migration_task` |
+| dev 합성 seed 재생성 | `generate_dev_seed_task` |
+| 생성된 seed를 ADLS raw/dev로 배치 | `synthetic_data_task` |
+| DE Landing/Bronze/Silver 재처리 | `ingest_task,silver_task` |
+| eval/context seed 갱신 | `eval_seed_task,context_seed_task` |
+| DS Intermediate/Gold 재처리 | `intermediate_task,gold_task` |
+
+`generate_dev_seed_task`는 workspace files 아래 `data/dev/landing/raw`, `data/dev/eval`, `data/dev/context`에 JSONL을 생성한다. `synthetic_data_task`는 생성된 Landing seed를 target별 ADLS raw 경로로 복사한다.
+
+#### 실패 시 재실행 시작점
+
+아래 표는 실패나 변경이 생겼을 때 어느 task부터 다시 실행할지 판단하기 위한 기준이다. overwrite/merge/idempotency 같은 데이터별 재처리 정책은 별도 작업에서 정리한다.
+
+| 변경/실패 지점 | 재실행 시작점 |
+|----------------|---------------|
+| DDL만 변경 | `migration_task` |
+| dev seed 생성 규칙만 변경 | `generate_dev_seed_task` |
+| seed/raw 배치만 변경 | `synthetic_data_task` |
+| Bronze 변환만 변경 | `ingest_task` |
+| Silver 변환만 변경 | `silver_task` |
+| eval 파일만 변경 | `eval_seed_task` |
+| context 파일만 변경 | `context_seed_task` |
+| DS 탐지 변경 | `intermediate_task` |
+| Gold 표현 변경 | `gold_task` |
+
 #### Landing/Bronze/Silver/Eval/Context 부분 실행
 
 DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
@@ -299,10 +330,10 @@ DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는
 databricks bundle validate -t dev
 databricks bundle deploy -t dev
 databricks bundle run -t dev access-drift-pipeline \
-  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+  --only migration_task,generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
 ```
 
-`data/dev/landing/raw/`, `data/dev/eval/*.jsonl`, `data/dev/context/*.jsonl`은 Git에 커밋하지 않는 생성 파일입니다. bundle deploy에서 누락되면 아래처럼 workspace에 직접 올린 뒤 실행합니다.
+`data/dev/landing/raw/`, `data/dev/eval/*.jsonl`, `data/dev/context/*.jsonl`은 Git에 커밋하지 않는 생성 파일입니다. 기본 흐름에서는 `generate_dev_seed_task`가 Databricks workspace에서 생성한다. 로컬 생성 결과를 검증용으로 직접 올려야 할 때만 아래처럼 workspace에 import합니다.
 
 ```bash
 databricks workspace import-dir data/dev/landing/raw \
@@ -336,6 +367,8 @@ databricks bundle deploy -t dev
 ```text
 sql/databricks/queries/de_lbs_validation.sql
 ```
+
+이 SQL은 job task가 아니라 read-only 교차 검산 아티팩트다. 각 notebook의 smoke check는 해당 단계 산출물의 기본 품질을 확인하고, validation SQL은 task 재실행 후 Bronze/Silver/Eval/Context 산출물 간 정합성을 별도로 확인할 때 사용한다.
 
 ### 셋업 검증
 

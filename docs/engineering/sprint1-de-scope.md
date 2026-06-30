@@ -214,19 +214,21 @@ S1에서 DE는 탐지 의미 판단이나 Risk Card 의미 설계를 주도하�
 
 **주요 내용**
 - schema/migration task 분리
-- synthetic data, ingest, silver task 분리
-- eval seed task를 본 탐지 입력과 느슨하게 분리
-- validation task를 read-only 검증으로 분리
+- dev seed 생성 task와 raw 배치 task 분리
+- ingest, silver task 분리
+- eval/context seed task를 본 탐지 입력과 느슨하게 분리
+- validation SQL/notebook은 job task가 아니라 read-only 교차 검산 아티팩트로 유지
 - S1 범위에서는 가능한 한 Silver task까지 DE 책임으로 명확화
 - 필요한 경우 아키텍처 문서에 job/task 구조 반영
 
 **완료 기준**
-- `migration -> seed -> ingest -> silver` 흐름이 명확하다.
-- eval은 탐지 입력이 아니라 정답지 준비와 검증 용도로 분리된다.
+- `migration`, `generate_dev_seed`, `synthetic/raw 배치`, `ingest`, `silver`의 역할이 구분된다.
+- eval/context는 탐지 입력이 아니라 정답지와 Risk Card 보조 context 준비 용도로 분리된다.
+- notebook smoke check와 validation SQL의 역할이 구분된다.
 - 특정 task 실패 시 어느 지점부터 재실행할지 판단할 수 있다.
 
 **후속 고도화**
-- Intermediate/Gold task까지 포함한 전체 job dependency 정리
+- Intermediate/Gold task의 별도 DS pipeline 분리
 - 환경별 job parameter 표준화
 - 자동 재시도와 alert 정책
 

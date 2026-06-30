@@ -97,4 +97,12 @@ python data/dev/generator/verify.py \
 
 ## Databricks 적재
 
-Databricks 적재는 사용자 허가 후 실행한다. 생성 파일을 커밋하지 않고, 로컬 생성 결과를 dev target 입력으로 사용한다.
+공식 dev 데이터 생성은 Databricks task 기준으로 실행한다.
+
+```bash
+databricks bundle run -t dev access-drift-pipeline --only generate_dev_seed_task
+```
+
+이 task는 workspace files 아래 `data/dev/landing/raw`, `data/dev/eval`, `data/dev/context`에 JSONL을 생성한다. 이후 `synthetic_data_task`가 Landing seed를 ADLS `raw/dev` 경로로 복사하고, `eval_seed_task`, `context_seed_task`가 각각 UC managed table로 적재한다.
+
+로컬 생성은 generator 개발, 20건 샘플 검수, PR 정적 확인 용도로 사용한다. 생성 파일은 커밋하지 않는다.
