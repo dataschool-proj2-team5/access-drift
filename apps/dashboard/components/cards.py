@@ -19,11 +19,12 @@ BADGE_DIR = ASSET_DIR / "badges"
 
 def render_summary_cards(data: pd.DataFrame) -> None:
     total_col, issues_col, drift_col = st.columns([1.02, 1.15, 0.9], gap="medium")
-    status_counts = data["review_status"].value_counts()
+    actions_data = data[data["risk_level"].ne("Low")]
+    status_counts = actions_data["review_status"].value_counts()
     open_count = int(status_counts.get("Open", 0))
     review_count = int(status_counts.get("In Review", 0))
     resolved_count = int(status_counts.get("Resolved", 0))
-    total_count = len(data)
+    total_count = len(actions_data)
     open_stop = _percentage(open_count, total_count)
     review_stop = _percentage(open_count + review_count, total_count)
 
@@ -31,7 +32,10 @@ def render_summary_cards(data: pd.DataFrame) -> None:
         _render_overview_html(
             f"""
             <div class="ad-overview-summary-card">
-              <div class="ad-overview-title">Total</div>
+              <div class="ad-overview-title-row">
+                <div class="ad-overview-title">Actions</div>
+                <span class="ad-low-excluded-pill">Low excluded</span>
+              </div>
               <div class="ad-overview-total-grid">
                 <div class="ad-overview-donut" style="--open-stop:{open_stop}%; --review-stop:{review_stop}%;">
                   <div class="ad-overview-donut-inner">
@@ -163,7 +167,7 @@ def render_risk_header_card(case: pd.Series) -> None:
             {_status_badge(str(case["review_status"]))}
           </div>
           <div class="ad-risk-subtitle">
-            {escape(str(case["drift_type"]))} · {escape(str(case["object_type"]))} · {escape(str(case["credential_status"]))}
+            {escape(str(case["drift_type"]))} &#183; {escape(str(case["object_type"]))} &#183; {escape(str(case["credential_status"]))}
           </div>
           <div class="ad-risk-subtitle">{escape(str(case["linked_owner_label"]))}</div>
           <div class="ad-risk-meta">
@@ -218,6 +222,10 @@ def render_risk_factors_card_v2(case: pd.Series) -> None:
         f"Asset sensitivity: {case['asset_sensitivity']}",
         f"Permission level: {case['permission_level']}",
         f"Rotation status: {case['rotation_status']}",
+    ]
+    factors = [
+        "소유자 계정 비활성화" if factor == "HR/IdP 계정 비활성화" else factor
+        for factor in factors
     ]
     factor_html = []
     for index, factor in enumerate(factors):
@@ -400,8 +408,15 @@ def _percentage(value: int, total: int) -> float:
 
 
 def _risk_badge(level: str, compact: bool = False) -> str:
-    badge_file = "badge-critical.svg" if level == "Critical" else "badge-high.svg"
-    return _badge_img(badge_file, level, "ad-risk-badge-img")
+    badge_files = {
+        "Critical": "badge-critical.svg",
+        "High": "badge-high.svg",
+        "Medium": "badge-medium.svg",
+    }
+    badge_file = badge_files.get(level)
+    if badge_file:
+        return _badge_img(badge_file, level, "ad-risk-badge-img")
+    return f'<span class="ad-pill">{escape(level)}</span>'
 
 
 def _status_badge(status: str) -> str:
@@ -488,3 +503,6 @@ def _format_datetime(value: object) -> str:
     if pd.isna(timestamp):
         return ""
     return timestamp.strftime("%Y/%m/%d %H:%M")
+
+
+
