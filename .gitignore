@@ -39,6 +39,7 @@ venv/
 
 # Data / temporary files
 data/dev/landing/raw/
+data/dev/eval/*.jsonl
 tmp/
 temp/
 *.tmp
