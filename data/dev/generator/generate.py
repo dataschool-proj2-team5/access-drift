@@ -549,17 +549,84 @@ def _asset_context_for_spec(spec: CaseSpec) -> dict[str, object]:
             "sensitivity_reason": "고객 식별 정보와 배송지/주문내역을 포함하는 export storage",
         }
 
+    asset_key = spec.asset_id.removeprefix("asset-")
+    context_by_pattern = (
+        (
+            ("customer-profile", "customer-order", "crm-audience", "loyalty-segment"),
+            (
+                "고객 CRM 데이터",
+                ["고객 식별 정보", "고객 세그먼트", "주문/프로필 속성"],
+                "고객 식별 정보와 CRM 세그먼트/프로필 속성을 포함하는 export 자산",
+            ),
+        ),
+        (
+            ("refund-report",),
+            (
+                "환불/결제 운영 데이터",
+                ["환불 금액", "환불 상태", "PG 거래 식별자"],
+                "결제·환불 처리와 거래 식별자를 포함하는 운영 자산",
+            ),
+        ),
+        (
+            ("seller-settlement",),
+            (
+                "판매자 정산 데이터",
+                ["판매자 ID", "정산 금액", "수수료", "지급 상태"],
+                "판매자 정산과 회계 원장 정보를 포함하는 재무 자산",
+            ),
+        ),
+        (
+            ("finance-ledger",),
+            (
+                "재무 원장 데이터",
+                ["회계 계정", "거래 금액", "정산 원장"],
+                "회계 처리와 정산 원장 정보를 포함하는 재무 자산",
+            ),
+        ),
+        (
+            ("finance-reporting",),
+            (
+                "재무 리포팅 데이터",
+                ["일별 매출", "환불 금액", "순매출"],
+                "전사 매출과 정산 리포팅에 사용되는 핵심 비즈니스 자산",
+            ),
+        ),
+        (
+            ("marketing-segment",),
+            (
+                "마케팅 세그먼트 데이터",
+                ["세그먼트 유형", "관심 카테고리", "캠페인 대상 조건"],
+                "고객 세그먼트와 캠페인 대상 조건을 포함하는 마케팅 자산",
+            ),
+        ),
+        (
+            ("support-case",),
+            (
+                "고객지원 케이스 데이터",
+                ["문의 유형", "처리 상태", "고객 연락처 참조"],
+                "고객 문의와 지원 처리 이력을 포함하는 운영 자산",
+            ),
+        ),
+        (
+            ("order-events",),
+            (
+                "주문 이벤트 데이터",
+                ["주문 이벤트", "주문 상태", "처리 시각"],
+                "주문 처리 흐름과 이벤트를 포함하는 핵심 비즈니스 자산",
+            ),
+        ),
+    )
+    for prefixes, context in context_by_pattern:
+        if asset_key.startswith(prefixes):
+            label, examples, reason = context
+            return {
+                "source_asset_id": spec.asset_id,
+                "data_scope_label": label,
+                "sensitive_data_examples": examples,
+                "sensitivity_reason": reason,
+            }
+
     context_by_sensitivity = {
-        "critical": (
-            "고객/정산 데이터",
-            ["고객 식별 정보", "주문/환불 내역", "정산 식별자"],
-            "고객 식별 정보 또는 정산·거래성 데이터를 포함할 수 있는 export 자산",
-        ),
-        "high": (
-            "핵심 비즈니스 데이터",
-            ["매출 지표", "주문 이벤트", "운영 권한 정보"],
-            "유출 시 비즈니스 운영이나 보안 대응에 타격이 있는 핵심 자산",
-        ),
         "medium": (
             "내부 운영 데이터",
             ["비식별 운영 지표", "스테이징 업무 정보"],
@@ -581,13 +648,23 @@ def _asset_context_for_spec(spec: CaseSpec) -> dict[str, object]:
 
 
 def _assignment_routing_for_spec(spec: CaseSpec) -> dict[str, object]:
-    team_by_sensitivity = {
-        "critical": ("이다영", "CRM 데이터 운영팀"),
-        "high": ("박서준", "비즈니스 플랫폼팀"),
-        "medium": ("최하은", "운영 데이터팀"),
-        "low": ("정우진", "개발 플랫폼팀"),
-    }
-    assignee_name, assignee_team = team_by_sensitivity[spec.sensitivity]
+    asset_key = spec.asset_id.removeprefix("asset-")
+    team_by_pattern = (
+        (("customer", "crm", "loyalty"), ("이다영", "CRM 데이터 운영팀")),
+        (("refund", "seller-settlement"), ("한지민", "정산 플랫폼팀")),
+        (("finance",), ("박서준", "재무 데이터팀")),
+        (("marketing",), ("오세훈", "마케팅 데이터팀")),
+        (("support",), ("김하나", "고객지원 데이터팀")),
+        (("order-events",), ("박서준", "비즈니스 플랫폼팀")),
+        (("operations",), ("최하은", "운영 데이터팀")),
+        (("team-notification", "catalog-preview", "qa-dashboard"), ("정우진", "개발 플랫폼팀")),
+    )
+    assignee_name = "최하은"
+    assignee_team = "운영 데이터팀"
+    for prefixes, assignee in team_by_pattern:
+        if asset_key.startswith(prefixes):
+            assignee_name, assignee_team = assignee
+            break
     reason = (
         f"{spec.app_name}와 {spec.asset_name}의 운영 책임 팀"
         if spec.index == 1
