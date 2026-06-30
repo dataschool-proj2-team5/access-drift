@@ -84,6 +84,44 @@ Bronze는 source 원본 보존을 위해 business key를 nullable로 허용한�
 | asset 원본 key | `asset_id IS NOT NULL` | asset id 생성과 access edge 조인에 필요하다. |
 | access edge 원본 key | `principal_id IS NOT NULL`, `asset_id IS NOT NULL`, `relationship IS NOT NULL` | edge id와 경로 탐지에 필요하다. |
 
+### Bronze → Silver Transform validation
+
+컬럼 계약 검증과 변환 검증은 아래처럼 구분한다.
+
+| 구분 | 확인 대상 | 실패 의미 |
+| --- | --- | --- |
+| 컬럼 계약 검증 | 한 테이블 안에서 null, logical unique, enum, 타입/포맷, 금지 필드 조건을 만족하는지 | 해당 Bronze 또는 Silver 테이블의 schema contract 위반 |
+| 변환 검증 | 계약을 만족하거나 변환에 필요한 key를 가진 Bronze row가 의도한 Silver row와 관계로 만들어지는지 | Bronze 입력 준비 또는 Bronze → Silver 변환 로직 문제 |
+
+아래 기준은 특정 구현 도구에 종속되지 않는 불변조건이다. 후속 DDL 제약, DLT expectation, notebook smoke test, 수동 SQL 검증, PR 체크리스트는 같은 조건을 사용한다.
+
+#### Source table → Silver table 매핑
+
+변환에 필요한 key가 있는 각 Bronze row는 아래 대상 Silver 테이블에서 추적 가능해야 한다.
+
+| Bronze 입력 | Silver 결과 | 검증 불변조건 | 실패 시 우선 확인 |
+| --- | --- | --- | --- |
+| `bronze_azure_applications` | `silver_principals` | `app_id`가 `source_principal_id`로 보존된 `principal_kind = 'NHI'`, `principal_type = 'app_registration'` row가 존재한다. | Bronze `app_id` null 여부 → principal 변환 로직 |
+| `bronze_identity_lifecycle_seed` | `silver_principals` | `user_principal_name`이 `source_principal_id`로 보존된 `principal_kind = 'HI'`, `principal_type = 'user'` row가 존재한다. | Bronze `user_principal_name` null 여부 → principal 변환 로직 |
+| `bronze_azure_password_credentials` | `silver_credentials` | `key_id`가 `source_credential_id`로 보존되고 `app_id`로 만든 principal에 연결된 row가 존재한다. | Bronze `key_id`/`app_id` null 여부 → credential 변환 로직 |
+| `bronze_assets_seed` | `silver_assets` | Bronze `asset_id`가 `source_asset_id`로 보존된 row가 존재한다. | Bronze `asset_id` null 여부 → asset 변환 로직 |
+| `bronze_azure_application_owners` | `silver_edges` | human principal에서 NHI principal로 향하는 `owns_principal` edge가 존재한다. | Bronze owner key null 여부 → owner edge 변환 로직 |
+| `bronze_access_edges_seed` | `silver_edges` | NHI principal에서 asset으로 향하는 `accesses_asset` edge가 존재한다. | Bronze edge key/relationship 여부 → access edge 변환 로직 |
+
+#### 변환별 검증 기준
+
+| 검증 항목 | 입력과 기대 결과 | 검증 불변조건 | 실패 분류와 우선 확인 레이어 |
+| --- | --- | --- | --- |
+| source ID 보존 | Bronze `app_id`, `user_principal_name`, `key_id`, `asset_id` → 각 Silver `source_*` | Silver `source_*` 값이 대응 Bronze source ID와 동일하며 내부 deterministic ID로 치환되지 않는다. | 값이 Bronze에서 이미 다르면 Bronze 컬럼 계약, Bronze가 정상인데 Silver가 다르면 변환 로직 |
+| deterministic ID 재현성 | 같은 source system, source ID, type 또는 정규화된 관계 조합 → 같은 Silver ID | ID 생성 규칙으로 재계산한 값과 저장 ID가 같고, 같은 입력을 재실행해도 값이 바뀌지 않으며 테이블의 primary ID는 logical unique다. access edge의 `edge_id`는 Silver 정규화 후 relationship 기준으로 재계산한다. | 입력 조합이 null이면 Bronze 변환 준비, 재계산 값이 다르면 변환 로직, 중복 ID row는 Silver 컬럼 계약 |
+| owner edge 방향 | application owner + application → `silver_edges` | `from_id`는 `identity_seed` human principal, `from_type = 'principal'`, `to_id`는 `entra_id` NHI principal, `to_type = 'principal'`, `relationship = 'owns_principal'`이다. | endpoint가 없으면 principal 선행 변환, 방향/relationship이 다르면 owner edge 변환 로직 |
+| access edge 방향 | Bronze principal + asset access → `silver_edges` | `from_id`는 NHI principal, `from_type = 'principal'`, `to_id`는 asset, `to_type = 'asset'`, `relationship = 'accesses_asset'`이며 두 endpoint가 Silver에 존재한다. | endpoint source key가 null이면 Bronze 변환 준비, endpoint가 없으면 principal/asset 변환, 방향이 다르면 access edge 변환 로직 |
+| credential 연결 | Bronze password credential의 `app_id` → `bound_principal_id` | `bound_principal_id`가 같은 `app_id`로 만든 `silver_principals.principal_id`와 같고 실제 principal row가 존재한다. | principal이 없으면 principal 선행 변환, ID가 다르면 credential 변환 로직, dangling reference는 Silver 컬럼 계약 |
+| active/expired 판정 | Bronze `status`, `end_date_time`, `_ingestion_ts` → Silver `status`, `expires_at`, `observed_at`, `is_active` | `observed_at = _ingestion_ts`, `expires_at = end_date_time`이며 `is_active = (status == 'active') AND (expires_at IS NULL OR expires_at > observed_at)`이다. | Bronze 시간 파싱이 잘못되면 Bronze 컬럼 계약, 입력이 정상인데 계산 결과가 다르면 credential 변환 로직 |
+| eval key 매칭 | Eval `subject_id`, `asset_id` → Silver source ID | Eval `subject_id`는 `silver_principals.source_principal_id`, Eval `asset_id`는 `silver_assets.source_asset_id`와 매칭되며 내부 ID와 직접 비교하지 않는다. | Silver source ID가 유실됐으면 변환 로직, source ID가 정상인데 매칭되지 않으면 eval seed/계약 |
+
+Bronze business key가 null인 것은 현재 Bronze schema contract 위반이 아닐 수 있다. 그러나 그 key가 Silver required 컬럼 또는 deterministic ID에 필요하면 해당 row는 변환 준비 실패다. 이 경우 Bronze 계약을 임의로 강화하지 않고 null row의 처리 정책을 `확인 필요`로 기록한다.
+
 ### Eval 계약 vs `003_create_eval_tables.sql`
 
 | 계약 항목 | DDL 컬럼 | 결과 | 확인 내용 |
