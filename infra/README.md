@@ -74,9 +74,11 @@ az login
 | External Location | `access_drift_lakehouse_ext` |
 | Catalog | `access_drift`, `access_drift_dev` |
 
-스키마(`bronze`, `silver`, `intermediate`, `gold`, `eval`)는 bootstrap 스크립트에서 먼저 생성하고, DDL은 테이블 정의를 적용합니다.
+스키마(`bronze`, `silver`, `intermediate`, `gold`, `eval`, `context`, `app`, `dlt_test`)는 bootstrap 스크립트에서 먼저 생성하고, DDL은 테이블 정의를 적용합니다.
 
 `eval`은 PoC 정답/평가용 격리 스키마이며 ADLS raw 경로를 추가하지 않고 UC managed table로 시작합니다.
+
+`dlt_test`는 DLT expectation 구현 검증용 임시 schema입니다. 공식 L/B/S 레이어가 아니며, 실제 `bronze` target 적용 전 valid/invalid fixture 검증에 사용합니다.
 
 ### PoC / dev target 구분
 
@@ -167,6 +169,7 @@ SHOW GRANTS ON SCHEMA access_drift_dev.gold;
 SHOW GRANTS ON SCHEMA access_drift_dev.eval;
 SHOW GRANTS ON SCHEMA access_drift_dev.context;
 SHOW GRANTS ON SCHEMA access_drift_dev.app;
+SHOW GRANTS ON SCHEMA access_drift_dev.dlt_test;
 SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
 SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_state;
