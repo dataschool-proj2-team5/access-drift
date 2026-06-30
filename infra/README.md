@@ -221,6 +221,22 @@ bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data
 
 `generate_dev_seed_task`는 workspace files 아래 `data/dev/landing/raw`, `data/dev/eval`, `data/dev/context`에 JSONL을 생성한다. `synthetic_data_task`는 생성된 Landing seed를 target별 ADLS raw 경로로 복사한다.
 
+#### 실패 시 재실행 시작점
+
+아래 표는 실패나 변경이 생겼을 때 어느 task부터 다시 실행할지 판단하기 위한 기준이다. overwrite/merge/idempotency 같은 데이터별 재처리 정책은 별도 작업에서 정리한다.
+
+| 변경/실패 지점 | 재실행 시작점 |
+|----------------|---------------|
+| DDL만 변경 | `migration_task` |
+| dev seed 생성 규칙만 변경 | `generate_dev_seed_task` |
+| seed/raw 배치만 변경 | `synthetic_data_task` |
+| Bronze 변환만 변경 | `ingest_task` |
+| Silver 변환만 변경 | `silver_task` |
+| eval 파일만 변경 | `eval_seed_task` |
+| context 파일만 변경 | `context_seed_task` |
+| DS 탐지 변경 | `intermediate_task` |
+| Gold 표현 변경 | `gold_task` |
+
 #### Landing/Bronze/Silver/Eval/Context 부분 실행
 
 DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는 Intermediate/Gold task를 제외하고 실행합니다.
