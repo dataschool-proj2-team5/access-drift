@@ -11,8 +11,9 @@
 | `data/dev/generator/` | dev Landing/Eval JSONL 생성 및 검증 코드 |
 | `data/dev/landing/raw/` | dev용 Landing 입력 JSONL 생성 위치 |
 | `data/dev/eval/ground_truth_case.jsonl` | dev용 eval 정답지 생성 위치 |
+| `data/dev/context/` | Risk Card context 입력 JSONL 생성 위치 |
 
-생성기는 Landing 입력과 eval 정답지를 함께 만들지만, 생성 파일 자체는 Git에 올리지 않는다.
+생성기는 Landing 입력, eval 정답지, Risk Card context를 함께 만들지만, 생성 파일 자체는 Git에 올리지 않는다.
 
 ## 20건 샘플 구성
 
@@ -81,6 +82,44 @@ access/access_edges_seed.jsonl
 assets/assets_seed.jsonl
   -> assetId의 sensitivity 확인
 ```
+
+Risk Card context:
+
+| 파일 | 역할 |
+| --- | --- |
+| `context/asset_context.jsonl` | `assetId` 기준 자산 설명과 데이터 범위 표시 |
+| `context/assignment_routing.jsonl` | `subject_type + subject_id + asset_id + drift_type` 기준 조치 담당자/팀 표시 |
+
+대표 데모 케이스의 context 값:
+
+| context | 항목 | 값 |
+| --- | --- | --- |
+| `asset_context` | `source_asset_id` | `asset-customer-export-storage-prod` |
+| `asset_context` | `data_scope_label` | `고객 DB` |
+| `asset_context` | `sensitive_data_examples` | `고객 이름`, `전화번호`, `배송지`, `주문내역` |
+| `asset_context` | `sensitivity_reason` | `고객 식별 정보와 배송지/주문내역을 포함하는 export storage` |
+| `assignment_routing` | `subject_type` | `nhi` |
+| `assignment_routing` | `subject_id` | `d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f` |
+| `assignment_routing` | `asset_id` | `asset-customer-export-storage-prod` |
+| `assignment_routing` | `drift_type` | `nhi_residual_access` |
+| `assignment_routing` | `assignee_name` | `이다영` |
+| `assignment_routing` | `assignee_team` | `CRM 데이터 운영팀` |
+| `assignment_routing` | `routing_reason` | `sp-crm-customer-export-prod와 customer-export-storage-prod의 운영 책임 팀` |
+
+`asset_context`의 민감 데이터 예시는 실제 고객 데이터 값이 아니라 화면 설명용 문구다.
+
+## 민감 자산 taxonomy 정합성
+
+20건 샘플의 자산 민감도는 [Sensitive Asset Taxonomy](../../docs/contracts/sensitive-asset-taxonomy.md)를 참고해 해석한다.
+
+| generator sensitivity | 샘플 자산 | taxonomy 해석 | context 표시 방향 |
+| --- | --- | --- | --- |
+| `critical` | `customer-export-storage-prod`, `customer-profile-export-prod`, `seller-settlement-export-prod` | 고객 식별 정보, 배송지/주문내역, 정산 정보처럼 보호 의무가 강한 데이터 | 고객/정산 데이터 범위와 민감 근거 표시 |
+| `high` | `finance-reporting-prod`, `order-events-prod` | 매출, 주문 이벤트, 운영상 타격이 큰 핵심 비즈니스 데이터 | 핵심 비즈니스 데이터 범위 표시 |
+| `medium` | `operations-dashboard-staging` | 비식별 통계, 개발로그, 스테이징 정보 같은 내부 운영 자산 | 내부 운영 데이터 범위 표시 |
+| `low` | `team-notification-dev`, `catalog-preview-dev`, `qa-dashboard-dev` | 민감 자산으로 분류하지 않는 개발/테스트/비핵심 자산 | Dashboard 비교군과 normal/distractor용 비민감 개발 데이터로 표시 |
+
+`low`는 주요 탐지 우선순위의 민감 자산은 아니지만 Dashboard에서 정상/비민감 비교군과 필터 표시를 위해 포함한다. `expected_severity`는 eval 검증용으로 asset sensitivity를 대문자로 매핑한다.
 
 ## 설계 문서 대비 구현 범위
 
