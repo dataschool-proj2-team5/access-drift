@@ -11,6 +11,7 @@ sync:
     - data/poc/landing/raw
     - data/poc/eval
     - data/dev
+    - data/dlt-test
     - sql/databricks/migrations
 
 variables:
@@ -44,6 +45,24 @@ variables:
   context_seed_required:
     description: Whether context seed files must exist for context_seed_task
     default: "true"
+  bronze_dlt_target_schema:
+    description: Target schema for Bronze DLT expectation validation
+    default: dlt_test
+  bronze_dlt_event_log_schema:
+    description: Schema for Bronze DLT pipeline event logs
+    default: dlt_test
+  bronze_dlt_raw_base_path:
+    description: Raw input base path for Bronze DLT expectation validation
+    default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/valid/landing/raw
+  bronze_dlt_fixture_mode:
+    description: Whether fixture-only metadata overrides are enabled
+    default: "true"
+  bronze_dlt_fixture_source_root:
+    description: Bundle-deployed Bronze DLT fixture root
+    default: data/dlt-test
+  bronze_dlt_fixture_raw_root:
+    description: ADLS root used only for Bronze DLT fixture validation
+    default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test
 
 targets:
   # poc: PoC 재현/검증용 target. 기존 access_drift catalog와 raw/ 경로를 사용한다.
@@ -59,8 +78,47 @@ targets:
   dev:
     default: true
 
+  # dlt-test: 기존 dev job 배포와 분리된 Bronze expectation 검증 전용 target.
+  dlt-test:
+    workspace:
+      root_path: /Shared/access-drift-dlt-test
+
 resources:
+  pipelines:
+    bronze-dlt-expectations:
+      name: access-drift-bronze-expectations-${bundle.target}
+      catalog: ${var.catalog}
+      target: ${var.bronze_dlt_target_schema}
+      serverless: true
+      development: true
+      continuous: false
+      edition: ADVANCED
+      libraries:
+        - file:
+            path: ./notebooks/08_bronze_dlt_expectations.py
+      configuration:
+        bronze.raw_base_path: ${var.bronze_dlt_raw_base_path}
+        bronze.fixture_mode: ${var.bronze_dlt_fixture_mode}
+        pipelines.metrics.flowTimeReporter.enabled: "true"
+      event_log:
+        catalog: ${var.catalog}
+        schema: ${var.bronze_dlt_event_log_schema}
+        name: bronze_dlt_expectations_event_log
+
   jobs:
+    bronze-dlt-fixture-setup:
+      name: access-drift-bronze-dlt-fixture-setup
+      tasks:
+        - task_key: copy_bronze_dlt_fixtures
+          description: valid/invalid Bronze DLT fixture를 격리된 ADLS raw/dlt-test 경로에 복사
+          notebook_task:
+            notebook_path: ./notebooks/08_prepare_bronze_dlt_fixtures.py
+            base_parameters:
+              fixture_source_root: ${var.bronze_dlt_fixture_source_root}
+              fixture_workspace_root: ${workspace.file_path}
+              fixture_raw_root: ${var.bronze_dlt_fixture_raw_root}
+          existing_cluster_id: ${var.cluster_id}
+
     access-drift-pipeline:
       name: access-drift-pipeline
       tasks:

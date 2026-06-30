@@ -204,7 +204,92 @@ databricks bundle deploy
 databricks bundle run access-drift-pipeline
 ```
 
-bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`, `data/dlt-test/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
+
+#### Bronze DLT expectation 검증
+
+Bronze DLT expectation은 기존 notebook job과 분리된 `bronze-dlt-expectations` pipeline으로 실행합니다. bundle 배포 상태도 기존 `dev` job과 충돌하지 않도록 `dlt-test` target과 `/Shared/access-drift-dlt-test` root를 사용합니다. pipeline의 기본 catalog/schema target은 `access_drift_dev.dlt_test`이며, DLT Python 코드에는 catalog나 schema를 하드코딩하지 않습니다. `dlt_test` schema는 bootstrap에서 준비된 상태를 전제로 하며 이 절차에서는 생성하지 않습니다.
+
+실행 전 schema와 bundle 설정을 확인합니다.
+
+```bash
+databricks schemas get access_drift_dev.dlt_test
+databricks bundle validate -t dlt-test
+```
+
+valid fixture는 기본 변수로 실행합니다.
+
+```bash
+databricks bundle deploy -t dlt-test \
+  --select jobs.bronze-dlt-fixture-setup \
+  --select pipelines.bronze-dlt-expectations
+databricks bundle run -t dlt-test bronze-dlt-fixture-setup
+databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all
+```
+
+invalid fixture는 raw base만 바꾸고 같은 pipeline code와 expectation을 실행합니다.
+
+```bash
+INVALID_RAW_BASE="abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/invalid/landing/raw"
+
+databricks bundle deploy -t dlt-test \
+  --select pipelines.bronze-dlt-expectations \
+  --var="bronze_dlt_raw_base_path=${INVALID_RAW_BASE}"
+databricks bundle run -t dlt-test bronze-dlt-expectations \
+  --full-refresh-all \
+  --var="bronze_dlt_raw_base_path=${INVALID_RAW_BASE}"
+```
+
+빈 source는 다른 invalid metric 실행과 분리해 확인합니다. 아래 실행은 `applications.jsonl`의 `source_row_count = 0` 때문에 `source_not_empty` expectation으로 실패해야 합니다.
+
+```bash
+EMPTY_SOURCE_RAW_BASE="abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/empty-source/landing/raw"
+
+databricks bundle deploy -t dlt-test \
+  --select pipelines.bronze-dlt-expectations \
+  --var="bronze_dlt_raw_base_path=${EMPTY_SOURCE_RAW_BASE}"
+databricks bundle run -t dlt-test bronze-dlt-expectations \
+  --full-refresh-all \
+  --var="bronze_dlt_raw_base_path=${EMPTY_SOURCE_RAW_BASE}"
+```
+
+Pipeline UI의 Data quality 탭 또는 아래 event log에서 dataset별 expectation 결과를 확인합니다.
+
+```sql
+SELECT timestamp, event_type, origin.update_id, details
+FROM access_drift_dev.dlt_test.bronze_dlt_expectations_event_log
+WHERE event_type = 'flow_progress'
+ORDER BY timestamp DESC;
+```
+
+valid 실행에서는 6개 테이블이 각각 1건이고 expectation violation이 0건이어야 합니다. source별 입력 건수는 `bronze_source_input_audit`의 `source_not_empty` expectation으로 확인합니다. invalid 실행에서는 금지 필드 row의 dropped count와 일반 계약·Silver 준비 key의 failed count를 확인하고, `data/dlt-test/invalid/`의 `_test_case`별 입력과 대조합니다.
+
+실행 전후 아래 6개 기존 테이블의 최신 `DESCRIBE HISTORY` version과 row count를 기록해 `access_drift_dev.bronze`가 변경되지 않았음을 확인합니다.
+
+```text
+bronze_azure_applications
+bronze_azure_application_owners
+bronze_azure_password_credentials
+bronze_identity_lifecycle_seed
+bronze_assets_seed
+bronze_access_edges_seed
+```
+
+invalid 검증이 끝나면 기본 valid 설정으로 pipeline 구성을 되돌립니다.
+
+```bash
+databricks bundle deploy -t dlt-test \
+  --select pipelines.bronze-dlt-expectations
+databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all
+```
+
+`bronze_dlt_target_schema=bronze`, dev raw 경로, `bronze_dlt_fixture_mode=false` 조합은 같은 code를 실제 Bronze target에 적용하기 위한 설정입니다. 다만 현재 `access_drift_dev.bronze`의 6개 테이블은 migration과 notebook이 만든 일반 Delta 테이블이므로, DLT가 같은 이름의 materialized dataset을 관리할 수 있는지와 필요한 소유권 전환 절차를 실제 적용 전에 별도로 확인해야 합니다. 이 확인은 config-only 구조가 런타임에서도 성립하는지 검증하는 절차이며, 기존 테이블을 임의로 삭제하거나 교체하지 않습니다.
+
+`dlt_test` 결과를 사용자 또는 리뷰어가 확인하고 기존 Bronze 테이블 전환 방법을 승인하기 전에는 `bronze` target으로 deploy하거나 run하지 않습니다. event log는 target과 분리된 `bronze_dlt_event_log_schema` 설정을 사용하며 기본값은 `dlt_test`입니다.
+
+fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data/dlt-test/README.md)를 참고합니다.
+
+2026-06-30 실제 검증에서는 bundle validate와 fixture 18개 복사가 성공했고, valid/invalid/empty-source 동작을 모두 확인한 뒤 valid 상태로 복구했습니다. update ID, 테이블별 output/dropped/warned 건수, 기존 Bronze 불변 결과는 fixture README의 Databricks 검증 결과에 기록했습니다.
 
 #### Landing/Bronze/Silver/Eval/Context 부분 실행
 
