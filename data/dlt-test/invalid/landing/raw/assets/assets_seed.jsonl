@@ -1,0 +1,2 @@
+{"_test_case":"missing_asset_id","assetId":null,"name":"missing asset id","environment":"development","sensitivity":"medium"}
+{"_test_case":"mismatched_asset_name","_test_overrides":{"name":"tampered asset"},"assetId":"dlt-asset-202","name":"source asset","environment":"development","sensitivity":"medium"}

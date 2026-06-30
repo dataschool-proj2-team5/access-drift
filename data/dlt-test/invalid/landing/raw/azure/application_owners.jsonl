@@ -1,0 +1,3 @@
+{"_test_case":"missing_owner_app_id","appId":null,"userPrincipalName":"owner.one@example.com"}
+{"_test_case":"missing_owner_upn","appId":"dlt-app-owner-02","userPrincipalName":null}
+{"_test_case":"mismatched_owner_upn","_test_overrides":{"user_principal_name":"tampered@example.com"},"appId":"dlt-app-owner-03","userPrincipalName":"source.owner@example.com"}
