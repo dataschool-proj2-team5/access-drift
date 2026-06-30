@@ -41,6 +41,7 @@ venv/
 data/dev/landing/raw/
 data/dev/eval/*.jsonl
 data/dev/context/*.jsonl
+.worktrees/
 tmp/
 temp/
 *.tmp
