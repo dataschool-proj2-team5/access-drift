@@ -33,6 +33,9 @@ Gold Core는 LLM/RAG 실패와 무관하게 생성되어야 한다. 따라서 �
 deterministic pipeline에서 만든 최소 Risk Card 필드만 저장하고, LLM 요약이나 정책 citation은
 후속 `gold_enrichment`, `gold_policy_citation` 범위로 분리한다.
 
+자산 설명과 데이터 범위는 Gold Core 본문에 직접 넣지 않는다. Risk Card / Access Path 화면에서
+`asset_source_id` 기준으로 [Asset Context Contract](./asset-context.md)를 별도 조인한다.
+
 ## Silver 입력 컬럼
 
 Intermediate는 다음 Silver 컬럼만 입력으로 사용한다.
@@ -116,3 +119,7 @@ Gold의 `subject_type`, `subject_source_principal_id`, `asset_source_id`, `drift
 ## 적재 방식
 
 Intermediate와 Gold는 현재 PoC 스냅샷을 `overwrite`한다. 결정적 `risk_case_key`와 `finding_id`를 사용하므로 동일 입력 재실행 시 행이 중복 누적되지 않는다.
+
+## Risk Card view context
+
+Gold Core를 화면/API 조회용 Risk Card로 사용할 때 붙이는 context 구조는 [Architecture Overview](../architecture/arch-overview.md)에서 관리한다.
