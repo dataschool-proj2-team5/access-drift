@@ -370,6 +370,36 @@ sql/databricks/queries/de_lbs_validation.sql
 
 이 SQL은 job task가 아니라 read-only 교차 검산 아티팩트다. 각 notebook의 smoke check는 해당 단계 산출물의 기본 품질을 확인하고, validation SQL은 task 재실행 후 Bronze/Silver/Eval/Context 산출물 간 정합성을 별도로 확인할 때 사용한다.
 
+#### 재실행/멱등성 검증
+
+재실행 안정성은 같은 20건 dev seed 기준으로 task를 반복 실행한 뒤 row count, distinct key count, unmatched count가 유지되는지 확인한다.
+
+```bash
+# 1차 snapshot 생성
+databricks bundle run -t dev access-drift-pipeline \
+  --only generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+
+# Bronze/Silver 재실행
+databricks bundle run -t dev access-drift-pipeline \
+  --only ingest_task,silver_task
+
+# Eval/Context 재실행
+databricks bundle run -t dev access-drift-pipeline \
+  --only eval_seed_task,context_seed_task
+
+# 같은 seed 기준 end-to-end 재실행
+databricks bundle run -t dev access-drift-pipeline \
+  --only generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+```
+
+각 실행 후 아래 SQL을 실행해 결과 snapshot을 비교한다.
+
+```text
+sql/databricks/queries/de_retry_idempotency_validation.sql
+```
+
+현재 기준은 overwrite 재생성이며, `MERGE INTO`, run_id별 Landing 보존, partial write 자동 복구는 후속 고도화 범위다. 상세 기준은 [`docs/engineering/retry-idempotency-policy.md`](../docs/engineering/retry-idempotency-policy.md)를 따른다.
+
 ### 셋업 검증
 
 워크스페이스 초대 후 아래 노트북을 실행해 카탈로그·권한·External Location을 확인합니다.

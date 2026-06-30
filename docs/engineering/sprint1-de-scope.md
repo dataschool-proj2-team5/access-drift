@@ -236,6 +236,8 @@ S1에서 DE는 탐지 의미 판단이나 Risk Card 의미 설계를 주도하�
 
 **목적:** S1 데이터 파이프라인을 재실행해도 중복과 누락이 발생하지 않도록 최소 기준을 만든다.
 
+상세 기준은 [retry-idempotency-policy.md](./retry-idempotency-policy.md)를 따른다.
+
 **주요 내용**
 - task별 overwrite/merge/append 기준 정리
 - `run_id`와 `as_of_date` 사용 기준 정리
