@@ -166,8 +166,10 @@ SHOW GRANTS ON SCHEMA access_drift_dev.intermediate;
 SHOW GRANTS ON SCHEMA access_drift_dev.gold;
 SHOW GRANTS ON SCHEMA access_drift_dev.eval;
 SHOW GRANTS ON SCHEMA access_drift_dev.context;
+SHOW GRANTS ON SCHEMA access_drift_dev.app;
 SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
 SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
+SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_state;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
