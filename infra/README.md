@@ -144,7 +144,7 @@ PRINCIPALS="4dt002@msacademy.msai.kr 4dt014@msacademy.msai.kr" \
 ./infra/databricks/grant-dev-user-permissions.sh
 ```
 
-이 스크립트는 기본적으로 `access_drift_dev` catalog, 하위 schema, `access_drift_lakehouse_ext` external location에 대해 Unity Catalog `ALL_PRIVILEGES`를 부여합니다. External Location은 raw 파일 읽기/쓰기와 외부 테이블 생성에 필요한 권한을 포함합니다.
+이 스크립트는 기본적으로 `access_drift_dev` catalog, 하위 schema, context 하위 table, `access_drift_lakehouse_ext` external location에 대해 Unity Catalog `ALL_PRIVILEGES`를 부여합니다. External Location은 raw 파일 읽기/쓰기와 외부 테이블 생성에 필요한 권한을 포함합니다.
 
 필요하면 권한 범위를 좁혀 실행할 수 있습니다.
 
@@ -165,6 +165,9 @@ SHOW GRANTS ON SCHEMA access_drift_dev.silver;
 SHOW GRANTS ON SCHEMA access_drift_dev.intermediate;
 SHOW GRANTS ON SCHEMA access_drift_dev.gold;
 SHOW GRANTS ON SCHEMA access_drift_dev.eval;
+SHOW GRANTS ON SCHEMA access_drift_dev.context;
+SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
+SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
