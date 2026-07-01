@@ -14,6 +14,8 @@
 
 invalid fixture의 `_test_case`와 `_test_overrides`는 `bronze.fixture_mode=true`일 때만 테스트 adapter가 읽는다. 두 필드는 Bronze 구조화 컬럼에는 포함되지 않으며, `dlt_test`에서 실패 입력을 추적할 수 있도록 fixture `_raw_payload`에는 남긴다. 실제 dev raw 실행에서는 `bronze.fixture_mode=false`로 설정해 adapter를 비활성화한다.
 
+`check_dlt_expectation_result.py` notebook/job은 새 expectation 기준을 정의하지 않는다. 기존 `08_bronze_dlt_expectations.py`가 생성한 결과 테이블과 event log를 `update_id` 기준으로 조회해 pass/fail/drop 결과만 자동 판정한다.
+
 ## 검증 분류
 
 | 분류 | DLT action | 예시 |

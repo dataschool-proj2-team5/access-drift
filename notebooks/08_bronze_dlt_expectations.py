@@ -41,6 +41,7 @@ SOURCE_FIELDS = {
     ],
     "identity/lifecycle_seed.jsonl": [
         "userPrincipalName",
+        "displayName",
         "employmentStatus",
         "terminationDate",
     ],
@@ -176,6 +177,8 @@ def _forbidden_fields_expression():
         "isDistractor",
         "expected_severity",
         "expectedSeverity",
+        "seed_finding_type",
+        "seedFindingType",
         "truth_class",
         "truthClass",
         "secret",
@@ -329,6 +332,7 @@ def _build_lifecycle_seed():
     df = (
         df.withColumn("_termination_date_raw", _source_col(df, "terminationDate"))
         .withColumn("user_principal_name", _source_col(df, "userPrincipalName"))
+        .withColumn("display_name", _source_col(df, "displayName"))
         .withColumn("employment_status", _source_col(df, "employmentStatus"))
         .withColumn(
             "termination_date", F.expr("try_cast(_termination_date_raw AS DATE)")
@@ -338,6 +342,7 @@ def _build_lifecycle_seed():
         df,
         {
             "user_principal_name": "string",
+            "display_name": "string",
             "employment_status": "string",
             "termination_date": "date",
         },
@@ -443,11 +448,13 @@ LIFECYCLE_PATH = f"{RAW_BASE}/identity/lifecycle_seed.jsonl"
 LIFECYCLE_HARD = {
     **_common_expectations("identity_seed", "lifecycle_seed", LIFECYCLE_PATH),
     "valid_user_principal_name_type": "typeof(user_principal_name) = 'string'",
+    "valid_display_name_type": "typeof(display_name) = 'string'",
     "valid_employment_status_type": "typeof(employment_status) = 'string'",
     "valid_termination_date_type": "typeof(termination_date) = 'date'",
     "preserved_user_principal_name": _source_value(
         "userPrincipalName", "user_principal_name"
     ),
+    "preserved_display_name": _source_value("displayName", "display_name"),
     "preserved_employment_status": _source_value(
         "employmentStatus", "employment_status"
     ),
@@ -456,7 +463,8 @@ LIFECYCLE_HARD = {
 LIFECYCLE_WARN = {
     "ready_user_principal_name": (
         "user_principal_name IS NOT NULL AND trim(user_principal_name) <> ''"
-    )
+    ),
+    "ready_display_name": "display_name IS NOT NULL AND trim(display_name) <> ''",
 }
 
 ASSETS_PATH = f"{RAW_BASE}/assets/assets_seed.jsonl"

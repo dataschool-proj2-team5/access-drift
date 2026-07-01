@@ -91,6 +91,9 @@ Silver의 내부 id는 deterministic해야 한다. 같은 source record는 재�
 | `identity_seed` | HR/IdP lifecycle 합성 입력 |
 | `assets_seed` | asset inventory 합성 입력 |
 | `access_seed` | access edge 합성 입력 |
+| `github` | GitHub App, credential, repo, access edge 합성 입력 후보 |
+| `google_workspace` | Google Workspace user, shared drive/document, access edge 합성 입력 후보 |
+| `slack` | Slack user, private channel, access edge 합성 입력 후보 |
 
 기본 규칙:
 
@@ -118,7 +121,7 @@ Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안
 | source_principal_id | string | yes | Bronze 매핑 | source의 원본 principal id | null 또는 빈 문자열이면 실패. 대응 Bronze `app_id` 또는 `user_principal_name`과 동일해야 한다. |
 | principal_kind | string | yes | Silver 파생 | `HI` 또는 `NHI` | null이면 실패. 값은 `HI`, `NHI` 중 하나여야 한다. 현재 `user`는 `HI`, `app_registration`은 `NHI`로 변환되며 나머지 type 매핑은 `확인 필요`. |
 | principal_type | string | yes | Bronze 매핑 | `user`, `group`, `service_principal`, `app_registration`, `github_app`, `service_account`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 하며 ID 재계산에 같은 값을 사용해야 한다. |
-| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze 표시 이름과 의미가 같아야 한다. |
+| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze 표시 이름과 의미가 같아야 한다. HI는 `bronze_identity_lifecycle_seed.display_name`을 우선 사용하고, 값이 없으면 `user_principal_name`을 fallback으로 쓸 수 있다. |
 | email | string | no | Bronze 매핑 | 사람 계정의 email 또는 UPN | 값이 있으면 대응 Bronze UPN/email을 보존해야 한다. 허용 포맷은 `확인 필요`. |
 | status | string | yes | Bronze 매핑 | `active`, `inactive`, `terminated`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 상태를 Silver enum으로 매핑하는 전체 규칙은 `확인 필요`. |
 | termination_date | date | no | Bronze 매핑 | 퇴사일 또는 비활성 기준일 | 값이 있으면 date 타입이며 대응 Bronze 날짜와 같아야 한다. `terminated` 상태에서 필수인지 여부는 `확인 필요`. |
@@ -133,7 +136,7 @@ Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안
   "source_principal_id": "kim.minsu@company.com",
   "principal_kind": "HI",
   "principal_type": "user",
-  "display_name": "kim.minsu@company.com",
+  "display_name": "김민수",
   "email": "kim.minsu@company.com",
   "status": "terminated",
   "termination_date": "2024-01-15",
@@ -315,6 +318,7 @@ dashboard label
 is_planted_risk
 is_distractor
 expected_severity
+seed_finding_type
 truth_class
 secret value
 token value
@@ -322,6 +326,21 @@ private key value
 ```
 
 검증 시 Silver 스키마와 저장 row에 위 정답 라벨 및 secret, token, private key의 실제 값이 포함되지 않았는지 확인한다. 필드명 탐지 범위와 마스킹 판정 방식은 `확인 필요`다.
+
+## Finding type 계산 가능성
+
+Silver는 `finding_type`을 저장하지 않는다. 다만 다음 레이어가 finding type을 계산할 수 있도록 필요한 원자 사실을 보존한다.
+
+| 다음 레이어 finding_type 후보 | Silver 기반 조건 |
+| --- | --- |
+| `NHI Access Drift` | `principal_kind = 'NHI'` + active `accesses_asset` edge + sensitive asset |
+| `NHI Credential Drift` | `principal_kind = 'NHI'` + active credential + owner/status 문제 |
+| `NHI Permission Drift` | `principal_kind = 'NHI'` + active permission/role edge |
+| `HI Access Drift` | `principal_kind = 'HI'` + active `accesses_asset` edge + sensitive asset |
+| `HI Permission Drift` | `principal_kind = 'HI'` + active permission/role |
+| `HI Stale Access` | `principal_kind = 'HI'` + `status in ('terminated', 'inactive')` + remaining access/permission |
+
+위 값은 Silver 컬럼이 아니라 Intermediate/Gold에서 계산하는 제품 분류다. 하나의 finding이 여러 조건을 동시에 만족할 수 있으므로, 대표 `finding_type` 선택과 세부 `risk_factors` 분리는 다음 레이어 계약에서 정한다.
 
 ## 다음 레이어로 넘기는 기준
 

@@ -174,6 +174,7 @@ SHOW GRANTS ON SCHEMA access_drift_dev.dlt_test;
 SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
 SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_state;
+SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_event;
 SHOW GRANTS ON TABLE access_drift_dev.rag.doc_chunks;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
@@ -289,7 +290,34 @@ databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all
 
 `dlt_test` 결과를 사용자 또는 리뷰어가 확인하고 기존 Bronze 테이블 전환 방법을 승인하기 전에는 `bronze` target으로 deploy하거나 run하지 않습니다. event log는 target과 분리된 `bronze_dlt_event_log_schema` 설정을 사용하며 기본값은 `dlt_test`입니다.
 
+정식 Bronze 승격 검토 결과와 현재 적용 보류 조건은 [`ADR-0002: Bronze DLT 승격과 ingest 전환 전략`](../docs/adr/0002-bronze-dlt-promotion-strategy.md)을 기준으로 합니다. required column nullability, 기존 managed Delta table과의 충돌, pipeline owner, backup/rollback 조건이 해소되기 전에는 기존 `ingest_task`를 유지합니다.
+
 fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data/dlt-test/README.md)를 참고합니다.
+
+#### GitHub Actions smoke workflow
+
+수동 smoke 검증은 `.github/workflows/bronze-dlt-smoke.yml`의 `workflow_dispatch`로 실행합니다. 이 workflow는 `dlt-test` target만 사용하며 아래 순서를 고정합니다.
+
+- bundle validate
+- fixture setup job 실행
+- 기존 `access_drift_dev.bronze` 6개 테이블 snapshot 수집 (`row_count`, `last_altered`, latest history `version`)
+- valid pipeline 실행 + `update_id` 기준 결과 판정
+- invalid pipeline 실행 + `update_id` 기준 결과 판정
+- empty-source pipeline 실패 확인 + `source_not_empty` 판정
+- valid 설정으로 복구 실행
+- 기존 Bronze snapshot before/after 비교
+- run JSON, notebook output, exit code를 artifact 업로드
+
+이 workflow의 결과 판정 notebook/job은 새 DLT expectation을 추가하지 않습니다. 기존 `08_bronze_dlt_expectations.py`가 생성한 event log와 결과 테이블을 조회만 하며, PR 설명에도 같은 문구를 명시합니다.
+
+GitHub Actions에서 필요한 인증/secret은 다음을 기준으로 합니다.
+
+- `DATABRICKS_HOST`: Databricks workspace host
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+workflow는 `azure/login@v2`로 Azure 로그인 후 `DATABRICKS_AUTH_TYPE=azure-cli`를 사용합니다. 따라서 GitHub Actions OIDC 또는 service principal 기반 Azure 로그인 구성이 선행돼야 합니다. 별도 Databricks PAT secret은 기본 경로에 필요하지 않습니다.
 
 2026-06-30 실제 검증에서는 bundle validate와 fixture 18개 복사가 성공했고, valid/invalid/empty-source 동작을 모두 확인한 뒤 valid 상태로 복구했습니다. update ID, 테이블별 output/dropped/warned 건수, 기존 Bronze 불변 결과는 fixture README의 Databricks 검증 결과에 기록했습니다.
 

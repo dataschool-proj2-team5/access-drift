@@ -36,7 +36,7 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 | `bronze_azure_applications` | `bronze_azure_applications` | PASS | `app_id`, `display_name`, `created_at`가 DDL에 모두 존재한다. |
 | `bronze_azure_application_owners` | `bronze_azure_application_owners` | PASS | `app_id`, `user_principal_name`가 DDL에 존재한다. |
 | `bronze_azure_password_credentials` | `bronze_azure_password_credentials` | PASS | `app_id`, `key_id`, `display_name`, `end_date_time`, `status`가 DDL에 존재한다. |
-| `bronze_identity_lifecycle_seed` | `bronze_identity_lifecycle_seed` | PASS | `user_principal_name`, `employment_status`, `termination_date`가 DDL에 존재한다. |
+| `bronze_identity_lifecycle_seed` | `bronze_identity_lifecycle_seed` | PASS | `user_principal_name`, `display_name`, `employment_status`, `termination_date`가 DDL에 존재한다. |
 | `bronze_assets_seed` | `bronze_assets_seed` | PASS | `asset_id`, `name`, `environment`, `sensitivity`가 DDL에 존재한다. |
 | `bronze_access_edges_seed` | `bronze_access_edges_seed` | PASS | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at`가 DDL에 존재한다. |
 
@@ -47,7 +47,7 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 | `azure/applications.jsonl` | `appId`, `displayName`, `createdDateTime` | `app_id`, `display_name`, `created_at` | PASS | `02_ingest.ipynb`가 camelCase 원본을 Bronze 컬럼으로 변환한다. |
 | `azure/application_owners.jsonl` | `appId`, `userPrincipalName` | `app_id`, `user_principal_name` | PASS | 소유자 관계 원본이 그대로 적재 가능하다. |
 | `azure/password_credentials.jsonl` | `appId`, `keyId`, `displayName`, `endDateTime`, `status` | `app_id`, `key_id`, `display_name`, `end_date_time`, `status` | PASS | secret value 없이 metadata만 적재한다. |
-| `identity/lifecycle_seed.jsonl` | `userPrincipalName`, `employmentStatus`, `terminationDate` | `user_principal_name`, `employment_status`, `termination_date` | PASS | 퇴사/재직 상태 seed가 Bronze 컬럼과 맞는다. |
+| `identity/lifecycle_seed.jsonl` | `userPrincipalName`, `displayName`, `employmentStatus`, `terminationDate` | `user_principal_name`, `display_name`, `employment_status`, `termination_date` | PASS | 사용자 식별자, 표시 이름, 퇴사/재직 상태 seed가 Bronze 컬럼과 맞는다. |
 | `assets/assets_seed.jsonl` | `assetId`, `name`, `environment`, `sensitivity` | `asset_id`, `name`, `environment`, `sensitivity` | PASS | asset seed와 Bronze DDL의 명칭이 일치한다. |
 | `access/access_edges_seed.jsonl` | `principalId`, `assetId`, `relationship`, `permission`, `status`, optional `lastUsedDateTime` / `last_used_at` | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at` | PASS | access edge seed가 Bronze 관계 테이블에 들어간다. 마지막 사용 시각은 있으면 보존하고 없으면 null로 둔다. |
 
@@ -102,7 +102,7 @@ Bronze는 source 원본 보존을 위해 business key를 nullable로 허용한�
 | Bronze 입력 | Silver 결과 | 검증 불변조건 | 실패 시 우선 확인 |
 | --- | --- | --- | --- |
 | `bronze_azure_applications` | `silver_principals` | `app_id`가 `source_principal_id`로 보존된 `principal_kind = 'NHI'`, `principal_type = 'app_registration'` row가 존재한다. | Bronze `app_id` null 여부 → principal 변환 로직 |
-| `bronze_identity_lifecycle_seed` | `silver_principals` | `user_principal_name`이 `source_principal_id`로 보존된 `principal_kind = 'HI'`, `principal_type = 'user'` row가 존재한다. | Bronze `user_principal_name` null 여부 → principal 변환 로직 |
+| `bronze_identity_lifecycle_seed` | `silver_principals` | `user_principal_name`이 `source_principal_id`로 보존된 `principal_kind = 'HI'`, `principal_type = 'user'` row가 존재하고, `display_name`은 Bronze 표시 이름을 우선 사용한다. | Bronze `user_principal_name` / `display_name` null 여부 → principal 변환 로직 |
 | `bronze_azure_password_credentials` | `silver_credentials` | `key_id`가 `source_credential_id`로 보존되고 `app_id`로 만든 principal에 연결된 row가 존재한다. | Bronze `key_id`/`app_id` null 여부 → credential 변환 로직 |
 | `bronze_assets_seed` | `silver_assets` | Bronze `asset_id`가 `source_asset_id`로 보존된 row가 존재한다. | Bronze `asset_id` null 여부 → asset 변환 로직 |
 | `bronze_azure_application_owners` | `silver_edges` | human principal에서 NHI principal로 향하는 `owns_principal` edge가 존재한다. | Bronze owner key null 여부 → owner edge 변환 로직 |
@@ -128,7 +128,7 @@ Bronze business key가 null인 것은 현재 Bronze schema contract 위반이 �
 | --- | --- | --- | --- |
 | `ground_truth_case` PK | `case_id` | PASS | surrogate id를 PK로 둔다. |
 | eval key 구성 | `subject_type`, `subject_id`, `asset_id`, `drift_type` | PASS | 문서의 조인 키와 DDL 컬럼이 일치한다. |
-| 라벨 컬럼 | `is_planted_risk`, `is_distractor`, `pattern`, `expected_severity`, `label_reason` | PASS | 정답/평가용 필드가 문서와 일치한다. |
+| 라벨 컬럼 | `is_planted_risk`, `is_distractor`, `pattern`, `expected_severity`, `seed_finding_type`, `label_reason` | PASS | 정답/평가용 필드와 합성 데이터 생성 의도 라벨이 문서와 일치한다. |
 | 시간 컬럼 | `created_at` | PASS | eval 생성 시각 컬럼이 존재한다. |
 
 ### `ground_truth_case.jsonl` vs `04_eval_seed.ipynb`
@@ -139,7 +139,7 @@ Bronze business key가 null인 것은 현재 Bronze schema contract 위반이 �
 | `scenario_id`, `scenario_family` | `scenario_id`, `scenario_family` | PASS | holdout/패밀리 분리용 필드를 유지한다. |
 | `subject_type`, `subject_id`, `asset_id`, `drift_type` | `subject_type`, `subject_id`, `asset_id`, `drift_type` | PASS | eval key가 그대로 유지된다. |
 | `is_planted_risk`, `is_distractor` | `is_planted_risk`, `is_distractor` | PASS | 정답 라벨이 raw/Bronze/Silver로 섞이지 않는다. |
-| `pattern`, `expected_severity`, `label_reason`, `created_at` | `pattern`, `expected_severity`, `label_reason`, `created_at` | PASS | 부가 라벨과 생성 시각이 일치한다. |
+| `pattern`, `expected_severity`, `seed_finding_type`, `label_reason`, `created_at` | `pattern`, `expected_severity`, `seed_finding_type`, `label_reason`, `created_at` | PASS | 부가 라벨, 생성 의도 라벨, 생성 시각이 일치한다. |
 
 ## 확인한 정정 사항
 

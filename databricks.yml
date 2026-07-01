@@ -56,6 +56,9 @@ variables:
   bronze_dlt_event_log_schema:
     description: Schema for Bronze DLT pipeline event logs
     default: dlt_test
+  bronze_snapshot_schema:
+    description: Existing Bronze schema to snapshot before and after dlt-test smoke validation
+    default: bronze
   bronze_dlt_raw_base_path:
     description: Raw input base path for Bronze DLT expectation validation
     default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/valid/landing/raw
@@ -137,6 +140,34 @@ targets:
                   fixture_source_root: ${var.bronze_dlt_fixture_source_root}
                   fixture_workspace_root: ${workspace.file_path}
                   fixture_raw_root: ${var.bronze_dlt_fixture_raw_root}
+              existing_cluster_id: ${var.cluster_id}
+
+        bronze-dlt-result-check:
+          name: access-drift-bronze-dlt-result-check
+          tasks:
+            - task_key: check_bronze_dlt_expectation_result
+              description: 기존 Bronze DLT expectation 실행 결과와 event log를 update_id 기준으로 조회·판정
+              notebook_task:
+                notebook_path: ./notebooks/10_check_dlt_expectation_result.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  schema: ${var.bronze_dlt_target_schema}
+                  event_log_schema: ${var.bronze_dlt_event_log_schema}
+                  event_log_table: bronze_dlt_expectations_event_log
+                  update_id: ""
+                  expected_case: valid
+              existing_cluster_id: ${var.cluster_id}
+
+        bronze-table-snapshot:
+          name: access-drift-bronze-table-snapshot
+          tasks:
+            - task_key: snapshot_existing_bronze_tables
+              description: dlt-test 실행 전후 기존 Bronze table row count와 last_altered를 비교용으로 수집
+              notebook_task:
+                notebook_path: ./notebooks/11_check_bronze_table_snapshot.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  schema: ${var.bronze_snapshot_schema}
               existing_cluster_id: ${var.cluster_id}
 
 resources:
