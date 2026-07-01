@@ -1,0 +1,36 @@
+name: Bronze Contract
+
+on:
+  pull_request:
+    paths:
+      - docs/contracts/bronze-schema.md
+      - sql/databricks/migrations/001_create_bronze_tables.sql
+      - tools/validate_bronze_contract.py
+      - tests/test_validate_bronze_contract.py
+      - .github/workflows/bronze-contract.yml
+  push:
+    paths:
+      - docs/contracts/bronze-schema.md
+      - sql/databricks/migrations/001_create_bronze_tables.sql
+      - tools/validate_bronze_contract.py
+      - tests/test_validate_bronze_contract.py
+      - .github/workflows/bronze-contract.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate Bronze contract
+        run: python tools/validate_bronze_contract.py
+
+      - name: Run validator tests
+        run: python -m unittest tests.test_validate_bronze_contract -v

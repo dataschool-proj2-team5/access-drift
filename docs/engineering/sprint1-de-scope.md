@@ -214,25 +214,29 @@ S1에서 DE는 탐지 의미 판단이나 Risk Card 의미 설계를 주도하�
 
 **주요 내용**
 - schema/migration task 분리
-- synthetic data, ingest, silver task 분리
-- eval seed task를 본 탐지 입력과 느슨하게 분리
-- validation task를 read-only 검증으로 분리
+- dev seed 생성 task와 raw 배치 task 분리
+- ingest, silver task 분리
+- eval/context seed task를 본 탐지 입력과 느슨하게 분리
+- validation SQL/notebook은 job task가 아니라 read-only 교차 검산 아티팩트로 유지
 - S1 범위에서는 가능한 한 Silver task까지 DE 책임으로 명확화
 - 필요한 경우 아키텍처 문서에 job/task 구조 반영
 
 **완료 기준**
-- `migration -> seed -> ingest -> silver` 흐름이 명확하다.
-- eval은 탐지 입력이 아니라 정답지 준비와 검증 용도로 분리된다.
+- `migration`, `generate_dev_seed`, `synthetic/raw 배치`, `ingest`, `silver`의 역할이 구분된다.
+- eval/context는 탐지 입력이 아니라 정답지와 Risk Card 보조 context 준비 용도로 분리된다.
+- notebook smoke check와 validation SQL의 역할이 구분된다.
 - 특정 task 실패 시 어느 지점부터 재실행할지 판단할 수 있다.
 
 **후속 고도화**
-- Intermediate/Gold task까지 포함한 전체 job dependency 정리
+- Intermediate/Gold task의 별도 DS pipeline 분리
 - 환경별 job parameter 표준화
 - 자동 재시도와 alert 정책
 
 ### 6.7 실패/재처리와 멱등성 기준
 
 **목적:** S1 데이터 파이프라인을 재실행해도 중복과 누락이 발생하지 않도록 최소 기준을 만든다.
+
+상세 기준은 [retry-idempotency-policy.md](./retry-idempotency-policy.md)를 따른다.
 
 **주요 내용**
 - task별 overwrite/merge/append 기준 정리
@@ -385,21 +389,22 @@ S1에서 DE는 탐지 의미 판단이나 Risk Card 의미 설계를 주도하�
 - schema diff 자동화
 - CI 기반 contract check
 
-### 6.14 RAG/Vector Search 기반 참고 근거 준비
+### 6.14 RAG 기반 참고 근거 준비
 
-**목적:** S1에서 RAG 기반 참고 근거 출력을 선택사항으로 검토할 수 있도록, DE 관점에서 필요한 데이터 저장 위치와 인덱스 후보를 정리한다.
+**목적:** S1에서 RAG 기반 참고 근거 출력을 선택사항으로 검토할 수 있도록, DE 관점에서 필요한 근거 문서 chunk와 검색 source table 기준을 정리한다.
 
 **주요 내용**
-- 보안 런북/조치 가이드 문서의 저장 위치 후보 정리
-- Vector Search 대상 테이블 또는 인덱스 후보 정리
-- Risk Card 결과와 RAG 참고 근거를 연결할 수 있는 최소 metadata 후보 정리
+- 보안 런북/조치 가이드 문서 chunk의 저장 위치 정리
+- DS/AI가 Vector Search source로 사용할 수 있는 `rag.doc_chunks` 기준 정리
+- Risk Card 현재값은 DS/AI 질의 생성 입력으로 보고, `rag.doc_chunks`에는 정책/playbook/source guide/API reference corpus를 저장
+- embedding, retrieval 품질, prompt, citation 없는 답변 처리, AI 윤리/가드레일은 DS/AI와 PO/Security 범위로 분리
 - S1 필수 완료 기준이 아니라 선택사항 또는 S2 후보로 관리
 
 **완료 기준**
 - RAG를 S1에서 시도할지 S2로 넘길지 판단할 수 있는 DE 관점 검토 결과가 있다.
-- 시도할 경우 필요한 문서 저장 위치, 인덱스 후보, 연결 metadata 후보가 정리되어 있다.
+- 시도할 경우 필요한 근거 문서 chunk, citation metadata, DS/AI handoff 기준이 정리되어 있다.
 
 **후속 고도화**
-- Vector Search index 자동 갱신
+- Vector Search endpoint/index 생성과 retrieval 품질 검증
 - citation metadata 품질검증
 - RAG 답변 품질 평가와 fallback 정책

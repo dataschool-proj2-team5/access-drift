@@ -1,0 +1,18 @@
+{"_test_case":"invalid_src_system","_test_overrides":{"_src_system":"wrong_source"},"appId":"dlt-app-meta-01","displayName":"invalid source system","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"invalid_src_object","_test_overrides":{"_src_object":"wrong_object"},"appId":"dlt-app-meta-02","displayName":"invalid source object","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"invalid_src_file_path","_test_overrides":{"_src_file_path":"file:/wrong/input.jsonl"},"appId":"dlt-app-meta-03","displayName":"invalid file path","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"null_ingestion_ts","_test_overrides":{"_ingestion_ts":"__NULL__"},"appId":"dlt-app-meta-04","displayName":"null ingestion timestamp","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"invalid_checksum","_test_overrides":{"_checksum":"not-an-md5"},"appId":"dlt-app-meta-05","displayName":"invalid checksum","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"empty_raw_payload","_test_overrides":{"_raw_payload":""},"appId":"dlt-app-meta-06","displayName":"empty raw payload","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"invalid_schema_version","_test_overrides":{"_schema_version":"9.9.9"},"appId":"dlt-app-meta-07","displayName":"invalid schema version","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"forbidden_eval_label","appId":"dlt-app-meta-08","displayName":"forbidden eval label","createdDateTime":"2025-01-15T09:30:00Z","is_planted_risk":true}
+{"_test_case":"forbidden_is_distractor","appId":"dlt-app-meta-08b","displayName":"forbidden distractor label","createdDateTime":"2025-01-15T09:30:00Z","is_distractor":false}
+{"_test_case":"forbidden_expected_severity","appId":"dlt-app-meta-08c","displayName":"forbidden severity label","createdDateTime":"2025-01-15T09:30:00Z","expected_severity":"HIGH"}
+{"_test_case":"forbidden_truth_class","appId":"dlt-app-meta-08d","displayName":"forbidden truth class","createdDateTime":"2025-01-15T09:30:00Z","truth_class":"positive"}
+{"_test_case":"forbidden_secret_field","appId":"dlt-app-meta-09","displayName":"forbidden secret field","createdDateTime":"2025-01-15T09:30:00Z","clientSecret":"do-not-store"}
+{"_test_case":"forbidden_token_field","appId":"dlt-app-meta-09b","displayName":"forbidden token field","createdDateTime":"2025-01-15T09:30:00Z","tokenValue":"do-not-store"}
+{"_test_case":"forbidden_private_key_field","appId":"dlt-app-meta-09c","displayName":"forbidden private key field","createdDateTime":"2025-01-15T09:30:00Z","privateKey":"do-not-store"}
+{"_test_case":"missing_app_id","appId":null,"displayName":"missing app id","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"invalid_created_at","appId":"dlt-app-time-01","displayName":"invalid created timestamp","createdDateTime":"not-a-timestamp"}
+{"_test_case":"mismatched_app_id","_test_overrides":{"app_id":"tampered-app-id"},"appId":"dlt-app-map-01","displayName":"mismatched app id","createdDateTime":"2025-01-15T09:30:00Z"}
+{"_test_case":"mismatched_display_name","_test_overrides":{"display_name":"tampered display name"},"appId":"dlt-app-map-02","displayName":"source display name","createdDateTime":"2025-01-15T09:30:00Z"}

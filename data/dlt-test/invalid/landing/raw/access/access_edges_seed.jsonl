@@ -1,0 +1,5 @@
+{"_test_case":"missing_access_principal_id","principalId":null,"assetId":"dlt-asset-301","relationship":"accesses_asset","permission":"read","status":"active","lastUsedDateTime":"2026-06-01T12:00:00Z"}
+{"_test_case":"missing_access_asset_id","principalId":"dlt-app-302","assetId":null,"relationship":"accesses_asset","permission":"read","status":"active","lastUsedDateTime":"2026-06-01T12:00:00Z"}
+{"_test_case":"missing_access_relationship","principalId":"dlt-app-303","assetId":"dlt-asset-303","relationship":null,"permission":"read","status":"active","lastUsedDateTime":"2026-06-01T12:00:00Z"}
+{"_test_case":"invalid_last_used_at","principalId":"dlt-app-304","assetId":"dlt-asset-304","relationship":"accesses_asset","permission":"read","status":"active","lastUsedDateTime":"not-a-timestamp"}
+{"_test_case":"mismatched_permission","_test_overrides":{"permission":"tampered"},"principalId":"dlt-app-305","assetId":"dlt-asset-305","relationship":"accesses_asset","permission":"read","status":"active","lastUsedDateTime":"2026-06-01T12:00:00Z"}
