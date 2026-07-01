@@ -53,3 +53,7 @@ temp/
 
 # Databricks config
 .databrickscfg
+
+# Local Streamlit secrets
+apps/dashboard/.streamlit/secrets.toml
+**/.streamlit/secrets.toml
