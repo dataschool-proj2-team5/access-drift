@@ -104,24 +104,29 @@ def render_summary_cards(data: pd.DataFrame) -> None:
 
 
 def render_priority_review_list(data: pd.DataFrame) -> None:
-    demo_case_order = ["CASE-001", "CASE-002", "CASE-003"]
-    priority = data[data["case_id"].isin(demo_case_order)].copy()
-    priority["case_sort"] = pd.Categorical(priority["case_id"], categories=demo_case_order, ordered=True)
-    priority = priority.sort_values("case_sort")
+    priority = data[data["risk_level"].isin(RISK_LEVELS)].copy()
+    priority["priority_sort_score"] = pd.to_numeric(priority["risk_score"], errors="coerce").fillna(0)
+    priority["priority_sort_detected_at"] = pd.to_datetime(priority["detected_at"], errors="coerce")
+    priority = priority.sort_values(
+        ["priority_sort_score", "priority_sort_detected_at", "case_id"],
+        ascending=[False, False, True],
+        na_position="last",
+    ).head(3)
     priority["risk_title"] = priority["overview_title"].where(priority["overview_title"].ne(""), priority["risk_title"])
     priority["owner"] = priority["owner_name"] + " / " + priority["owner_team"]
     priority["detected_at"] = priority["detected_at"].apply(_format_datetime)
 
     rows = []
     for _, case in priority.reset_index(drop=True).iterrows():
-        risk_card_href = f"/Risk_Card?case_id={quote(str(case['case_id']))}"
+        display_case_id = case.get("display_case_id", case["case_id"])
+        risk_card_href = f"/Risk_Card?case={quote(str(display_case_id))}"
         rows.append(
             f"""
             <div class="ad-priority-row">
               <div class="ad-checkbox"></div>
               <div>
                 <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap">
-                  <span class="ad-row-kicker">{escape(str(case["case_id"]))}</span>
+                  <span class="ad-row-kicker">{escape(str(display_case_id))}</span>
                   <span class="ad-row-title">{escape(str(case["risk_title"]))}</span>
                 </div>
                 <div class="ad-row-subline">

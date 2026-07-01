@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import base64
 import mimetypes
 from functools import lru_cache
@@ -9,24 +10,23 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from components.cards import (
-    render_risk_factors_card_v2,
-    render_risk_header_card_v2,
-    render_risk_summary_card_v2,
-    render_ticket_form_placeholder,
-)
+import components.cards as card_components
 from components.risk_text_panels import (
     render_ai_agent_placeholder,
     render_recommendation_panel,
     render_review_info_card,
 )
 from components.styles import apply_dashboard_style
-from src.data_loader import load_access_drift_data
+import src.data_loader as data_loader
 from src.session_state import (
     REVIEW_STATUS_OPTIONS,
     apply_review_status_overrides,
     set_review_status,
 )
+
+
+card_components = importlib.reload(card_components)
+data_loader = importlib.reload(data_loader)
 
 
 ICON_DIR = Path(__file__).resolve().parents[1] / "assets" / "icons"
@@ -36,13 +36,16 @@ BADGE_DIR = Path(__file__).resolve().parents[1] / "assets" / "badges"
 def render_access_path_v2_inline(case: pd.Series) -> None:
     owner_caption = f"{escape(str(case['owner_team']))}<br>{escape(str(case['related_person_status']))}"
     identity_caption = escape(str(case["identity_name"]))
+    credential_caption = _credential_expiry_caption(case)
+    asset_caption = escape(str(case.get("asset_full_name", case["asset_name"])))
+    sensitivity_label = str(case.get("asset_sensitivity", "") or "")
     steps = [
-        ("accesspath-icon-human.svg", case["owner_name"], owner_caption, "badge-owner.svg", "Owner", 187, 165),
-        ("accesspath-icon-sp.svg", case["object_type"], identity_caption, "", "", 177, 165),
-        ("accesspath-icon-credential.svg", case["credential_type"], "credential still valid", "badge-activity.svg", "Activity", 177, 165),
-        ("accesspath-icon-permission.svg", case["permission_level"], "can read and list<br>storage objects", "", "", 177, 165),
-        ("accesspath-icon-asset.svg", case["asset_name"], "crm-customer-export-prod", "", "", 176, 165),
-        ("accesspath-icon-datascope.svg", case["data_scope"], escape(str(case["data_categories"])), "badge-sensitive.svg", "Sensitive", 181, 165),
+        ("accesspath-icon-human.svg", case["owner_name"], owner_caption, "badge-owner.svg", "Owner", "", 187, 165),
+        ("accesspath-icon-sp.svg", case["object_type"], identity_caption, "", "", "", 177, 165),
+        ("accesspath-icon-credential.svg", case["credential_type"], credential_caption, "badge-activity.svg", "Activity", "", 177, 165),
+        ("accesspath-icon-permission.svg", case["permission_level"], "can read and list<br>storage objects", "", "", "", 177, 165),
+        ("accesspath-icon-asset.svg", case["asset_name"], asset_caption, "", "", "", 176, 165),
+        ("accesspath-icon-datascope.svg", case["data_scope"], escape(str(case["data_categories"])), "", "", sensitivity_label, 181, 165),
     ]
     html = [
         '<div class="ad-card ad-access-card ad-access-card-v2">'
@@ -52,8 +55,8 @@ def render_access_path_v2_inline(case: pd.Series) -> None:
         '<span style="position:absolute; right:-1px; top:50%; width:9px; height:9px; border-top:2px solid #6B7280; border-right:2px solid #6B7280; transform:translateY(-50%) rotate(45deg);"></span>'
         '</div>'
     ]
-    for icon_file, value, caption, badge_file, badge_alt, width, height in steps:
-        pill = _path_badge_img(badge_file, badge_alt) if badge_file else ""
+    for icon_file, value, caption, badge_file, badge_alt, text_badge, width, height in steps:
+        pill = _path_badge_img(badge_file, badge_alt) if badge_file else _path_text_badge(text_badge)
         icon = _path_icon_img(icon_file, str(value))
         html.append(
             f"""
@@ -70,6 +73,25 @@ def render_access_path_v2_inline(case: pd.Series) -> None:
     html.append("</div></div>")
     st.html("".join(html))
 
+
+
+def _credential_expiry_caption(case: pd.Series) -> str:
+    expires_at = str(case.get("credential_expires_at", "") or "").strip()
+    return f"만료일: {escape(expires_at) if expires_at else '-'}"
+
+
+def _path_text_badge(label: str) -> str:
+    if not label:
+        return ""
+    return (
+        '<span class="ad-access-badge-text" '
+        'style="display:inline-flex; align-items:center; min-height:23px; max-width:96px; '
+        'padding:0 10px; border-radius:999px; background:#FFE1E1; color:#FF3B3B; '
+        'font-size:12px; line-height:23px; font-weight:700; white-space:nowrap; '
+        'overflow:hidden; text-overflow:ellipsis;">'
+        f"{escape(label)}"
+        "</span>"
+    )
 
 
 def _path_badge_img(filename: str, alt: str) -> str:
@@ -166,24 +188,39 @@ def main() -> None:
             """
         )
 
-    result = load_access_drift_data()
+    result = data_loader.load_access_drift_data()
     if result.using_mock:
         st.sidebar.info("Using mock data")
 
     data = apply_review_status_overrides(result.data).sort_values("risk_score", ascending=False)
     case_ids = data["case_id"].tolist()
+    case_label_by_id = dict(zip(data["case_id"].astype(str), data["display_case_id"].astype(str)))
+    case_id_by_label = dict(zip(data["display_case_id"].astype(str), data["case_id"].astype(str)))
+    requested_display_case_id = st.query_params.get("case")
     requested_case_id = st.query_params.get("case_id")
+    if isinstance(requested_display_case_id, list):
+        requested_display_case_id = requested_display_case_id[0] if requested_display_case_id else None
     if isinstance(requested_case_id, list):
         requested_case_id = requested_case_id[0] if requested_case_id else None
+    requested_case_id = case_id_by_label.get(str(requested_display_case_id), requested_case_id)
     selected_index = case_ids.index(requested_case_id) if requested_case_id in case_ids else 0
-    selected_case_id = st.sidebar.selectbox("Case", case_ids, index=selected_index)
+    selected_case_id = st.sidebar.selectbox(
+        "Case",
+        case_ids,
+        index=selected_index,
+        format_func=lambda case_id: case_label_by_id.get(str(case_id), str(case_id)),
+    )
     case = data.loc[data["case_id"] == selected_case_id].iloc[0].copy()
+    selected_display_case_id = str(case["display_case_id"])
+    if st.query_params.get("case") != selected_display_case_id or "case_id" in st.query_params:
+        st.query_params.clear()
+        st.query_params["case"] = selected_display_case_id
 
-    st.html(f'<div class="ad-page-caption">{case["case_id"]} &#183; {case["risk_title"]}</div>')
+    st.html(f'<div class="ad-page-caption">{selected_display_case_id} &#183; {case["risk_title"]}</div>')
 
     current_status = str(case["review_status"])
     status_index = REVIEW_STATUS_OPTIONS.index(current_status) if current_status in REVIEW_STATUS_OPTIONS else 0
-    render_risk_header_card_v2(case)
+    card_components.render_risk_header_card_v2(case)
 
     with st.container(key="risk_v2_status_overlay"):
         _, status_col = st.columns([5.05, 1.25], gap="small", vertical_alignment="top")
@@ -204,9 +241,9 @@ def main() -> None:
         render_access_path_v2_inline(case)
         summary_col, factors_col = st.columns([1.35, 1], gap="large")
         with summary_col:
-            render_risk_summary_card_v2(case)
+            card_components.render_risk_summary_card_v2(case)
         with factors_col:
-            render_risk_factors_card_v2(case)
+            card_components.render_risk_factors_card_v2(case)
 
     with action_tab:
         left, right = st.columns([2, 1], gap="large")
@@ -216,7 +253,7 @@ def main() -> None:
             render_ai_agent_placeholder(case)
 
     with ticket_tab:
-        render_ticket_form_placeholder(case)
+        card_components.render_ticket_form_placeholder(case)
 
 
 main()

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 EXPECTED_COLUMNS = [
+    "risk_case_key",
     "case_id",
+    "display_case_id",
     "risk_title",
     "risk_level",
     "drift_type",
@@ -10,6 +12,7 @@ EXPECTED_COLUMNS = [
     "object_name",
     "object_type",
     "credential_type",
+    "credential_expires_at",
     "credential_status",
     "owner_status",
     "owner_name",
@@ -17,6 +20,7 @@ EXPECTED_COLUMNS = [
     "related_person_status",
     "linked_owner_label",
     "asset_name",
+    "asset_full_name",
     "asset_type",
     "asset_sensitivity",
     "data_scope",
@@ -45,7 +49,9 @@ DATE_COLUMNS = ["last_accessed_at", "detected_at", "created_at"]
 RISK_LEVEL_ORDER = ["Critical", "High", "Medium", "Low"]
 
 SCHEMA_DESCRIPTIONS = {
-    "case_id": "Internal risk case identifier used by the dashboard.",
+    "risk_case_key": "Stable source risk key used for Databricks lookup and joins.",
+    "case_id": "Internal risk case identifier used by dashboard navigation and session state.",
+    "display_case_id": "Short deterministic case label shown in the UI.",
     "risk_title": "Human-readable risk card title.",
     "risk_level": "Display severity such as Critical, High, Medium, or Low.",
     "drift_type": "Access drift category.",
@@ -54,6 +60,7 @@ SCHEMA_DESCRIPTIONS = {
     "object_name": "Credential or access object name.",
     "object_type": "Access object category.",
     "credential_type": "Credential type involved in the finding.",
+    "credential_expires_at": "Credential expiration date shown in the Risk Card access path.",
     "credential_status": "Credential lifecycle status.",
     "owner_status": "Owner lifecycle status.",
     "owner_name": "Owner display name.",
@@ -61,6 +68,7 @@ SCHEMA_DESCRIPTIONS = {
     "related_person_status": "Related human identity status.",
     "linked_owner_label": "Display label for linked owner evidence.",
     "asset_name": "Asset display name.",
+    "asset_full_name": "Full source asset name used as supporting Access Path text.",
     "asset_type": "Asset category.",
     "asset_sensitivity": "Asset sensitivity label used for display only in this scaffold.",
     "data_scope": "Data scope label shown in the Risk Card access path.",
