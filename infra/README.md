@@ -287,6 +287,8 @@ databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all
 
 `dlt_test` 결과를 사용자 또는 리뷰어가 확인하고 기존 Bronze 테이블 전환 방법을 승인하기 전에는 `bronze` target으로 deploy하거나 run하지 않습니다. event log는 target과 분리된 `bronze_dlt_event_log_schema` 설정을 사용하며 기본값은 `dlt_test`입니다.
 
+정식 Bronze 승격 검토 결과와 현재 적용 보류 조건은 [`ADR-0002: Bronze DLT 승격과 ingest 전환 전략`](../docs/adr/0002-bronze-dlt-promotion-strategy.md)을 기준으로 합니다. required column nullability, 기존 managed Delta table과의 충돌, pipeline owner, backup/rollback 조건이 해소되기 전에는 기존 `ingest_task`를 유지합니다.
+
 fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data/dlt-test/README.md)를 참고합니다.
 
 2026-06-30 실제 검증에서는 bundle validate와 fixture 18개 복사가 성공했고, valid/invalid/empty-source 동작을 모두 확인한 뒤 valid 상태로 복구했습니다. update ID, 테이블별 output/dropped/warned 건수, 기존 Bronze 불변 결과는 fixture README의 Databricks 검증 결과에 기록했습니다.
