@@ -128,7 +128,7 @@ Bronze business key가 null인 것은 현재 Bronze schema contract 위반이 �
 | --- | --- | --- | --- |
 | `ground_truth_case` PK | `case_id` | PASS | surrogate id를 PK로 둔다. |
 | eval key 구성 | `subject_type`, `subject_id`, `asset_id`, `drift_type` | PASS | 문서의 조인 키와 DDL 컬럼이 일치한다. |
-| 라벨 컬럼 | `is_planted_risk`, `is_distractor`, `pattern`, `expected_severity`, `label_reason` | PASS | 정답/평가용 필드가 문서와 일치한다. |
+| 라벨 컬럼 | `is_planted_risk`, `is_distractor`, `pattern`, `expected_severity`, `seed_finding_type`, `label_reason` | PASS | 정답/평가용 필드와 합성 데이터 생성 의도 라벨이 문서와 일치한다. |
 | 시간 컬럼 | `created_at` | PASS | eval 생성 시각 컬럼이 존재한다. |
 
 ### `ground_truth_case.jsonl` vs `04_eval_seed.ipynb`
@@ -139,7 +139,7 @@ Bronze business key가 null인 것은 현재 Bronze schema contract 위반이 �
 | `scenario_id`, `scenario_family` | `scenario_id`, `scenario_family` | PASS | holdout/패밀리 분리용 필드를 유지한다. |
 | `subject_type`, `subject_id`, `asset_id`, `drift_type` | `subject_type`, `subject_id`, `asset_id`, `drift_type` | PASS | eval key가 그대로 유지된다. |
 | `is_planted_risk`, `is_distractor` | `is_planted_risk`, `is_distractor` | PASS | 정답 라벨이 raw/Bronze/Silver로 섞이지 않는다. |
-| `pattern`, `expected_severity`, `label_reason`, `created_at` | `pattern`, `expected_severity`, `label_reason`, `created_at` | PASS | 부가 라벨과 생성 시각이 일치한다. |
+| `pattern`, `expected_severity`, `seed_finding_type`, `label_reason`, `created_at` | `pattern`, `expected_severity`, `seed_finding_type`, `label_reason`, `created_at` | PASS | 부가 라벨, 생성 의도 라벨, 생성 시각이 일치한다. |
 
 ## 확인한 정정 사항
 

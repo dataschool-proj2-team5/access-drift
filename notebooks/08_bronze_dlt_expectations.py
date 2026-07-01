@@ -177,6 +177,8 @@ def _forbidden_fields_expression():
         "isDistractor",
         "expected_severity",
         "expectedSeverity",
+        "seed_finding_type",
+        "seedFindingType",
         "truth_class",
         "truthClass",
         "secret",

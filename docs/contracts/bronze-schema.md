@@ -151,6 +151,7 @@ dashboard label
 is_planted_risk
 is_distractor
 expected_severity
+seed_finding_type
 truth_class
 secret value
 token value

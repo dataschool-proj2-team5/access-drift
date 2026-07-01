@@ -146,7 +146,9 @@ WHERE e.relationship = 'owns_principal'
   AND (owner.principal_id IS NULL OR app.principal_id IS NULL);
 
 -- 7. Eval positive case -> Silver principal/asset match check
-SELECT COUNT(*) AS positive_eval_without_silver_match
+-- GitHub/Google Workspace/Slack 확장 seed는 아직 Bronze/Silver 변환 대상이 아니므로
+-- 현재 Silver가 커버하는 Entra/asset seed 기반 eval만 검증한다.
+SELECT COUNT(*) AS silver_covered_positive_eval_without_silver_match
 FROM access_drift_dev.eval.ground_truth_case g
 LEFT JOIN access_drift_dev.silver.silver_principals p
   ON g.subject_id = p.source_principal_id
@@ -154,4 +156,43 @@ LEFT JOIN access_drift_dev.silver.silver_principals p
 LEFT JOIN access_drift_dev.silver.silver_assets a
   ON g.asset_id = a.source_asset_id
 WHERE g.is_planted_risk = true
+  AND g.subject_id NOT LIKE 'gh-%'
+  AND g.subject_id NOT LIKE 'gws-%'
+  AND g.subject_id NOT LIKE 'slack-%'
+  AND g.asset_id NOT LIKE 'gh-%'
+  AND g.asset_id NOT LIKE 'gws-%'
+  AND g.asset_id NOT LIKE 'slack-%'
   AND (p.principal_id IS NULL OR a.asset_id IS NULL);
+
+-- 8. Context asset_context -> Silver asset match check
+-- SaaS 확장 seed는 context/eval에는 포함되지만 아직 Silver 변환 대상이 아니므로 제외한다.
+SELECT COUNT(*) AS silver_covered_context_assets_without_silver_match
+FROM access_drift_dev.context.asset_context c
+LEFT JOIN access_drift_dev.silver.silver_assets a
+  ON c.source_asset_id = a.source_asset_id
+WHERE c.source_asset_id NOT LIKE 'gh-%'
+  AND c.source_asset_id NOT LIKE 'gws-%'
+  AND c.source_asset_id NOT LIKE 'slack-%'
+  AND a.asset_id IS NULL;
+
+-- 9. Context assignment_routing -> Eval match check
+-- assignment_routing은 eval key와 같은 source key를 써야 한다.
+SELECT COUNT(*) AS assignment_routing_without_eval_match
+FROM access_drift_dev.context.assignment_routing r
+LEFT JOIN access_drift_dev.eval.ground_truth_case g
+  ON r.subject_type = g.subject_type
+ AND r.subject_id = g.subject_id
+ AND r.asset_id = g.asset_id
+ AND r.drift_type = g.drift_type
+WHERE g.case_id IS NULL;
+
+-- 10. Eval -> Context assignment_routing match check
+-- Eval에 있는 케이스는 조치 담당자 라우팅 context를 가져야 한다.
+SELECT COUNT(*) AS eval_without_assignment_routing_match
+FROM access_drift_dev.eval.ground_truth_case g
+LEFT JOIN access_drift_dev.context.assignment_routing r
+  ON r.subject_type = g.subject_type
+ AND r.subject_id = g.subject_id
+ AND r.asset_id = g.asset_id
+ AND r.drift_type = g.drift_type
+WHERE r.subject_id IS NULL;

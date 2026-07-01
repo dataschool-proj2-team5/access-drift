@@ -15,6 +15,68 @@
 
 생성기는 Landing 입력, eval 정답지, Risk Card context를 함께 만들지만, 생성 파일 자체는 Git에 올리지 않는다.
 
+## Source 확장 기준
+
+기본 dev 데이터는 Microsoft Entra ID 기반 NHI residual access 케이스를 중심으로 생성한다. GitHub와 Google Workspace는 후속 확장 가능성을 확인하기 위한 소량 source-like 예시로 함께 생성한다.
+
+| source | 목적 | ID namespace | eval 처리 |
+| --- | --- | --- | --- |
+| Microsoft Entra ID / HR / asset / access seed | S1 대표 NHI residual access 케이스 생성 | 기존 `appId`, `asset-...` | `ground_truth_case.jsonl`에 포함 |
+| GitHub | 퇴사 owner가 남긴 GitHub App / credential / private repo 접근 예시 5건 | `gh-...` | 기존 eval 뒤에 append |
+| Google Workspace | 퇴사·정지 사용자 / shared drive 또는 문서 접근 예시 5건 | `gws-...` | 기존 eval 뒤에 append |
+| Slack | 퇴사·비활성 사용자 / private channel 접근 예시 5건 | `slack-...` | 기존 eval 뒤에 append |
+
+GitHub/Google Workspace/Slack 예시는 기존 Entra ID 기반 source id, eval key, context key, `case_id`를 변경하지 않는다. eval/context에서는 사람이 검토하는 첫 20개 NHI 케이스 뒤에 GitHub 5건, Google Workspace 5건, Slack 5건을 append하고, `--size`가 20보다 크면 나머지 NHI 케이스를 그 뒤에 이어 붙인다. 따라서 `--size 20`의 eval/context는 `--size 100` 결과의 prefix로 유지된다.
+
+## SaaS 확장 대표 케이스
+
+GitHub, Google Workspace, Slack 케이스도 기존 20건 샘플처럼 "왜 residual access인지"를 source-like 입력에서 추적할 수 있어야 한다.
+
+GitHub NHI 케이스:
+
+| case_id | subject | residual 근거 | credential | edge | asset | 권한/민감도 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `eval-github-nhi-001` | `gh-app-prod-deploy-bot` | owner `kim.minsu@company.com` terminated | active deploy key | active | `gh-repo-payment-service-prod` | admin / high |
+| `eval-github-nhi-002` | `gh-app-security-audit-bot` | owner `jung.woojin@company.com` terminated | active PAT metadata | active | `gh-repo-infra-secrets-prod` | read / high |
+| `eval-github-nhi-003` | `gh-app-data-export-bot` | owner `lee.dayoung@company.com` terminated | active deploy key | active | `gh-repo-customer-export-prod` | write / high |
+| `eval-github-nhi-004` | `gh-app-finance-ci-bot` | owner `park.seojun@company.com` terminated | active PAT metadata | active | `gh-repo-finance-ledger-prod` | write / high |
+| `eval-github-nhi-005` | `gh-app-support-automation-bot` | owner `kim.hana@company.com` terminated | active deploy key | active | `gh-repo-support-tools-prod` | admin / medium |
+
+Google Workspace HI 케이스:
+
+| case_id | subject | residual 근거 | edge | asset | 권한/민감도 |
+| --- | --- | --- | --- | --- | --- |
+| `eval-gws-hi-001` | `gws-user-lee.hana` | user suspended, employment terminated | active | `gws-drive-customer-support-shared` | editor / high |
+| `eval-gws-hi-002` | `gws-user-park.jun` | user suspended, employment terminated | active | `gws-doc-finance-close-playbook` | viewer / medium |
+| `eval-gws-hi-003` | `gws-user-choi.seo` | user suspended, employment terminated | active | `gws-sheet-vip-customer-list` | editor / critical |
+| `eval-gws-hi-004` | `gws-user-jung.woo` | user suspended, employment terminated | active | `gws-drive-seller-settlement` | viewer / critical |
+| `eval-gws-hi-005` | `gws-user-oh.sehun` | user suspended, employment terminated | active | `gws-doc-marketing-segment-plan` | editor / medium |
+
+Slack HI 케이스:
+
+| case_id | subject | residual 근거 | edge | asset | 권한/민감도 |
+| --- | --- | --- | --- | --- | --- |
+| `eval-slack-hi-001` | `slack-user-kang.yuna` | user deactivated, employment terminated | active | `slack-channel-customer-support-private` | member / critical |
+| `eval-slack-hi-002` | `slack-user-lim.taehyun` | user deactivated, employment terminated | active | `slack-channel-security-incident` | member / high |
+| `eval-slack-hi-003` | `slack-user-han.jimin` | user deactivated, employment terminated | active | `slack-channel-finance-settlement` | member / critical |
+| `eval-slack-hi-004` | `slack-user-seo.minji` | user deactivated, employment terminated | active | `slack-channel-vip-customer-ops` | member / critical |
+| `eval-slack-hi-005` | `slack-user-moon.jae` | user deactivated, employment terminated | active | `slack-channel-ops-runbook` | member / medium |
+
+GitHub의 residual 근거는 `github/apps.jsonl`의 owner 상태 필드에서, Google Workspace의 residual 근거는 `google_workspace/users.jsonl`의 user 상태 필드에서, Slack의 residual 근거는 `slack/users.jsonl`의 user 상태 필드에서 확인한다.
+
+## 대시보드 라벨 재현 기준
+
+`seed_finding_type`은 합성 데이터 생성 의도를 설명하는 eval 전용 필드다. 탐지 결과가 반드시 이 값을 맞춰야 하는 hard assertion은 아니며, 대시보드 대표 라벨 샘플을 재현하기 위한 기준으로만 사용한다.
+
+| seed_finding_type | 대표 케이스 | 근거 축 |
+| --- | --- | --- |
+| `NHI Access Drift` | `eval-nhi-001`, `eval-github-nhi-001` | NHI가 민감 자산에 접근 가능한 경로 |
+| `NHI Credential Drift` | `eval-nhi-002`, `eval-github-nhi-002` | active credential/key/PAT metadata가 남은 경로 |
+| `NHI Permission Drift` | `eval-nhi-003`, `eval-github-nhi-003` | admin/write/read 같은 권한이 남은 경로 |
+| `HI Access Drift` | `eval-gws-hi-001`, `eval-slack-hi-001` | 퇴사/비활성 HI가 민감 자산에 접근 가능한 경로 |
+| `HI Permission Drift` | `eval-gws-hi-002`, `eval-slack-hi-003` | viewer/editor/member 권한이 남은 경로 |
+| `HI Stale Access` | `eval-gws-hi-005`, `eval-slack-hi-002` | 퇴사/비활성 계정 또는 멤버십이 stale 상태로 남은 경로 |
+
 ## 20건 샘플 구성
 
 20건은 사람이 빠르게 검토할 수 있는 최소 dev 샘플이다.

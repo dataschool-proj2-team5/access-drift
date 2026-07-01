@@ -30,6 +30,19 @@ LANDING_FILE_PATHS = {
     "access_edges": Path("access/access_edges_seed.jsonl"),
 }
 
+SAAS_LANDING_FILE_PATHS = {
+    "github_apps": Path("github/apps.jsonl"),
+    "github_credentials": Path("github/credentials.jsonl"),
+    "github_repos": Path("github/repos.jsonl"),
+    "github_access_edges": Path("github/access_edges.jsonl"),
+    "google_users": Path("google_workspace/users.jsonl"),
+    "google_assets": Path("google_workspace/assets.jsonl"),
+    "google_access_edges": Path("google_workspace/access_edges.jsonl"),
+    "slack_users": Path("slack/users.jsonl"),
+    "slack_channels": Path("slack/channels.jsonl"),
+    "slack_access_edges": Path("slack/access_edges.jsonl"),
+}
+
 CONTEXT_FILE_PATHS = {
     "asset_context": Path("asset_context.jsonl"),
     "assignment_routing": Path("assignment_routing.jsonl"),
@@ -62,6 +75,84 @@ EXPECTED_FIELDS = {
     },
 }
 
+SAAS_EXPECTED_FIELDS = {
+    "github_apps": {
+        "appId",
+        "slug",
+        "displayName",
+        "status",
+        "ownerEmail",
+        "ownerEmploymentStatus",
+        "ownerTerminationDate",
+    },
+    "github_credentials": {
+        "appId",
+        "credentialId",
+        "credentialType",
+        "displayName",
+        "status",
+        "expiresAt",
+    },
+    "github_repos": {
+        "repoId",
+        "name",
+        "visibility",
+        "environment",
+        "sensitivity",
+    },
+    "github_access_edges": {
+        "principalId",
+        "assetId",
+        "relationship",
+        "permission",
+        "status",
+    },
+    "google_users": {
+        "userId",
+        "email",
+        "displayName",
+        "status",
+        "employmentStatus",
+        "terminationDate",
+    },
+    "google_assets": {
+        "assetId",
+        "name",
+        "assetType",
+        "environment",
+        "sensitivity",
+    },
+    "google_access_edges": {
+        "principalId",
+        "assetId",
+        "relationship",
+        "permission",
+        "status",
+    },
+    "slack_users": {
+        "userId",
+        "email",
+        "displayName",
+        "status",
+        "employmentStatus",
+        "terminationDate",
+    },
+    "slack_channels": {
+        "channelId",
+        "name",
+        "channelType",
+        "environment",
+        "sensitivity",
+    },
+    "slack_access_edges": {
+        "principalId",
+        "assetId",
+        "relationship",
+        "permission",
+        "status",
+    },
+}
+
 CONTEXT_EXPECTED_FIELDS = {
     "asset_context": {
         "source_asset_id",
@@ -84,6 +175,7 @@ FORBIDDEN_FIELDS = {
     "is_planted_risk",
     "is_distractor",
     "expected_severity",
+    "seed_finding_type",
     "truth_class",
     "secretValue",
     "tokenValue",
@@ -120,6 +212,15 @@ DISTRACTOR_SERVICE_SLUGS = {
     ),
 }
 
+SEED_FINDING_TYPES = {
+    "NHI Access Drift",
+    "NHI Credential Drift",
+    "NHI Permission Drift",
+    "HI Access Drift",
+    "HI Permission Drift",
+    "HI Stale Access",
+}
+
 
 @dataclass(frozen=True)
 class CaseSpec:
@@ -146,6 +247,495 @@ class CaseSpec:
     distractor_type: str | None
 
 
+@dataclass(frozen=True)
+class SaasCaseSpec:
+    source: str
+    case_id: str
+    scenario_id: str
+    scenario_family: str
+    subject_type: str
+    subject_id: str
+    subject_display_name: str
+    residual_owner_email: str | None
+    residual_status: str
+    residual_date: str
+    credential_id: str | None
+    credential_type: str | None
+    credential_display_name: str | None
+    asset_id: str
+    asset_name: str
+    asset_type: str
+    environment: str
+    sensitivity: str
+    permission: str
+    drift_type: str
+    pattern: str
+    seed_finding_type: str
+    assignee_name: str
+    assignee_team: str
+    data_scope_label: str
+    sensitive_data_examples: tuple[str, ...]
+    sensitivity_reason: str
+    label_reason: str
+
+
+SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
+    SaasCaseSpec(
+        source="github",
+        case_id="eval-github-nhi-001",
+        scenario_id="scenario-github-nhi-001",
+        scenario_family="github_app_repo_residual_access",
+        subject_type="nhi",
+        subject_id="gh-app-prod-deploy-bot",
+        subject_display_name="prod-deploy-bot",
+        residual_owner_email="kim.minsu@company.com",
+        residual_status="terminated",
+        residual_date="2026-06-10",
+        credential_id="gh-cred-prod-deploy-key",
+        credential_type="deploy_key",
+        credential_display_name="prod deploy key metadata",
+        asset_id="gh-repo-payment-service-prod",
+        asset_name="payment-service",
+        asset_type="repo",
+        environment="production",
+        sensitivity="high",
+        permission="admin",
+        drift_type=DRIFT_TYPE,
+        pattern="P2",
+        seed_finding_type="NHI Access Drift",
+        assignee_name="박서준",
+        assignee_team="개발 플랫폼팀",
+        data_scope_label="결제 서비스 소스코드",
+        sensitive_data_examples=("결제 API 코드", "배포 설정", "운영 workflow"),
+        sensitivity_reason="결제 서비스 운영 코드와 배포 설정을 포함하는 private repository",
+        label_reason="퇴사 owner kim.minsu@company.com가 남긴 GitHub App prod-deploy-bot이 high 민감도 private repo에 admin 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="github",
+        case_id="eval-github-nhi-002",
+        scenario_id="scenario-github-nhi-002",
+        scenario_family="github_app_repo_residual_access",
+        subject_type="nhi",
+        subject_id="gh-app-security-audit-bot",
+        subject_display_name="security-audit-bot",
+        residual_owner_email="jung.woojin@company.com",
+        residual_status="terminated",
+        residual_date="2026-05-31",
+        credential_id="gh-cred-security-audit-pat",
+        credential_type="pat",
+        credential_display_name="security audit PAT metadata",
+        asset_id="gh-repo-infra-secrets-prod",
+        asset_name="infra-secrets",
+        asset_type="repo",
+        environment="production",
+        sensitivity="high",
+        permission="read",
+        drift_type=DRIFT_TYPE,
+        pattern="P2",
+        seed_finding_type="NHI Credential Drift",
+        assignee_name="정우진",
+        assignee_team="보안 플랫폼팀",
+        data_scope_label="인프라 보안 설정",
+        sensitive_data_examples=("Terraform 변수", "권한 정책", "시크릿 참조 경로"),
+        sensitivity_reason="운영 인프라 권한 정책과 secret 참조 위치를 포함하는 private repository",
+        label_reason="퇴사 owner jung.woojin@company.com가 남긴 GitHub App security-audit-bot이 high 민감도 infra repository에 read 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="github",
+        case_id="eval-github-nhi-003",
+        scenario_id="scenario-github-nhi-003",
+        scenario_family="github_app_repo_residual_access",
+        subject_type="nhi",
+        subject_id="gh-app-data-export-bot",
+        subject_display_name="data-export-bot",
+        residual_owner_email="lee.dayoung@company.com",
+        residual_status="terminated",
+        residual_date="2026-06-03",
+        credential_id="gh-cred-data-export-key",
+        credential_type="deploy_key",
+        credential_display_name="data export deploy key metadata",
+        asset_id="gh-repo-customer-export-prod",
+        asset_name="customer-export",
+        asset_type="repo",
+        environment="production",
+        sensitivity="high",
+        permission="write",
+        drift_type=DRIFT_TYPE,
+        pattern="P2",
+        seed_finding_type="NHI Permission Drift",
+        assignee_name="이다영",
+        assignee_team="CRM 데이터 운영팀",
+        data_scope_label="고객 Export 배치 코드",
+        sensitive_data_examples=("고객 export 쿼리", "스케줄 설정", "데이터 경로"),
+        sensitivity_reason="고객 데이터 export 경로와 배치 코드를 포함하는 private repository",
+        label_reason="퇴사 owner lee.dayoung@company.com가 남긴 GitHub App data-export-bot이 고객 export repository에 write 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="github",
+        case_id="eval-github-nhi-004",
+        scenario_id="scenario-github-nhi-004",
+        scenario_family="github_app_repo_residual_access",
+        subject_type="nhi",
+        subject_id="gh-app-finance-ci-bot",
+        subject_display_name="finance-ci-bot",
+        residual_owner_email="park.seojun@company.com",
+        residual_status="terminated",
+        residual_date="2026-05-27",
+        credential_id="gh-cred-finance-ci-pat",
+        credential_type="pat",
+        credential_display_name="finance ci PAT metadata",
+        asset_id="gh-repo-finance-ledger-prod",
+        asset_name="finance-ledger",
+        asset_type="repo",
+        environment="production",
+        sensitivity="high",
+        permission="write",
+        drift_type=DRIFT_TYPE,
+        pattern="P2",
+        seed_finding_type="NHI Permission Drift",
+        assignee_name="박서준",
+        assignee_team="재무 데이터팀",
+        data_scope_label="재무 원장 처리 코드",
+        sensitive_data_examples=("정산 로직", "회계 원장 처리", "배포 workflow"),
+        sensitivity_reason="정산과 회계 처리 로직을 포함하는 private repository",
+        label_reason="퇴사 owner park.seojun@company.com가 남긴 GitHub App finance-ci-bot이 재무 원장 repository에 write 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="github",
+        case_id="eval-github-nhi-005",
+        scenario_id="scenario-github-nhi-005",
+        scenario_family="github_app_repo_residual_access",
+        subject_type="nhi",
+        subject_id="gh-app-support-automation-bot",
+        subject_display_name="support-automation-bot",
+        residual_owner_email="kim.hana@company.com",
+        residual_status="terminated",
+        residual_date="2026-06-01",
+        credential_id="gh-cred-support-automation-key",
+        credential_type="deploy_key",
+        credential_display_name="support automation key metadata",
+        asset_id="gh-repo-support-tools-prod",
+        asset_name="support-tools",
+        asset_type="repo",
+        environment="production",
+        sensitivity="medium",
+        permission="admin",
+        drift_type=DRIFT_TYPE,
+        pattern="P2",
+        seed_finding_type="NHI Access Drift",
+        assignee_name="김하나",
+        assignee_team="고객지원 데이터팀",
+        data_scope_label="고객지원 자동화 코드",
+        sensitive_data_examples=("문의 처리 workflow", "고객지원 연동 설정"),
+        sensitivity_reason="고객지원 자동화와 내부 운영 workflow를 포함하는 repository",
+        label_reason="퇴사 owner kim.hana@company.com가 남긴 GitHub App support-automation-bot이 support-tools repository에 admin 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="google_workspace",
+        case_id="eval-gws-hi-001",
+        scenario_id="scenario-gws-hi-001",
+        scenario_family="google_workspace_hi_residual_access",
+        subject_type="hi",
+        subject_id="gws-user-lee.hana",
+        subject_display_name="Lee Hana",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-07",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="gws-drive-customer-support-shared",
+        asset_name="customer-support-shared-drive",
+        asset_type="workspace",
+        environment="production",
+        sensitivity="high",
+        permission="editor",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Access Drift",
+        assignee_name="김하나",
+        assignee_team="고객지원 데이터팀",
+        data_scope_label="고객지원 공유 드라이브",
+        sensitive_data_examples=("고객 문의 내역", "고객 연락처", "처리 상태"),
+        sensitivity_reason="고객 문의와 연락처 참조 정보를 포함하는 shared drive",
+        label_reason="퇴사 후 suspended 상태인 Google Workspace 사용자 lee.hana가 high 민감도 고객지원 공유 드라이브에 editor 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="google_workspace",
+        case_id="eval-gws-hi-002",
+        scenario_id="scenario-gws-hi-002",
+        scenario_family="google_workspace_hi_residual_access",
+        subject_type="hi",
+        subject_id="gws-user-park.jun",
+        subject_display_name="Park Jun",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-04",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="gws-doc-finance-close-playbook",
+        asset_name="finance-close-playbook",
+        asset_type="workspace",
+        environment="production",
+        sensitivity="medium",
+        permission="viewer",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Permission Drift",
+        assignee_name="박서준",
+        assignee_team="재무 데이터팀",
+        data_scope_label="월마감 재무 문서",
+        sensitive_data_examples=("마감 절차", "정산 기준", "내부 승인 흐름"),
+        sensitivity_reason="월마감 재무 절차와 승인 기준을 포함하는 내부 문서",
+        label_reason="퇴사 후 suspended 상태인 Google Workspace 사용자 park.jun이 재무 마감 문서에 viewer 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="google_workspace",
+        case_id="eval-gws-hi-003",
+        scenario_id="scenario-gws-hi-003",
+        scenario_family="google_workspace_hi_residual_access",
+        subject_type="hi",
+        subject_id="gws-user-choi.seo",
+        subject_display_name="Choi Seo",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-05-29",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="gws-sheet-vip-customer-list",
+        asset_name="vip-customer-list",
+        asset_type="workspace",
+        environment="production",
+        sensitivity="critical",
+        permission="editor",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Access Drift",
+        assignee_name="이다영",
+        assignee_team="CRM 데이터 운영팀",
+        data_scope_label="VIP 고객 리스트",
+        sensitive_data_examples=("고객 이름", "연락처", "세그먼트", "구매 등급"),
+        sensitivity_reason="고객 식별 정보와 세그먼트 정보를 포함하는 Google Sheet",
+        label_reason="퇴사 후 suspended 상태인 Google Workspace 사용자 choi.seo가 critical 민감도 VIP 고객 리스트에 editor 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="google_workspace",
+        case_id="eval-gws-hi-004",
+        scenario_id="scenario-gws-hi-004",
+        scenario_family="google_workspace_hi_residual_access",
+        subject_type="hi",
+        subject_id="gws-user-jung.woo",
+        subject_display_name="Jung Woo",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-12",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="gws-drive-seller-settlement",
+        asset_name="seller-settlement-drive",
+        asset_type="workspace",
+        environment="production",
+        sensitivity="critical",
+        permission="viewer",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Permission Drift",
+        assignee_name="한지민",
+        assignee_team="정산 플랫폼팀",
+        data_scope_label="판매자 정산 공유 드라이브",
+        sensitive_data_examples=("판매자 ID", "정산 금액", "수수료", "지급 상태"),
+        sensitivity_reason="판매자 정산과 지급 상태 정보를 포함하는 shared drive",
+        label_reason="퇴사 후 suspended 상태인 Google Workspace 사용자 jung.woo가 critical 민감도 판매자 정산 공유 드라이브에 viewer 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="google_workspace",
+        case_id="eval-gws-hi-005",
+        scenario_id="scenario-gws-hi-005",
+        scenario_family="google_workspace_hi_residual_access",
+        subject_type="hi",
+        subject_id="gws-user-oh.sehun",
+        subject_display_name="Oh Sehun",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-02",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="gws-doc-marketing-segment-plan",
+        asset_name="marketing-segment-plan",
+        asset_type="workspace",
+        environment="production",
+        sensitivity="medium",
+        permission="editor",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Stale Access",
+        assignee_name="오세훈",
+        assignee_team="마케팅 데이터팀",
+        data_scope_label="마케팅 세그먼트 문서",
+        sensitive_data_examples=("세그먼트 기준", "캠페인 대상", "관심 카테고리"),
+        sensitivity_reason="고객 세그먼트 기준과 캠페인 대상 조건을 포함하는 문서",
+        label_reason="퇴사 후 suspended 상태인 Google Workspace 사용자 oh.sehun이 마케팅 세그먼트 문서에 editor 권한으로 접근할 수 있다.",
+    ),
+    SaasCaseSpec(
+        source="slack",
+        case_id="eval-slack-hi-001",
+        scenario_id="scenario-slack-hi-001",
+        scenario_family="slack_channel_hi_residual_access",
+        subject_type="hi",
+        subject_id="slack-user-kang.yuna",
+        subject_display_name="Kang Yuna",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-06",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="slack-channel-customer-support-private",
+        asset_name="customer-support-private",
+        asset_type="slack_channel",
+        environment="production",
+        sensitivity="critical",
+        permission="member",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Access Drift",
+        assignee_name="김하나",
+        assignee_team="고객지원 데이터팀",
+        data_scope_label="고객지원 private channel",
+        sensitive_data_examples=("고객 문의", "고객 연락처", "처리 상태"),
+        sensitivity_reason="고객 문의와 연락처가 공유되는 private Slack channel",
+        label_reason="퇴사 후 deactivated 상태인 Slack 사용자 kang.yuna가 critical 민감도 고객지원 private channel에 member 권한으로 남아 있다.",
+    ),
+    SaasCaseSpec(
+        source="slack",
+        case_id="eval-slack-hi-002",
+        scenario_id="scenario-slack-hi-002",
+        scenario_family="slack_channel_hi_residual_access",
+        subject_type="hi",
+        subject_id="slack-user-lim.taehyun",
+        subject_display_name="Lim Taehyun",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-09",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="slack-channel-security-incident",
+        asset_name="security-incident",
+        asset_type="slack_channel",
+        environment="production",
+        sensitivity="high",
+        permission="member",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Stale Access",
+        assignee_name="정우진",
+        assignee_team="보안 플랫폼팀",
+        data_scope_label="보안 incident channel",
+        sensitive_data_examples=("보안 사고 대응", "취약점 논의", "권한 변경 이력"),
+        sensitivity_reason="보안 사고 대응과 취약점 논의가 포함되는 private Slack channel",
+        label_reason="퇴사 후 deactivated 상태인 Slack 사용자 lim.taehyun이 high 민감도 보안 incident channel에 member 권한으로 남아 있다.",
+    ),
+    SaasCaseSpec(
+        source="slack",
+        case_id="eval-slack-hi-003",
+        scenario_id="scenario-slack-hi-003",
+        scenario_family="slack_channel_hi_residual_access",
+        subject_type="hi",
+        subject_id="slack-user-han.jimin",
+        subject_display_name="Han Jimin",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-11",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="slack-channel-finance-settlement",
+        asset_name="finance-settlement",
+        asset_type="slack_channel",
+        environment="production",
+        sensitivity="critical",
+        permission="member",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Permission Drift",
+        assignee_name="한지민",
+        assignee_team="정산 플랫폼팀",
+        data_scope_label="정산 private channel",
+        sensitive_data_examples=("판매자 ID", "정산 금액", "지급 상태"),
+        sensitivity_reason="판매자 정산과 지급 상태가 논의되는 private Slack channel",
+        label_reason="퇴사 후 deactivated 상태인 Slack 사용자 han.jimin이 critical 민감도 정산 private channel에 member 권한으로 남아 있다.",
+    ),
+    SaasCaseSpec(
+        source="slack",
+        case_id="eval-slack-hi-004",
+        scenario_id="scenario-slack-hi-004",
+        scenario_family="slack_channel_hi_residual_access",
+        subject_type="hi",
+        subject_id="slack-user-seo.minji",
+        subject_display_name="Seo Minji",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-08",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="slack-channel-vip-customer-ops",
+        asset_name="vip-customer-ops",
+        asset_type="slack_channel",
+        environment="production",
+        sensitivity="critical",
+        permission="member",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Access Drift",
+        assignee_name="이다영",
+        assignee_team="CRM 데이터 운영팀",
+        data_scope_label="VIP 고객 운영 channel",
+        sensitive_data_examples=("VIP 고객 이름", "연락처", "구매 등급"),
+        sensitivity_reason="VIP 고객 식별 정보와 운영 이슈가 공유되는 private Slack channel",
+        label_reason="퇴사 후 deactivated 상태인 Slack 사용자 seo.minji가 critical 민감도 VIP 고객 운영 channel에 member 권한으로 남아 있다.",
+    ),
+    SaasCaseSpec(
+        source="slack",
+        case_id="eval-slack-hi-005",
+        scenario_id="scenario-slack-hi-005",
+        scenario_family="slack_channel_hi_residual_access",
+        subject_type="hi",
+        subject_id="slack-user-moon.jae",
+        subject_display_name="Moon Jae",
+        residual_owner_email=None,
+        residual_status="terminated",
+        residual_date="2026-06-05",
+        credential_id=None,
+        credential_type=None,
+        credential_display_name=None,
+        asset_id="slack-channel-ops-runbook",
+        asset_name="ops-runbook",
+        asset_type="slack_channel",
+        environment="production",
+        sensitivity="medium",
+        permission="member",
+        drift_type="hi_residual_access",
+        pattern="P1",
+        seed_finding_type="HI Stale Access",
+        assignee_name="최하은",
+        assignee_team="운영 데이터팀",
+        data_scope_label="운영 runbook channel",
+        sensitive_data_examples=("운영 절차", "장애 대응 흐름", "배포 일정"),
+        sensitivity_reason="운영 절차와 장애 대응 흐름이 공유되는 private Slack channel",
+        label_reason="퇴사 후 deactivated 상태인 Slack 사용자 moon.jae가 medium 민감도 운영 runbook channel에 member 권한으로 남아 있다.",
+    ),
+)
+
+
+SAAS_CASE_COUNT = len(SAAS_CASE_SPECS)
+
+
 def _iso_ts(value: date) -> str:
     return f"{value.isoformat()}T09:00:00Z"
 
@@ -166,6 +756,20 @@ def _owner_display_name(seed: int, index: int) -> str:
 
 def _expected_severity(sensitivity: str) -> str:
     return sensitivity.upper()
+
+
+def _seed_finding_type_for_spec(spec: CaseSpec) -> str:
+    if spec.case_kind == "positive":
+        if spec.index % 3 == 2:
+            return "NHI Credential Drift"
+        if spec.index % 3 == 0:
+            return "NHI Permission Drift"
+        return "NHI Access Drift"
+    if spec.distractor_type == "credential_expired":
+        return "NHI Credential Drift"
+    if spec.distractor_type == "access_inactive":
+        return "NHI Permission Drift"
+    return "NHI Access Drift"
 
 
 def _service_name(slug: str, environment: str) -> str:
@@ -449,6 +1053,11 @@ def build_case_specs(size: int, seed: int, reference_date: date) -> list[CaseSpe
     return specs
 
 
+def _insert_saas_after_review_window(rows: list[dict[str, object]], saas_rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    review_window = min(20, len(rows))
+    return [*rows[:review_window], *saas_rows, *rows[review_window:]]
+
+
 def build_landing_records(
     specs: Iterable[CaseSpec], reference_date: date
 ) -> dict[str, list[dict[str, object]]]:
@@ -514,6 +1123,120 @@ def build_landing_records(
     return records
 
 
+def build_saas_landing_records(reference_date: date) -> dict[str, list[dict[str, object]]]:
+    expires_at = f"{(reference_date + timedelta(days=365)).isoformat()}T00:00:00Z"
+    github_cases = [case for case in SAAS_CASE_SPECS if case.source == "github"]
+    google_cases = [case for case in SAAS_CASE_SPECS if case.source == "google_workspace"]
+    slack_cases = [case for case in SAAS_CASE_SPECS if case.source == "slack"]
+    return {
+        "github_apps": [
+            {
+                "appId": case.subject_id,
+                "slug": case.subject_id.removeprefix("gh-app-"),
+                "displayName": case.subject_display_name,
+                "status": "active",
+                "ownerEmail": case.residual_owner_email,
+                "ownerEmploymentStatus": case.residual_status,
+                "ownerTerminationDate": case.residual_date,
+            }
+            for case in github_cases
+        ],
+        "github_credentials": [
+            {
+                "appId": case.subject_id,
+                "credentialId": case.credential_id,
+                "credentialType": case.credential_type,
+                "displayName": case.credential_display_name,
+                "status": "active",
+                "expiresAt": expires_at,
+            }
+            for case in github_cases
+        ],
+        "github_repos": [
+            {
+                "repoId": case.asset_id,
+                "name": case.asset_name,
+                "visibility": "private",
+                "environment": case.environment,
+                "sensitivity": case.sensitivity,
+            }
+            for case in github_cases
+        ],
+        "github_access_edges": [
+            {
+                "principalId": case.subject_id,
+                "assetId": case.asset_id,
+                "relationship": "accesses_asset",
+                "permission": case.permission,
+                "status": "active",
+            }
+            for case in github_cases
+        ],
+        "google_users": [
+            {
+                "userId": case.subject_id,
+                "email": f"{case.subject_id.removeprefix('gws-user-')}@company.com",
+                "displayName": case.subject_display_name,
+                "status": "suspended",
+                "employmentStatus": case.residual_status,
+                "terminationDate": case.residual_date,
+            }
+            for case in google_cases
+        ],
+        "google_assets": [
+            {
+                "assetId": case.asset_id,
+                "name": case.asset_name,
+                "assetType": case.asset_type,
+                "environment": case.environment,
+                "sensitivity": case.sensitivity,
+            }
+            for case in google_cases
+        ],
+        "google_access_edges": [
+            {
+                "principalId": case.subject_id,
+                "assetId": case.asset_id,
+                "relationship": "accesses_asset",
+                "permission": case.permission,
+                "status": "active",
+            }
+            for case in google_cases
+        ],
+        "slack_users": [
+            {
+                "userId": case.subject_id,
+                "email": f"{case.subject_id.removeprefix('slack-user-')}@company.com",
+                "displayName": case.subject_display_name,
+                "status": "deactivated",
+                "employmentStatus": case.residual_status,
+                "terminationDate": case.residual_date,
+            }
+            for case in slack_cases
+        ],
+        "slack_channels": [
+            {
+                "channelId": case.asset_id,
+                "name": case.asset_name,
+                "channelType": "private",
+                "environment": case.environment,
+                "sensitivity": case.sensitivity,
+            }
+            for case in slack_cases
+        ],
+        "slack_access_edges": [
+            {
+                "principalId": case.subject_id,
+                "assetId": case.asset_id,
+                "relationship": "accesses_asset",
+                "permission": case.permission,
+                "status": "active",
+            }
+            for case in slack_cases
+        ],
+    }
+
+
 def build_eval_records(
     specs: Iterable[CaseSpec], reference_date: date
 ) -> list[dict[str, object]]:
@@ -550,11 +1273,32 @@ def build_eval_records(
                 "is_distractor": spec.is_distractor,
                 "pattern": "P2",
                 "expected_severity": _expected_severity(spec.sensitivity),
+                "seed_finding_type": _seed_finding_type_for_spec(spec),
                 "label_reason": reason,
                 "created_at": created_at,
             }
         )
-    return rows
+    saas_rows = []
+    for case in SAAS_CASE_SPECS:
+        saas_rows.append(
+            {
+                "case_id": case.case_id,
+                "scenario_id": case.scenario_id,
+                "scenario_family": case.scenario_family,
+                "subject_type": case.subject_type,
+                "subject_id": case.subject_id,
+                "asset_id": case.asset_id,
+                "drift_type": case.drift_type,
+                "is_planted_risk": True,
+                "is_distractor": False,
+                "pattern": case.pattern,
+                "expected_severity": _expected_severity(case.sensitivity),
+                "seed_finding_type": case.seed_finding_type,
+                "label_reason": case.label_reason,
+                "created_at": created_at,
+            }
+        )
+    return _insert_saas_after_review_window(rows, saas_rows)
 
 
 def _asset_context_for_spec(spec: CaseSpec) -> dict[str, object]:
@@ -664,6 +1408,15 @@ def _asset_context_for_spec(spec: CaseSpec) -> dict[str, object]:
     }
 
 
+def _asset_context_for_saas_case(case: SaasCaseSpec) -> dict[str, object]:
+    return {
+        "source_asset_id": case.asset_id,
+        "data_scope_label": case.data_scope_label,
+        "sensitive_data_examples": list(case.sensitive_data_examples),
+        "sensitivity_reason": case.sensitivity_reason,
+    }
+
+
 def _assignment_routing_for_spec(spec: CaseSpec) -> dict[str, object]:
     asset_key = spec.asset_id.removeprefix("asset-")
     team_by_pattern = (
@@ -698,11 +1451,27 @@ def _assignment_routing_for_spec(spec: CaseSpec) -> dict[str, object]:
     }
 
 
+def _assignment_routing_for_saas_case(case: SaasCaseSpec) -> dict[str, object]:
+    return {
+        "subject_type": case.subject_type,
+        "subject_id": case.subject_id,
+        "asset_id": case.asset_id,
+        "drift_type": case.drift_type,
+        "assignee_name": case.assignee_name,
+        "assignee_team": case.assignee_team,
+        "routing_reason": f"{case.subject_display_name}와 {case.asset_name}의 운영 책임 팀",
+    }
+
+
 def build_context_records(specs: Iterable[CaseSpec]) -> dict[str, list[dict[str, object]]]:
     spec_list = list(specs)
+    asset_context = [_asset_context_for_spec(spec) for spec in spec_list]
+    assignment_routing = [_assignment_routing_for_spec(spec) for spec in spec_list]
+    saas_asset_context = [_asset_context_for_saas_case(case) for case in SAAS_CASE_SPECS]
+    saas_assignment_routing = [_assignment_routing_for_saas_case(case) for case in SAAS_CASE_SPECS]
     return {
-        "asset_context": [_asset_context_for_spec(spec) for spec in spec_list],
-        "assignment_routing": [_assignment_routing_for_spec(spec) for spec in spec_list],
+        "asset_context": _insert_saas_after_review_window(asset_context, saas_asset_context),
+        "assignment_routing": _insert_saas_after_review_window(assignment_routing, saas_assignment_routing),
     }
 
 
@@ -799,16 +1568,101 @@ def validate_landing_records(
                 raise ValueError(f"{label} must not expose generated index suffix")
 
 
+def validate_saas_landing_records(records: dict[str, list[dict[str, object]]]) -> None:
+    if set(records) != set(SAAS_LANDING_FILE_PATHS):
+        raise ValueError("unexpected SaaS landing record groups")
+
+    for group, rows in records.items():
+        expected_rows = 5
+        if len(rows) != expected_rows:
+            raise ValueError(f"{group} expected {expected_rows}, got {len(rows)}")
+        for row in rows:
+            if set(row).intersection(FORBIDDEN_FIELDS):
+                raise ValueError(f"{group} contains a forbidden field")
+            if set(row) != SAAS_EXPECTED_FIELDS[group]:
+                raise ValueError(f"{group} has unexpected fields: {set(row)}")
+            for field, value in row.items():
+                if not isinstance(value, str) or not value:
+                    raise ValueError(f"{group}.{field} must be a non-empty string")
+
+    github_app_ids = {row["appId"] for row in records["github_apps"]}
+    github_repo_ids = {row["repoId"] for row in records["github_repos"]}
+    google_user_ids = {row["userId"] for row in records["google_users"]}
+    google_asset_ids = {row["assetId"] for row in records["google_assets"]}
+    slack_user_ids = {row["userId"] for row in records["slack_users"]}
+    slack_channel_ids = {row["channelId"] for row in records["slack_channels"]}
+
+    if not all(str(value).startswith("gh-") for value in github_app_ids):
+        raise ValueError("GitHub appId must use gh- namespace")
+    if not all(str(value).startswith("gh-") for value in github_repo_ids):
+        raise ValueError("GitHub repoId must use gh- namespace")
+    if not all(str(value).startswith("gws-") for value in google_user_ids):
+        raise ValueError("Google userId must use gws- namespace")
+    if not all(str(value).startswith("gws-") for value in google_asset_ids):
+        raise ValueError("Google assetId must use gws- namespace")
+    if not all(str(value).startswith("slack-") for value in slack_user_ids):
+        raise ValueError("Slack userId must use slack- namespace")
+    if not all(str(value).startswith("slack-") for value in slack_channel_ids):
+        raise ValueError("Slack channelId must use slack- namespace")
+
+    for row in records["github_apps"]:
+        if row["status"] != "active":
+            raise ValueError("GitHub app status must be active")
+        if row["ownerEmploymentStatus"] != "terminated":
+            raise ValueError("GitHub app ownerEmploymentStatus must be terminated")
+        date.fromisoformat(str(row["ownerTerminationDate"]))
+
+    for row in records["google_users"]:
+        if row["status"] != "suspended":
+            raise ValueError("Google user status must be suspended")
+        if row["employmentStatus"] != "terminated":
+            raise ValueError("Google user employmentStatus must be terminated")
+        date.fromisoformat(str(row["terminationDate"]))
+
+    for row in records["slack_users"]:
+        if row["status"] != "deactivated":
+            raise ValueError("Slack user status must be deactivated")
+        if row["employmentStatus"] != "terminated":
+            raise ValueError("Slack user employmentStatus must be terminated")
+        date.fromisoformat(str(row["terminationDate"]))
+
+    if {row["appId"] for row in records["github_credentials"]} != github_app_ids:
+        raise ValueError("GitHub credentials must match GitHub apps")
+    if {row["principalId"] for row in records["github_access_edges"]} != github_app_ids:
+        raise ValueError("GitHub access edge principalId must match GitHub apps")
+    if {row["assetId"] for row in records["github_access_edges"]} != github_repo_ids:
+        raise ValueError("GitHub access edge assetId must match GitHub repos")
+    if {row["principalId"] for row in records["google_access_edges"]} != google_user_ids:
+        raise ValueError("Google access edge principalId must match Google users")
+    if {row["assetId"] for row in records["google_access_edges"]} != google_asset_ids:
+        raise ValueError("Google access edge assetId must match Google assets")
+    if {row["principalId"] for row in records["slack_access_edges"]} != slack_user_ids:
+        raise ValueError("Slack access edge principalId must match Slack users")
+    if {row["assetId"] for row in records["slack_access_edges"]} != slack_channel_ids:
+        raise ValueError("Slack access edge assetId must match Slack channels")
+
+    for row in records["github_credentials"]:
+        _validate_timestamp(row["expiresAt"], "expiresAt")
+
+
 def validate_eval_records(
     eval_rows: list[dict[str, object]],
     landing_records: dict[str, list[dict[str, object]]],
+    saas_landing_records: dict[str, list[dict[str, object]]],
     expected_size: int,
 ) -> None:
-    if len(eval_rows) != expected_size:
-        raise ValueError(f"eval expected {expected_size}, got {len(eval_rows)}")
+    expected_eval_size = expected_size + SAAS_CASE_COUNT
+    if len(eval_rows) != expected_eval_size:
+        raise ValueError(f"eval expected {expected_eval_size}, got {len(eval_rows)}")
 
     app_ids = {row["appId"] for row in landing_records["applications"]}
     asset_by_id = {row["assetId"]: row for row in landing_records["assets"]}
+    github_app_ids = {row["appId"] for row in saas_landing_records["github_apps"]}
+    github_asset_by_id = {row["repoId"]: row for row in saas_landing_records["github_repos"]}
+    google_user_ids = {row["userId"] for row in saas_landing_records["google_users"]}
+    google_asset_by_id = {row["assetId"]: row for row in saas_landing_records["google_assets"]}
+    slack_user_ids = {row["userId"] for row in saas_landing_records["slack_users"]}
+    slack_asset_by_id = {row["channelId"]: row for row in saas_landing_records["slack_channels"]}
     required = {
         "case_id",
         "scenario_id",
@@ -821,6 +1675,7 @@ def validate_eval_records(
         "is_distractor",
         "pattern",
         "expected_severity",
+        "seed_finding_type",
         "label_reason",
         "created_at",
     }
@@ -833,33 +1688,62 @@ def validate_eval_records(
         if row["case_id"] in seen_case_ids:
             raise ValueError("duplicate eval case_id")
         seen_case_ids.add(row["case_id"])
-        if row["subject_type"] != "nhi":
-            raise ValueError("eval subject_type must be nhi")
-        if row["subject_id"] not in app_ids:
-            raise ValueError("eval subject_id does not match application appId")
-        if row["asset_id"] not in asset_by_id:
-            raise ValueError("eval asset_id does not match asset seed")
-        if row["drift_type"] != DRIFT_TYPE:
-            raise ValueError("eval drift_type mismatch")
+        subject_type = row["subject_type"]
+        subject_id = row["subject_id"]
+        asset_id = row["asset_id"]
+        if subject_type == "nhi" and subject_id in app_ids:
+            if asset_id not in asset_by_id:
+                raise ValueError("eval asset_id does not match asset seed")
+            asset = asset_by_id[asset_id]
+            if row["drift_type"] != DRIFT_TYPE:
+                raise ValueError("NHI eval drift_type mismatch")
+        elif subject_type == "nhi" and subject_id in github_app_ids:
+            if asset_id not in github_asset_by_id:
+                raise ValueError("GitHub eval asset_id does not match GitHub repo")
+            asset = github_asset_by_id[asset_id]
+            if row["drift_type"] != DRIFT_TYPE:
+                raise ValueError("GitHub NHI eval drift_type mismatch")
+        elif subject_type == "hi" and subject_id in google_user_ids:
+            if asset_id not in google_asset_by_id:
+                raise ValueError("Google eval asset_id does not match Google asset")
+            asset = google_asset_by_id[asset_id]
+            if row["drift_type"] != "hi_residual_access":
+                raise ValueError("Google HI eval drift_type mismatch")
+        elif subject_type == "hi" and subject_id in slack_user_ids:
+            if asset_id not in slack_asset_by_id:
+                raise ValueError("Slack eval asset_id does not match Slack channel")
+            asset = slack_asset_by_id[asset_id]
+            if row["drift_type"] != "hi_residual_access":
+                raise ValueError("Slack HI eval drift_type mismatch")
+        else:
+            raise ValueError("eval subject_id does not match known principal source")
         if row["is_distractor"] is True:
             distractors += 1
         if row["is_planted_risk"] is True:
             positives += 1
-        asset = asset_by_id[row["asset_id"]]
         if row["expected_severity"] != _expected_severity(str(asset["sensitivity"])):
             raise ValueError("expected_severity must match asset sensitivity uppercase")
+        if row["seed_finding_type"] not in SEED_FINDING_TYPES:
+            raise ValueError("unknown seed_finding_type")
         _validate_timestamp(row["created_at"], "created_at")
 
     mix = expected_counts_for_size(expected_size)
-    if positives != mix["positive"]:
+    if positives != mix["positive"] + SAAS_CASE_COUNT:
         raise ValueError("unexpected positive eval count")
     if distractors != mix["distractor"]:
         raise ValueError("unexpected distractor eval count")
+    missing_finding_types = SEED_FINDING_TYPES - {
+        str(row["seed_finding_type"]) for row in eval_rows
+    }
+    if expected_size >= 20 and missing_finding_types:
+        missing = ", ".join(sorted(missing_finding_types))
+        raise ValueError(f"seed_finding_type coverage missing: {missing}")
 
 
 def validate_context_records(
     context_records: dict[str, list[dict[str, object]]],
     landing_records: dict[str, list[dict[str, object]]],
+    saas_landing_records: dict[str, list[dict[str, object]]],
     eval_rows: list[dict[str, object]],
     expected_size: int,
 ) -> None:
@@ -867,8 +1751,9 @@ def validate_context_records(
         raise ValueError("unexpected context record groups")
 
     for group, rows in context_records.items():
-        if len(rows) != expected_size:
-            raise ValueError(f"{group} expected {expected_size}, got {len(rows)}")
+        expected_context_size = expected_size + SAAS_CASE_COUNT
+        if len(rows) != expected_context_size:
+            raise ValueError(f"{group} expected {expected_context_size}, got {len(rows)}")
         for row in rows:
             if set(row).intersection(FORBIDDEN_FIELDS):
                 raise ValueError(f"{group} contains a forbidden field")
@@ -876,14 +1761,20 @@ def validate_context_records(
                 raise ValueError(f"{group} has unexpected fields: {set(row)}")
 
     asset_ids = {row["assetId"] for row in landing_records["assets"]}
+    asset_ids.update(row["repoId"] for row in saas_landing_records["github_repos"])
+    asset_ids.update(row["assetId"] for row in saas_landing_records["google_assets"])
+    asset_ids.update(row["channelId"] for row in saas_landing_records["slack_channels"])
     app_ids = {row["appId"] for row in landing_records["applications"]}
+    app_ids.update(row["appId"] for row in saas_landing_records["github_apps"])
+    app_ids.update(row["userId"] for row in saas_landing_records["google_users"])
+    app_ids.update(row["userId"] for row in saas_landing_records["slack_users"])
     eval_keys = {
         (row["subject_type"], row["subject_id"], row["asset_id"], row["drift_type"])
         for row in eval_rows
     }
 
     asset_context_ids = [row["source_asset_id"] for row in context_records["asset_context"]]
-    if len(set(asset_context_ids)) != expected_size:
+    if len(set(asset_context_ids)) != expected_size + SAAS_CASE_COUNT:
         raise ValueError("duplicate asset_context.source_asset_id")
     if set(asset_context_ids) != asset_ids:
         raise ValueError("asset_context source_asset_id must match landing assets")
@@ -902,13 +1793,13 @@ def validate_context_records(
     for row in context_records["assignment_routing"]:
         key = (row["subject_type"], row["subject_id"], row["asset_id"], row["drift_type"])
         routing_keys.append(key)
-        if row["subject_type"] != "nhi":
-            raise ValueError("assignment_routing.subject_type must be nhi")
+        if row["subject_type"] not in {"hi", "nhi"}:
+            raise ValueError("assignment_routing.subject_type must be hi or nhi")
         if row["subject_id"] not in app_ids:
-            raise ValueError("assignment_routing.subject_id must match application appId")
+            raise ValueError("assignment_routing.subject_id must match known principal source")
         if row["asset_id"] not in asset_ids:
-            raise ValueError("assignment_routing.asset_id must match landing assetId")
-        if row["drift_type"] != DRIFT_TYPE:
+            raise ValueError("assignment_routing.asset_id must match known asset source")
+        if row["drift_type"] not in {DRIFT_TYPE, "hi_residual_access"}:
             raise ValueError("assignment_routing.drift_type mismatch")
         for field in ("assignee_name", "assignee_team"):
             if not isinstance(row[field], str) or not row[field]:
@@ -916,7 +1807,7 @@ def validate_context_records(
         if not isinstance(row["routing_reason"], str):
             raise ValueError("assignment_routing.routing_reason must be a string")
 
-    if len(set(routing_keys)) != expected_size:
+    if len(set(routing_keys)) != expected_size + SAAS_CASE_COUNT:
         raise ValueError("duplicate assignment_routing source key")
     if set(routing_keys) != eval_keys:
         raise ValueError("assignment_routing source keys must match eval source keys")
@@ -933,6 +1824,11 @@ def write_jsonl(rows: Iterable[dict[str, object]], path: Path) -> None:
 
 def write_landing_records(records: dict[str, list[dict[str, object]]], output_root: Path) -> None:
     for group, relative_path in LANDING_FILE_PATHS.items():
+        write_jsonl(records[group], output_root / relative_path)
+
+
+def write_saas_landing_records(records: dict[str, list[dict[str, object]]], output_root: Path) -> None:
+    for group, relative_path in SAAS_LANDING_FILE_PATHS.items():
         write_jsonl(records[group], output_root / relative_path)
 
 
@@ -957,20 +1853,24 @@ def generate(
     context_output_root: Path,
 ) -> tuple[
     dict[str, list[dict[str, object]]],
+    dict[str, list[dict[str, object]]],
     list[dict[str, object]],
     dict[str, list[dict[str, object]]],
 ]:
     specs = build_case_specs(size, seed, reference_date)
     landing = build_landing_records(specs, reference_date)
+    saas_landing = build_saas_landing_records(reference_date)
     eval_rows = build_eval_records(specs, reference_date)
     context = build_context_records(specs)
     validate_landing_records(landing, size, reference_date)
-    validate_eval_records(eval_rows, landing, size)
-    validate_context_records(context, landing, eval_rows, size)
+    validate_saas_landing_records(saas_landing)
+    validate_eval_records(eval_rows, landing, saas_landing, size)
+    validate_context_records(context, landing, saas_landing, eval_rows, size)
     write_landing_records(landing, landing_output_root)
+    write_saas_landing_records(saas_landing, landing_output_root)
     write_jsonl(eval_rows, eval_output_path)
     write_context_records(context, context_output_root)
-    return landing, eval_rows, context
+    return landing, saas_landing, eval_rows, context
 
 
 def parse_reference_date(value: str) -> date:
@@ -1000,7 +1900,7 @@ def main() -> None:
     eval_output_path = args.eval_output_path or default_eval
     context_output_root = args.context_output_root or default_context
 
-    landing, eval_rows, context = generate(
+    landing, saas_landing, eval_rows, context = generate(
         args.size,
         args.seed,
         args.reference_date,
@@ -1014,13 +1914,21 @@ def main() -> None:
     print(f"reference_date={args.reference_date.isoformat()}")
     for group, rows in landing.items():
         print(f"{group}: rows={len(rows)}")
+    for group, rows in saas_landing.items():
+        print(f"{group}: rows={len(rows)}")
     positives = sum(1 for row in eval_rows if row["is_planted_risk"])
     distractors = sum(1 for row in eval_rows if row["is_distractor"])
     normal = sum(1 for row in eval_rows if not row["is_planted_risk"] and not row["is_distractor"])
+    finding_types = {}
+    for row in eval_rows:
+        value = row["seed_finding_type"]
+        finding_types[value] = finding_types.get(value, 0) + 1
     print(f"eval: rows={len(eval_rows)}, positive={positives}, normal={normal}, distractor={distractors}")
+    print(f"seed_finding_type_distribution={dict(sorted(finding_types.items()))}")
     for group, rows in context.items():
         print(f"{group}: rows={len(rows)}")
     checksum_paths = [landing_output_root / path for path in LANDING_FILE_PATHS.values()]
+    checksum_paths.extend(landing_output_root / path for path in SAAS_LANDING_FILE_PATHS.values())
     checksum_paths.append(eval_output_path)
     checksum_paths.extend(context_output_root / path for path in CONTEXT_FILE_PATHS.values())
     for path, checksum in file_checksums(checksum_paths).items():

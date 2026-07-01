@@ -91,6 +91,9 @@ Silver의 내부 id는 deterministic해야 한다. 같은 source record는 재�
 | `identity_seed` | HR/IdP lifecycle 합성 입력 |
 | `assets_seed` | asset inventory 합성 입력 |
 | `access_seed` | access edge 합성 입력 |
+| `github` | GitHub App, credential, repo, access edge 합성 입력 후보 |
+| `google_workspace` | Google Workspace user, shared drive/document, access edge 합성 입력 후보 |
+| `slack` | Slack user, private channel, access edge 합성 입력 후보 |
 
 기본 규칙:
 
@@ -315,6 +318,7 @@ dashboard label
 is_planted_risk
 is_distractor
 expected_severity
+seed_finding_type
 truth_class
 secret value
 token value
@@ -322,6 +326,21 @@ private key value
 ```
 
 검증 시 Silver 스키마와 저장 row에 위 정답 라벨 및 secret, token, private key의 실제 값이 포함되지 않았는지 확인한다. 필드명 탐지 범위와 마스킹 판정 방식은 `확인 필요`다.
+
+## Finding type 계산 가능성
+
+Silver는 `finding_type`을 저장하지 않는다. 다만 다음 레이어가 finding type을 계산할 수 있도록 필요한 원자 사실을 보존한다.
+
+| 다음 레이어 finding_type 후보 | Silver 기반 조건 |
+| --- | --- |
+| `NHI Access Drift` | `principal_kind = 'NHI'` + active `accesses_asset` edge + sensitive asset |
+| `NHI Credential Drift` | `principal_kind = 'NHI'` + active credential + owner/status 문제 |
+| `NHI Permission Drift` | `principal_kind = 'NHI'` + active permission/role edge |
+| `HI Access Drift` | `principal_kind = 'HI'` + active `accesses_asset` edge + sensitive asset |
+| `HI Permission Drift` | `principal_kind = 'HI'` + active permission/role |
+| `HI Stale Access` | `principal_kind = 'HI'` + `status in ('terminated', 'inactive')` + remaining access/permission |
+
+위 값은 Silver 컬럼이 아니라 Intermediate/Gold에서 계산하는 제품 분류다. 하나의 finding이 여러 조건을 동시에 만족할 수 있으므로, 대표 `finding_type` 선택과 세부 `risk_factors` 분리는 다음 레이어 계약에서 정한다.
 
 ## 다음 레이어로 넘기는 기준
 
