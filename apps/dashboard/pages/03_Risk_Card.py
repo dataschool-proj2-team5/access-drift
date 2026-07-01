@@ -120,11 +120,30 @@ def main() -> None:
         }
 
         .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] {
-          max-width: 154px;
+          max-width: 168px;
           margin-left: auto;
           margin-right: 24px;
           pointer-events: auto;
+          position: relative;
         }
+
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+          border-radius: 8px !important;
+          border-color: #2f5f87 !important;
+          background: #ffffff !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+          min-height: 38px !important;
+        }
+
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover {
+          border-color: var(--ad-blue) !important;
+        }
+
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] span {
+          color: var(--ad-blue) !important;
+          font-weight: 700 !important;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,

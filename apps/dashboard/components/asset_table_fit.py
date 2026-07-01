@@ -130,11 +130,21 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             min-width: 52px;
             padding: 0 8px;
             border-radius: 9px;
+            border: 1px solid #b9d2e7;
+            background: #ffffff;
+            color: var(--ad-blue);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 13px;
             justify-self: center;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+          }}
+
+          .ad-asset-row .ad-button:hover {{
+            background: var(--ad-blue);
+            border-color: var(--ad-blue);
+            color: #ffffff;
           }}
 
           @media (max-width: 1400px) {{
