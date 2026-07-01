@@ -58,6 +58,7 @@
 | --- | --- |
 | case_id | `eval-nhi-001` |
 | owner userPrincipalName | `kim.minsu@company.com` |
+| owner displayName | `김민수` |
 | application appId | `d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f` |
 | application displayName | `sp-crm-customer-export-prod` |
 | application createdDateTime | `2026-03-15T09:00:00Z` |

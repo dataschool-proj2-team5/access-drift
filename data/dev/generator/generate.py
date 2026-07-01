@@ -45,7 +45,12 @@ EXPECTED_FIELDS = {
         "endDateTime",
         "status",
     },
-    "lifecycle": {"userPrincipalName", "employmentStatus", "terminationDate"},
+    "lifecycle": {
+        "userPrincipalName",
+        "displayName",
+        "employmentStatus",
+        "terminationDate",
+    },
     "assets": {"assetId", "name", "environment", "sensitivity"},
     "access_edges": {
         "principalId",
@@ -123,6 +128,7 @@ class CaseSpec:
     app_id: str
     key_id: str
     owner_upn: str
+    owner_display_name: str
     asset_id: str
     app_name: str
     asset_name: str
@@ -150,6 +156,12 @@ def _parse_date(value: str) -> date:
 
 def _stable_uuid(seed: int, label: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"access-drift:{seed}:{label}"))
+
+
+def _owner_display_name(seed: int, index: int) -> str:
+    fake = Faker("en_US")
+    fake.seed_instance(seed * 10_000 + index)
+    return fake.name()
 
 
 def _expected_severity(sensitivity: str) -> str:
@@ -228,6 +240,7 @@ def _positive_spec(seed: int, index: int, fake: Faker, reference_date: date) -> 
             app_id="d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f",
             key_id="c0ffee12-3456-7890-abcd-1234567890ab",
             owner_upn="kim.minsu@company.com",
+            owner_display_name="김민수",
             asset_id="asset-customer-export-storage-prod",
             app_name="sp-crm-customer-export-prod",
             asset_name="customer-export-storage-prod",
@@ -263,6 +276,7 @@ def _positive_spec(seed: int, index: int, fake: Faker, reference_date: date) -> 
         app_id=_stable_uuid(seed, f"app-positive-{index}"),
         key_id=_stable_uuid(seed, f"credential-positive-{index}"),
         owner_upn=owner,
+        owner_display_name=_owner_display_name(seed, index),
         asset_id=f"asset-{asset_slug}-{index:04d}",
         app_name=_service_name(asset_slug, env),
         asset_name=_service_name(asset_slug, env),
@@ -290,6 +304,7 @@ def _base_negative_spec(seed: int, index: int, fake: Faker, reference_date: date
         "app_id": _stable_uuid(seed, f"app-negative-{index}"),
         "key_id": _stable_uuid(seed, f"credential-negative-{index}"),
         "owner_upn": owner,
+        "owner_display_name": _owner_display_name(seed, index),
         "asset_id": asset_id,
         "app_name": "customer-profile-export-prod",
         "asset_name": "customer-profile-export-prod",
@@ -394,6 +409,7 @@ def _normal_spec(seed: int, index: int, fake: Faker, reference_date: date) -> Ca
         app_id=_stable_uuid(seed, f"app-normal-{index}"),
         key_id=_stable_uuid(seed, f"credential-normal-{index}"),
         owner_upn=owner,
+        owner_display_name=_owner_display_name(seed, index),
         asset_id=asset_id,
         app_name=_service_name(asset_slug, env),
         asset_name=_service_name(asset_slug, env),
@@ -470,6 +486,7 @@ def build_landing_records(
         records["lifecycle"].append(
             {
                 "userPrincipalName": spec.owner_upn,
+                "displayName": spec.owner_display_name,
                 "employmentStatus": spec.employment_status,
                 "terminationDate": spec.termination_date,
             }

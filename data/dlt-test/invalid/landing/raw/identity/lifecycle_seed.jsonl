@@ -1,3 +1,3 @@
-{"_test_case":"missing_user_principal_name","userPrincipalName":null,"employmentStatus":"active","terminationDate":null}
-{"_test_case":"invalid_termination_date","userPrincipalName":"invalid.date@example.com","employmentStatus":"terminated","terminationDate":"not-a-date"}
-{"_test_case":"mismatched_employment_status","_test_overrides":{"employment_status":"tampered"},"userPrincipalName":"status.mismatch@example.com","employmentStatus":"active","terminationDate":null}
+{"_test_case":"missing_user_principal_name","userPrincipalName":null,"displayName":"Missing User Principal Name","employmentStatus":"active","terminationDate":null}
+{"_test_case":"invalid_termination_date","userPrincipalName":"invalid.date@example.com","displayName":"Invalid Date","employmentStatus":"terminated","terminationDate":"not-a-date"}
+{"_test_case":"mismatched_employment_status","_test_overrides":{"employment_status":"tampered"},"userPrincipalName":"status.mismatch@example.com","displayName":"Status Mismatch","employmentStatus":"active","terminationDate":null}
