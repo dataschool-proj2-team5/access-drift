@@ -95,12 +95,17 @@ def print_summary(
     owners = {}
     for row in landing["lifecycle"]:
         owners[row["employmentStatus"]] = owners.get(row["employmentStatus"], 0) + 1
+    finding_types = {}
+    for row in eval_rows:
+        value = row.get("seed_finding_type")
+        finding_types[value] = finding_types.get(value, 0) + 1
     print(f"eval: rows={len(eval_rows)}, positive={positives}, normal={normal}, distractor={distractor}")
     for group, rows in context.items():
         print(f"{group}: rows={len(rows)}")
     print(f"sensitivity_distribution={dict(sorted(sensitivities.items()))}")
     print(f"credential_status_distribution={dict(sorted(credentials.items()))}")
     print(f"owner_status_distribution={dict(sorted(owners.items()))}")
+    print(f"seed_finding_type_distribution={dict(sorted(finding_types.items()))}")
 
     representative = eval_rows[0]
     print("representative_case:")

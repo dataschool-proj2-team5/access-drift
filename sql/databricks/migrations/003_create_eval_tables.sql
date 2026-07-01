@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.ground_truth_case (
   is_distractor BOOLEAN NOT NULL,
   pattern STRING,
   expected_severity STRING,
+  seed_finding_type STRING,
   label_reason STRING,
   created_at TIMESTAMP NOT NULL,
   CONSTRAINT ground_truth_case_pk PRIMARY KEY (case_id)

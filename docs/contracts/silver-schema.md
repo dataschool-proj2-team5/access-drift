@@ -91,9 +91,9 @@ Silver의 내부 id는 deterministic해야 한다. 같은 source record는 재�
 | `identity_seed` | HR/IdP lifecycle 합성 입력 |
 | `assets_seed` | asset inventory 합성 입력 |
 | `access_seed` | access edge 합성 입력 |
-| `github_seed` | GitHub App, credential, repo, access edge 합성 입력 후보 |
-| `google_workspace_seed` | Google Workspace user, shared drive/document, access edge 합성 입력 후보 |
-| `slack_seed` | Slack user, private channel, access edge 합성 입력 후보 |
+| `github` | GitHub App, credential, repo, access edge 합성 입력 후보 |
+| `google_workspace` | Google Workspace user, shared drive/document, access edge 합성 입력 후보 |
+| `slack` | Slack user, private channel, access edge 합성 입력 후보 |
 
 기본 규칙:
 

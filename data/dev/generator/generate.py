@@ -175,6 +175,7 @@ FORBIDDEN_FIELDS = {
     "is_planted_risk",
     "is_distractor",
     "expected_severity",
+    "seed_finding_type",
     "truth_class",
     "secretValue",
     "tokenValue",
@@ -209,6 +210,15 @@ DISTRACTOR_SERVICE_SLUGS = {
         "catalog-preview",
         "qa-dashboard",
     ),
+}
+
+SEED_FINDING_TYPES = {
+    "NHI Access Drift",
+    "NHI Credential Drift",
+    "NHI Permission Drift",
+    "HI Access Drift",
+    "HI Permission Drift",
+    "HI Stale Access",
 }
 
 
@@ -260,6 +270,7 @@ class SaasCaseSpec:
     permission: str
     drift_type: str
     pattern: str
+    seed_finding_type: str
     assignee_name: str
     assignee_team: str
     data_scope_label: str
@@ -291,6 +302,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="admin",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+        seed_finding_type="NHI Access Drift",
         assignee_name="박서준",
         assignee_team="개발 플랫폼팀",
         data_scope_label="결제 서비스 소스코드",
@@ -320,6 +332,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="read",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+        seed_finding_type="NHI Credential Drift",
         assignee_name="정우진",
         assignee_team="보안 플랫폼팀",
         data_scope_label="인프라 보안 설정",
@@ -349,6 +362,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="write",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+        seed_finding_type="NHI Permission Drift",
         assignee_name="이다영",
         assignee_team="CRM 데이터 운영팀",
         data_scope_label="고객 Export 배치 코드",
@@ -378,6 +392,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="write",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+        seed_finding_type="NHI Permission Drift",
         assignee_name="박서준",
         assignee_team="재무 데이터팀",
         data_scope_label="재무 원장 처리 코드",
@@ -407,6 +422,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="admin",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+        seed_finding_type="NHI Access Drift",
         assignee_name="김하나",
         assignee_team="고객지원 데이터팀",
         data_scope_label="고객지원 자동화 코드",
@@ -436,6 +452,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="editor",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Access Drift",
         assignee_name="김하나",
         assignee_team="고객지원 데이터팀",
         data_scope_label="고객지원 공유 드라이브",
@@ -465,6 +482,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="viewer",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Permission Drift",
         assignee_name="박서준",
         assignee_team="재무 데이터팀",
         data_scope_label="월마감 재무 문서",
@@ -494,6 +512,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="editor",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Access Drift",
         assignee_name="이다영",
         assignee_team="CRM 데이터 운영팀",
         data_scope_label="VIP 고객 리스트",
@@ -523,6 +542,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="viewer",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Permission Drift",
         assignee_name="한지민",
         assignee_team="정산 플랫폼팀",
         data_scope_label="판매자 정산 공유 드라이브",
@@ -552,6 +572,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="editor",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Stale Access",
         assignee_name="오세훈",
         assignee_team="마케팅 데이터팀",
         data_scope_label="마케팅 세그먼트 문서",
@@ -581,6 +602,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Access Drift",
         assignee_name="김하나",
         assignee_team="고객지원 데이터팀",
         data_scope_label="고객지원 private channel",
@@ -610,6 +632,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Stale Access",
         assignee_name="정우진",
         assignee_team="보안 플랫폼팀",
         data_scope_label="보안 incident channel",
@@ -639,6 +662,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Permission Drift",
         assignee_name="한지민",
         assignee_team="정산 플랫폼팀",
         data_scope_label="정산 private channel",
@@ -668,6 +692,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Access Drift",
         assignee_name="이다영",
         assignee_team="CRM 데이터 운영팀",
         data_scope_label="VIP 고객 운영 channel",
@@ -697,6 +722,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+        seed_finding_type="HI Stale Access",
         assignee_name="최하은",
         assignee_team="운영 데이터팀",
         data_scope_label="운영 runbook channel",
@@ -730,6 +756,20 @@ def _owner_display_name(seed: int, index: int) -> str:
 
 def _expected_severity(sensitivity: str) -> str:
     return sensitivity.upper()
+
+
+def _seed_finding_type_for_spec(spec: CaseSpec) -> str:
+    if spec.case_kind == "positive":
+        if spec.index % 3 == 2:
+            return "NHI Credential Drift"
+        if spec.index % 3 == 0:
+            return "NHI Permission Drift"
+        return "NHI Access Drift"
+    if spec.distractor_type == "credential_expired":
+        return "NHI Credential Drift"
+    if spec.distractor_type == "access_inactive":
+        return "NHI Permission Drift"
+    return "NHI Access Drift"
 
 
 def _service_name(slug: str, environment: str) -> str:
@@ -1233,6 +1273,7 @@ def build_eval_records(
                 "is_distractor": spec.is_distractor,
                 "pattern": "P2",
                 "expected_severity": _expected_severity(spec.sensitivity),
+                "seed_finding_type": _seed_finding_type_for_spec(spec),
                 "label_reason": reason,
                 "created_at": created_at,
             }
@@ -1252,6 +1293,7 @@ def build_eval_records(
                 "is_distractor": False,
                 "pattern": case.pattern,
                 "expected_severity": _expected_severity(case.sensitivity),
+                "seed_finding_type": case.seed_finding_type,
                 "label_reason": case.label_reason,
                 "created_at": created_at,
             }
@@ -1633,6 +1675,7 @@ def validate_eval_records(
         "is_distractor",
         "pattern",
         "expected_severity",
+        "seed_finding_type",
         "label_reason",
         "created_at",
     }
@@ -1680,6 +1723,8 @@ def validate_eval_records(
             positives += 1
         if row["expected_severity"] != _expected_severity(str(asset["sensitivity"])):
             raise ValueError("expected_severity must match asset sensitivity uppercase")
+        if row["seed_finding_type"] not in SEED_FINDING_TYPES:
+            raise ValueError("unknown seed_finding_type")
         _validate_timestamp(row["created_at"], "created_at")
 
     mix = expected_counts_for_size(expected_size)
@@ -1687,6 +1732,12 @@ def validate_eval_records(
         raise ValueError("unexpected positive eval count")
     if distractors != mix["distractor"]:
         raise ValueError("unexpected distractor eval count")
+    missing_finding_types = SEED_FINDING_TYPES - {
+        str(row["seed_finding_type"]) for row in eval_rows
+    }
+    if expected_size >= 20 and missing_finding_types:
+        missing = ", ".join(sorted(missing_finding_types))
+        raise ValueError(f"seed_finding_type coverage missing: {missing}")
 
 
 def validate_context_records(
@@ -1868,7 +1919,12 @@ def main() -> None:
     positives = sum(1 for row in eval_rows if row["is_planted_risk"])
     distractors = sum(1 for row in eval_rows if row["is_distractor"])
     normal = sum(1 for row in eval_rows if not row["is_planted_risk"] and not row["is_distractor"])
+    finding_types = {}
+    for row in eval_rows:
+        value = row["seed_finding_type"]
+        finding_types[value] = finding_types.get(value, 0) + 1
     print(f"eval: rows={len(eval_rows)}, positive={positives}, normal={normal}, distractor={distractors}")
+    print(f"seed_finding_type_distribution={dict(sorted(finding_types.items()))}")
     for group, rows in context.items():
         print(f"{group}: rows={len(rows)}")
     checksum_paths = [landing_output_root / path for path in LANDING_FILE_PATHS.values()]

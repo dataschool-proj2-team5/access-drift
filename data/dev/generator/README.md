@@ -90,6 +90,7 @@ python data/dev/generator/verify.py \
 - application `displayName`, asset `name`에 생성 index suffix 미노출
 - eval key가 Landing source id로 추적 가능한지
 - `expected_severity = asset sensitivity` 대문자 매핑
+- `seed_finding_type`이 허용된 대시보드 대표 라벨 후보에 속하고 20건 이상 생성 시 6개 후보를 모두 포함하는지
 - `asset_context.source_asset_id`가 Landing asset과 매칭되는지
 - `assignment_routing` source key가 eval key와 매칭되는지
 - 동일 seed/size/reference-date 재생성 결과 byte 일치

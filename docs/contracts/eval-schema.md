@@ -55,6 +55,7 @@ PoC 합성 데이터에 심어 둔 정답 케이스를 저장한다.
 | `is_distractor` | boolean | yes | 함정 케이스 여부 |
 | `pattern` | string | no | 탐지 패턴. 예: `P1`, `P2` |
 | `expected_severity` | string | no | 기대 severity. 예: `HIGH`, `MEDIUM`, `LOW` |
+| `seed_finding_type` | string | no | 합성 데이터 생성 의도를 설명하는 대표 화면 라벨. Gold/대시보드 결과가 반드시 동일해야 하는 hard assertion은 아님 |
 | `label_reason` | string | no | 정답으로 분류한 이유 |
 | `created_at` | timestamp | yes | eval case 생성 시각 |
 
@@ -66,6 +67,19 @@ PoC 합성 데이터에 심어 둔 정답 케이스를 저장한다.
 | `is_planted_risk = false`, `is_distractor = true` | 위험해 보이지만 정답 risk는 아닌 방해 케이스 |
 | `is_planted_risk = false`, `is_distractor = false` | 탐지되지 않아야 하는 정상 케이스 |
 
+`seed_finding_type`은 합성 데이터가 어떤 대표 화면 라벨을 재현하려는지 기록하는 선택 필드다. 탐지 품질 검증의 조인 key나 정답 판정 기준으로 사용하지 않는다.
+
+현재 허용 후보:
+
+```text
+NHI Access Drift
+NHI Credential Drift
+NHI Permission Drift
+HI Access Drift
+HI Permission Drift
+HI Stale Access
+```
+
 ## Eval에 두지 않는 것
 
 아래 항목은 Eval에 저장하지 않는다.
@@ -75,7 +89,7 @@ secret value
 token value
 private key value
 raw API payload
-dashboard label
+rendered dashboard copy
 operator action state
 ```
 
