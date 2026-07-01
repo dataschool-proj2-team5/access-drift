@@ -173,6 +173,7 @@ SHOW GRANTS ON SCHEMA access_drift_dev.dlt_test;
 SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
 SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_state;
+SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_event;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
