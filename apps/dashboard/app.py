@@ -19,9 +19,9 @@ def main() -> None:
     result = load_access_drift_data()
 
     if result.using_mock:
-        st.info("Using mock data. Add data/sample_access_drift.csv to preview CSV-backed data.")
+        st.info("Using mock data. Add Databricks secrets to load source-backed data.")
     else:
-        st.success(f"Loaded CSV data from {result.source_path}")
+        st.success(f"Loaded data from {result.source_path}")
 
     st.subheader("Dashboard Pages")
     st.write(

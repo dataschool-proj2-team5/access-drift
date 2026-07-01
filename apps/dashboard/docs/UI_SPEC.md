@@ -8,7 +8,7 @@ This document records the current page and component skeleton only. It is not a 
 Overview
 ├─ Page Title
 ├─ Top Summary Cards
-│  ├─ Total: donut chart summary card
+│  ├─ Actions: donut chart summary card
 │  ├─ Issues: vertical bar chart summary card
 │  └─ Top Drifts: ranked list card
 └─ Priority Review
