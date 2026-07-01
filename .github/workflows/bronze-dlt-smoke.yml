@@ -1,0 +1,169 @@
+name: Bronze DLT Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: bronze-dlt-smoke
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_AUTH_TYPE: azure-cli
+  DATABRICKS_CONFIG_FILE: /dev/null
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  INVALID_RAW_BASE: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/invalid/landing/raw
+  EMPTY_SOURCE_RAW_BASE: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/empty-source/landing/raw
+  ARTIFACT_DIR: artifacts/bronze-dlt-smoke
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Databricks CLI
+        uses: databricks/setup-cli@main
+        with:
+          version: 1.4.0
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Prepare artifact directory
+        run: mkdir -p "$ARTIFACT_DIR"
+
+      - name: Validate Bronze contract locally
+        run: |
+          python tools/validate_bronze_contract.py
+          python -m unittest tests.test_validate_bronze_contract -v
+
+      - name: Bundle validate
+        run: databricks bundle validate -t dlt-test -o json > "$ARTIFACT_DIR/bundle-validate.json"
+
+      - name: Deploy dlt-test resources with valid defaults
+        run: >
+          databricks bundle deploy -t dlt-test --auto-approve -o json
+          --select jobs.bronze-dlt-fixture-setup
+          --select jobs.bronze-dlt-result-check
+          --select jobs.bronze-table-snapshot
+          --select pipelines.bronze-dlt-expectations
+          > "$ARTIFACT_DIR/deploy-valid.json"
+
+      - name: Capture Bronze snapshot before smoke
+        run: |
+          databricks bundle run -t dlt-test bronze-table-snapshot -o json > "$ARTIFACT_DIR/before-snapshot-run.json"
+
+      - name: Copy dlt-test fixtures
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-fixture-setup -o json > "$ARTIFACT_DIR/fixture-setup-run.json"
+
+      - name: Run valid pipeline
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all -o json > "$ARTIFACT_DIR/valid-pipeline-run.json"
+          python tools/extract_databricks_run_metadata.py "$ARTIFACT_DIR/valid-pipeline-run.json" update_id > "$ARTIFACT_DIR/valid-update-id.txt"
+          databricks bundle summary -t dlt-test -o json > "$ARTIFACT_DIR/bundle-summary.json"
+          python tools/extract_databricks_run_metadata.py "$ARTIFACT_DIR/bundle-summary.json" pipeline_id > "$ARTIFACT_DIR/pipeline-id.txt"
+
+      - name: Check valid result
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-result-check -o json --notebook-params "update_id=$(cat "$ARTIFACT_DIR/valid-update-id.txt"),expected_case=valid" > "$ARTIFACT_DIR/valid-check-run.json"
+          python tools/extract_bundle_task_result.py "$ARTIFACT_DIR/valid-check-run.json" > "$ARTIFACT_DIR/valid-check-result.json"
+
+      - name: Deploy invalid raw base
+        run: >
+          databricks bundle deploy -t dlt-test --auto-approve -o json
+          --select pipelines.bronze-dlt-expectations
+          --var="bronze_dlt_raw_base_path=${INVALID_RAW_BASE}"
+          > "$ARTIFACT_DIR/deploy-invalid.json"
+
+      - name: Run invalid pipeline
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all -o json --var="bronze_dlt_raw_base_path=${INVALID_RAW_BASE}" > "$ARTIFACT_DIR/invalid-pipeline-run.json"
+          python tools/extract_databricks_run_metadata.py "$ARTIFACT_DIR/invalid-pipeline-run.json" update_id > "$ARTIFACT_DIR/invalid-update-id.txt"
+
+      - name: Check invalid result
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-result-check -o json --notebook-params "update_id=$(cat "$ARTIFACT_DIR/invalid-update-id.txt"),expected_case=invalid" > "$ARTIFACT_DIR/invalid-check-run.json"
+          python tools/extract_bundle_task_result.py "$ARTIFACT_DIR/invalid-check-run.json" > "$ARTIFACT_DIR/invalid-check-result.json"
+
+      - name: Deploy empty-source raw base
+        run: >
+          databricks bundle deploy -t dlt-test --auto-approve -o json
+          --select pipelines.bronze-dlt-expectations
+          --var="bronze_dlt_raw_base_path=${EMPTY_SOURCE_RAW_BASE}"
+          > "$ARTIFACT_DIR/deploy-empty-source.json"
+
+      - name: Run empty-source pipeline and expect failure
+        run: |
+          set +e
+          databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all -o json --var="bronze_dlt_raw_base_path=${EMPTY_SOURCE_RAW_BASE}" > "$ARTIFACT_DIR/empty-pipeline-run.json" 2> "$ARTIFACT_DIR/empty-pipeline-run.stderr"
+          status=$?
+          set -e
+          echo "$status" > "$ARTIFACT_DIR/empty-pipeline-exit-code.txt"
+          if [ ! -s "$ARTIFACT_DIR/empty-pipeline-run.json" ]; then
+            printf '{}' > "$ARTIFACT_DIR/empty-pipeline-run.json"
+          fi
+          if [ "$status" -eq 0 ]; then
+            echo "empty-source pipeline should fail but succeeded." >&2
+            exit 1
+          fi
+          if python tools/extract_databricks_run_metadata.py "$ARTIFACT_DIR/empty-pipeline-run.json" update_id > "$ARTIFACT_DIR/empty-update-id.txt"; then
+            exit 0
+          fi
+          databricks pipelines list-updates "$(cat "$ARTIFACT_DIR/pipeline-id.txt")" --max-results 10 -o json > "$ARTIFACT_DIR/empty-pipeline-updates.json"
+          python tools/select_pipeline_update_id.py "$ARTIFACT_DIR/empty-pipeline-updates.json" --exclude-file "$ARTIFACT_DIR/valid-update-id.txt" --exclude-file "$ARTIFACT_DIR/invalid-update-id.txt" > "$ARTIFACT_DIR/empty-update-id.txt"
+
+      - name: Check empty-source failure result
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-result-check -o json --notebook-params "update_id=$(cat "$ARTIFACT_DIR/empty-update-id.txt"),expected_case=empty-source" > "$ARTIFACT_DIR/empty-check-run.json"
+          python tools/extract_bundle_task_result.py "$ARTIFACT_DIR/empty-check-run.json" > "$ARTIFACT_DIR/empty-check-result.json"
+
+      - name: Restore valid raw base
+        if: always()
+        run: >
+          databricks bundle deploy -t dlt-test --auto-approve -o json
+          --select pipelines.bronze-dlt-expectations
+          > "$ARTIFACT_DIR/deploy-restore-valid.json"
+
+      - name: Run valid restore pipeline
+        if: always()
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all -o json > "$ARTIFACT_DIR/restore-valid-pipeline-run.json"
+          python tools/extract_databricks_run_metadata.py "$ARTIFACT_DIR/restore-valid-pipeline-run.json" update_id > "$ARTIFACT_DIR/restore-valid-update-id.txt"
+
+      - name: Check valid restore result
+        if: always()
+        run: |
+          databricks bundle run -t dlt-test bronze-dlt-result-check -o json --notebook-params "update_id=$(cat "$ARTIFACT_DIR/restore-valid-update-id.txt"),expected_case=valid" > "$ARTIFACT_DIR/restore-valid-check-run.json"
+          python tools/extract_bundle_task_result.py "$ARTIFACT_DIR/restore-valid-check-run.json" > "$ARTIFACT_DIR/restore-valid-check-result.json"
+
+      - name: Capture Bronze snapshot after smoke
+        if: always()
+        run: |
+          databricks bundle run -t dlt-test bronze-table-snapshot -o json > "$ARTIFACT_DIR/after-snapshot-run.json"
+
+      - name: Compare Bronze snapshots
+        if: always()
+        run: python tools/compare_bronze_snapshots.py "$ARTIFACT_DIR/before-snapshot-run.json" "$ARTIFACT_DIR/after-snapshot-run.json"
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bronze-dlt-smoke-artifacts
+          path: ${{ env.ARTIFACT_DIR }}
