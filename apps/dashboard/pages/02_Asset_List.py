@@ -39,6 +39,24 @@ def main() -> None:
             font-size: 12px;
             font-weight: 700;
           }
+
+          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+            background: transparent !important;
+            border: 1px solid #d1d5db !important;
+            box-shadow: none !important;
+          }
+
+          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover,
+          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {
+            background: transparent !important;
+            border-color: #9ca3af !important;
+            box-shadow: none !important;
+          }
+
+          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] div,
+          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] input {
+            background: transparent !important;
+          }
         </style>
         """,
         unsafe_allow_html=True,

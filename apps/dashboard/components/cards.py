@@ -113,8 +113,7 @@ def render_priority_review_list(data: pd.DataFrame) -> None:
     priority["detected_at"] = priority["detected_at"].apply(_format_datetime)
 
     rows = []
-    for index, case in priority.reset_index(drop=True).iterrows():
-        primary_button = " ad-button-primary" if index == 0 else ""
+    for _, case in priority.reset_index(drop=True).iterrows():
         risk_card_href = f"/Risk_Card?case_id={quote(str(case['case_id']))}"
         rows.append(
             f"""
@@ -140,7 +139,7 @@ def render_priority_review_list(data: pd.DataFrame) -> None:
                 <span class="ad-detected-value">{escape(str(case["detected_at"]))}</span>
                 {_status_badge(str(case["review_status"]))}
               </div>
-              <a class="ad-button{primary_button}" href="{risk_card_href}" target="_self">View Risk Card</a>
+              <a class="ad-button" href="{risk_card_href}" target="_self">View Risk Card</a>
             </div>
             """
         )

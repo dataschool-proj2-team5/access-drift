@@ -108,6 +108,15 @@ def apply_dashboard_style(page: str | None = None) -> None:
           color: #f5f5f5;
         }
 
+        [data-testid="stSidebarHeader"] {
+          display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+        }
+
         .ad-summary-grid {
           display: grid;
           grid-template-columns: 1.02fr 1.15fr 0.9fr;
@@ -760,6 +769,77 @@ def apply_dashboard_style(page: str | None = None) -> None:
           font-weight: 600 !important;
         }
 
+        span[class*="material-symbols"],
+        i[class*="material-symbols"],
+        [class*="material-symbols"],
+        span[class*="material-icons"],
+        i[class*="material-icons"],
+        [class*="material-icons"],
+        span[class*="MaterialIcon"],
+        i[class*="MaterialIcon"],
+        [class*="MaterialIcon"],
+        [data-testid="stIconMaterial"] {
+          font-family: "Material Symbols Rounded", "Material Symbols Outlined", "Material Icons" !important;
+          font-weight: normal !important;
+          font-style: normal !important;
+          font-size: inherit;
+          line-height: 1 !important;
+          letter-spacing: normal !important;
+          text-transform: none !important;
+          white-space: nowrap !important;
+          word-wrap: normal !important;
+          direction: ltr !important;
+          -webkit-font-feature-settings: "liga" !important;
+          font-feature-settings: "liga" !important;
+          -webkit-font-smoothing: antialiased;
+        }
+
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="stExpandSidebarButton"],
+        [data-testid="collapsedControl"] {
+          font-size: 0 !important;
+        }
+
+        [data-testid="stSidebarCollapseButton"] *,
+        [data-testid="stExpandSidebarButton"] *,
+        [data-testid="collapsedControl"] * {
+          font-size: 0 !important;
+        }
+
+        [data-testid="stSidebarCollapseButton"]::before,
+        [data-testid="stExpandSidebarButton"]::before,
+        [data-testid="collapsedControl"]::before {
+          content: "\\2039";
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          color: #ffffff;
+          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+          font-size: 28px !important;
+          line-height: 1 !important;
+          font-weight: 700 !important;
+        }
+
+        [data-testid="stSidebarHeader"] [data-testid="stIconMaterial"] {
+          display: none !important;
+        }
+
+        [data-testid="stSidebarHeader"] button::before {
+          content: "\\2039";
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          color: #ffffff;
+          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+          font-size: 28px !important;
+          line-height: 1 !important;
+          font-weight: 700 !important;
+        }
+
         @media (max-width: 1100px) {
           .ad-summary-grid,
           .ad-analysis-grid,
@@ -1071,11 +1151,21 @@ def apply_dashboard_style(page: str | None = None) -> None:
               min-width: 124px;
               padding: 0 16px;
               border-radius: 10px;
+              border: 1px solid #b9d2e7;
+              background: #ffffff;
+              color: var(--ad-blue);
               display: flex;
               align-items: center;
               justify-content: center;
               font-size: 14px;
               justify-self: end;
+              transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            }
+
+            .ad-overview-priority .ad-button:hover {
+              background: var(--ad-blue);
+              border-color: var(--ad-blue);
+              color: #ffffff;
             }
 
             .ad-overview-priority .ad-identity-type-pill {
