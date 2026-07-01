@@ -32,6 +32,7 @@
 - Eval: 검증 전용 데이터
 - Risk Card Context: 자산 설명, 현재 조치 상태, 조치 담당자/담당 팀
 - AI 권고안: Gold 생성 시 탐지 근거 기반으로 생성
+- RAG Evidence: Gold와 Risk Card Context 기반 근거 document / chunk
 
 Unity Catalog: Gold-only App 접근, Eval 격리
 
@@ -58,6 +59,7 @@ Unity Catalog: Gold-only App 접근, Eval 격리
 | **Databricks Data Platform** | 데이터 레이어와 검증/상태 데이터를 저장·처리 | DE / DS |
 | **App / Dashboard** | 보안 담당자가 리스크를 조회하고 현재 조치 상태를 변경하는 화면 제공 | PO |
 | **Azure AI Foundry / Azure OpenAI** | Gold 생성 과정에서 탐지 근거 기반 조치 권고안 생성 | DS |
+| **RAG Evidence / Vector Search** | Risk Case 단위 근거 document/chunk와 검색 index 기반 제공 | DE / DS |
 | **Unity Catalog** | App 접근 경계와 Eval 격리 기준 제공 | DE |
 
 ---
@@ -106,6 +108,10 @@ Gold
        │  - Asset Context: 자산 설명 / 데이터 범위
        │  - Action State: 현재 조치 상태
        │  - Assignment Routing: 조치 담당자 / 담당 팀
+       │
+       ├─ RAG Evidence / Vector Search
+       │  - Risk Case 단위 근거 document / chunk
+       │  - DS/AI 답변 생성을 위한 citation metadata
        │
        └─ App / Dashboard
           - Risk Card 조회

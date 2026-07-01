@@ -2,8 +2,8 @@
 set -euo pipefail
 
 CATALOG_NAME="${CATALOG_NAME:-access_drift_dev}"
-SCHEMA_NAMES="${SCHEMA_NAMES:-bronze silver intermediate gold eval context app dlt_test}"
-TABLE_NAMES="${TABLE_NAMES:-context.asset_context context.assignment_routing app.risk_action_state}"
+SCHEMA_NAMES="${SCHEMA_NAMES:-bronze silver intermediate gold eval context app rag dlt_test}"
+TABLE_NAMES="${TABLE_NAMES:-context.asset_context context.assignment_routing app.risk_action_state rag.risk_case_documents rag.knowledge_chunks}"
 EXTERNAL_LOCATION_NAME="${EXTERNAL_LOCATION_NAME:-access_drift_lakehouse_ext}"
 CATALOG_PRIVILEGES="${CATALOG_PRIVILEGES-ALL_PRIVILEGES}"
 SCHEMA_PRIVILEGES="${SCHEMA_PRIVILEGES-ALL_PRIVILEGES}"
