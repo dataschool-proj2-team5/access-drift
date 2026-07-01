@@ -42,6 +42,16 @@ Bronze/Silver 컬럼 계약은 각 schema contract에서 관리한다. 이 문�
 | Access export | access edge | `permission` | source-like 보강 | IAM/RBAC/export에서 올 수 있는 권한명 |
 | Access export | access edge | `status` | source-like 보강 | 접근 관계의 활성 상태 |
 | Access export | access edge | `lastUsedDateTime` 또는 `last_used_at` | source-like 보강 | 합성 입력에서는 접근 관계의 마지막 사용 시각으로 둘 수 있다. 실제 운영에서는 Entra application/passwordCredential API 원본 필드가 아니라 sign-in/audit log에서 계산될 수 있는 값으로 본다. |
+| GitHub | app | `appId`, `slug`, `displayName`, `status`, `ownerEmail`, `ownerEmploymentStatus`, `ownerTerminationDate` | source-like 보강 | GitHub App 또는 bot principal metadata와 퇴사 owner 근거를 source-like 형태로 둔다. 실제 API connector는 범위 밖이다. |
+| GitHub | credential | `appId`, `credentialId`, `credentialType`, `displayName`, `status`, `expiresAt` | source-like 보강 | deploy key/PAT metadata만 저장한다. credential value는 저장하지 않는다. |
+| GitHub | repo | `repoId`, `name`, `visibility`, `environment`, `sensitivity` | source-like 보강 | private repo 또는 production repo asset 예시다. |
+| GitHub | access edge | `principalId`, `assetId`, `relationship`, `permission`, `status` | source-like 보강 | GitHub App 또는 bot이 repo에 갖는 접근 관계 예시다. |
+| Google Workspace | user | `userId`, `email`, `displayName`, `status`, `employmentStatus`, `terminationDate` | source-like 보강 | SaaS HI principal과 퇴사/정지 상태 근거 예시다. |
+| Google Workspace | asset | `assetId`, `name`, `assetType`, `environment`, `sensitivity` | source-like 보강 | shared drive 또는 민감 문서 asset 예시다. |
+| Google Workspace | access edge | `principalId`, `assetId`, `relationship`, `permission`, `status` | source-like 보강 | user가 shared drive 또는 문서에 갖는 권한 관계 예시다. |
+| Slack | user | `userId`, `email`, `displayName`, `status`, `employmentStatus`, `terminationDate` | source-like 보강 | SaaS HI principal과 퇴사/비활성 상태 근거 예시다. |
+| Slack | channel | `channelId`, `name`, `channelType`, `environment`, `sensitivity` | source-like 보강 | private channel 또는 민감 운영 channel asset 예시다. |
+| Slack | access edge | `principalId`, `assetId`, `relationship`, `permission`, `status` | source-like 보강 | user가 Slack channel에 갖는 접근 관계 예시다. |
 
 ## Landing에 포함하지 않는 값
 
@@ -54,6 +64,8 @@ Bronze/Silver 컬럼 계약은 각 schema contract에서 관리한다. 이 문�
 | client secret value | 저장 금지 | 저장하지 않는다. |
 | token value | 저장 금지 | 저장하지 않는다. |
 | private key value | 저장 금지 | 저장하지 않는다. |
+
+GitHub, Google Workspace, Slack 확장 예시는 기존 Entra ID 기반 eval key를 변경하지 않고 뒤에 append한다. eval label, planted risk 여부, expected severity는 기존과 동일하게 Eval 입력에만 둔다.
 
 ## 작성 기준
 

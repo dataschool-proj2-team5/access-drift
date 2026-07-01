@@ -44,6 +44,16 @@ Landing:
 - `identity/lifecycle_seed.jsonl`
 - `assets/assets_seed.jsonl`
 - `access/access_edges_seed.jsonl`
+- `github/apps.jsonl`
+- `github/credentials.jsonl`
+- `github/repos.jsonl`
+- `github/access_edges.jsonl`
+- `google_workspace/users.jsonl`
+- `google_workspace/assets.jsonl`
+- `google_workspace/access_edges.jsonl`
+- `slack/users.jsonl`
+- `slack/channels.jsonl`
+- `slack/access_edges.jsonl`
 
 Eval:
 
@@ -71,6 +81,10 @@ python data/dev/generator/verify.py \
 - app owner, credential, access edge, asset 참조 무결성
 - raw Landing의 eval label 금지
 - secret value, token value, private key value 금지
+- GitHub source id는 `gh-` namespace 사용
+- Google Workspace source id는 `gws-` namespace 사용
+- Slack source id는 `slack-` namespace 사용
+- GitHub/Google Workspace/Slack source 내부 참조 무결성
 - expired credential의 `lastUsedDateTime <= endDateTime`
 - application `displayName`, asset `name`에 생성 index suffix 미노출
 - eval key가 Landing source id로 추적 가능한지
@@ -83,6 +97,29 @@ python data/dev/generator/verify.py \
 
 - 같은 `seed`, `size`, `reference-date`는 byte 단위로 동일한 파일을 생성한다.
 - `20 -> 100 -> 1000`으로 규모를 키워도 앞선 케이스의 source id, eval key, context key, `case_id`는 유지한다.
+- GitHub / Google Workspace / Slack 확장 예시는 size와 무관한 고정 source-like 샘플로 생성한다.
+- GitHub / Google Workspace / Slack 확장 예시는 첫 20개 NHI eval/context row 뒤에 append하며 기존 row를 변경하지 않는다.
+
+## GitHub / Google Workspace / Slack 확장 예시
+
+확장 예시는 기존 Entra ID 기반 NHI 데이터와 섞이지 않도록 source namespace를 분리한다.
+
+| source | 파일 | 건수 | namespace | Silver 매핑 후보 |
+| --- | --- | ---: | --- | --- |
+| GitHub | `github/apps.jsonl` | 5 | `gh-app-...` | `silver_principals`, `principal_kind=NHI`, `principal_type=github_app` |
+| GitHub | `github/credentials.jsonl` | 5 | `gh-cred-...` | `silver_credentials`, `credential_type=deploy_key` 또는 `pat` |
+| GitHub | `github/repos.jsonl` | 5 | `gh-repo-...` | `silver_assets`, `asset_type=repo` |
+| GitHub | `github/access_edges.jsonl` | 5 | `gh-...` | `silver_edges`, `relationship=accesses_asset` |
+| Google Workspace | `google_workspace/users.jsonl` | 5 | `gws-user-...` | `silver_principals`, `principal_kind=HI`, `principal_type=user` |
+| Google Workspace | `google_workspace/assets.jsonl` | 5 | `gws-...` | `silver_assets`, `asset_type=workspace` |
+| Google Workspace | `google_workspace/access_edges.jsonl` | 5 | `gws-...` | `silver_edges`, `relationship=accesses_asset` |
+| Slack | `slack/users.jsonl` | 5 | `slack-user-...` | `silver_principals`, `principal_kind=HI`, `principal_type=user` |
+| Slack | `slack/channels.jsonl` | 5 | `slack-channel-...` | `silver_assets`, `asset_type=slack_channel` |
+| Slack | `slack/access_edges.jsonl` | 5 | `slack-...` | `silver_edges`, `relationship=accesses_asset` |
+
+현재 확장 예시는 첫 20개 NHI eval/context 뒤에 append된다. GitHub는 `subject_type=nhi`, `pattern=P2`, `drift_type=nhi_residual_access`로 두고, Google Workspace와 Slack은 `subject_type=hi`, `pattern=P1`, `drift_type=hi_residual_access`로 둔다.
+
+GitHub 케이스의 residual 근거는 `github/apps.jsonl`의 `ownerEmail`, `ownerEmploymentStatus`, `ownerTerminationDate`에 둔다. Google Workspace 케이스의 residual 근거는 `google_workspace/users.jsonl`의 `status`, `employmentStatus`, `terminationDate`에 두고, Slack 케이스의 residual 근거는 `slack/users.jsonl`의 `status`, `employmentStatus`, `terminationDate`에 둔다.
 
 ## 분포 규칙
 
