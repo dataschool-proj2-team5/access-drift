@@ -294,6 +294,82 @@ fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data
 
 2026-06-30 실제 검증에서는 bundle validate와 fixture 18개 복사가 성공했고, valid/invalid/empty-source 동작을 모두 확인한 뒤 valid 상태로 복구했습니다. update ID, 테이블별 output/dropped/warned 건수, 기존 Bronze 불변 결과는 fixture README의 Databricks 검증 결과에 기록했습니다.
 
+#### Silver DLT expectation 검증
+
+Silver DLT expectation은 기존 `silver_task`와 분리된 `silver-dlt-expectations` pipeline으로 실행합니다. 기본 입력은 `dlt_test`의 `silver_valid_bronze_*` fixture table이고 출력과 event log도 `access_drift_dev.dlt_test`에만 생성합니다. 기존 `access_drift_dev.silver` 4개 managed Delta table은 비교용 read-only 대상으로 사용합니다.
+
+fixture setup은 현재 dev Bronze 6개 table을 valid/invalid/empty 세 종류의 Bronze-shaped table로 overwrite합니다. valid asset fixture에서는 Silver 계약 enum에 맞게 `critical`을 `high`로 정규화합니다. 이는 fixture 준비에만 적용하며, 실제 dev Bronze 실행에서는 값을 바꾸지 않고 `valid_sensitivity` 위반을 기록합니다.
+
+```bash
+databricks bundle validate -t dlt-test
+databricks bundle deploy -t dlt-test \
+  --select silver-dlt-fixture-setup,silver-dlt-expectations
+databricks bundle run -t dlt-test silver-dlt-fixture-setup
+databricks bundle run -t dlt-test silver-dlt-expectations --full-refresh-all
+```
+
+invalid fixture는 같은 pipeline code에 table prefix만 바꿔 실행합니다. 이 실행은 required key, enum, relationship 또는 cross-table orphan 조건 때문에 실패하는 것이 정상입니다.
+
+```bash
+databricks bundle deploy -t dlt-test \
+  --select silver-dlt-expectations \
+  --var="silver_dlt_source_table_prefix=silver_invalid_"
+databricks bundle run -t dlt-test silver-dlt-expectations \
+  --full-refresh-all \
+  --var="silver_dlt_source_table_prefix=silver_invalid_"
+```
+
+empty fixture는 `bronze_azure_applications` 입력이 0건이므로 `source_not_empty`에서 실패하고 Silver output flow는 skip되어야 합니다.
+
+```bash
+databricks bundle deploy -t dlt-test \
+  --select silver-dlt-expectations \
+  --var="silver_dlt_source_table_prefix=silver_empty_"
+databricks bundle run -t dlt-test silver-dlt-expectations \
+  --full-refresh-all \
+  --var="silver_dlt_source_table_prefix=silver_empty_"
+```
+
+실제 dev Bronze는 source schema와 빈 prefix만 설정해 read-only 입력으로 확인합니다. target은 계속 `dlt_test`이므로 정식 Silver writer는 바뀌지 않습니다.
+
+```bash
+databricks bundle deploy -t dlt-test \
+  --select silver-dlt-expectations \
+  --var="silver_dlt_source_schema=bronze" \
+  --var="silver_dlt_source_table_prefix="
+databricks bundle run -t dlt-test silver-dlt-expectations \
+  --full-refresh-all \
+  --var="silver_dlt_source_schema=bronze" \
+  --var="silver_dlt_source_table_prefix="
+```
+
+검증 후에는 변수를 제거하고 기본 valid 설정으로 다시 deploy 및 full refresh합니다.
+
+```bash
+databricks bundle deploy -t dlt-test --select silver-dlt-expectations
+databricks bundle run -t dlt-test silver-dlt-expectations --full-refresh-all
+```
+
+Pipeline UI 또는 아래 event log에서 `source_not_empty`, table별 row expectation과 `no_integrity_violations` 결과를 확인합니다.
+
+```sql
+SELECT timestamp, event_type, origin.update_id, details
+FROM access_drift_dev.dlt_test.silver_dlt_expectations_event_log
+WHERE event_type = 'flow_progress'
+ORDER BY timestamp DESC;
+```
+
+2026-07-01 실제 검증 결과는 다음과 같습니다.
+
+| 케이스 | update ID | 결과 | 확인 내용 |
+| --- | --- | --- | --- |
+| invalid | `2d0cd5e2-b6c4-4ad1-a352-a9b99cd69ee3` | 기대한 실패 | 주입한 owner/access edge로 `edge_from_principal_orphan = 2`, integrity gate 실패 |
+| empty-source | `d0f1aca6-862f-4b87-bccd-838872f60898` | 기대한 실패 | applications `source_row_count = 0`, 나머지 flow skip |
+| dev Bronze | `329f9cfa-934d-40e6-a060-2f4d887a5ecc` | 성공 | 4개 output과 integrity audit 완료, asset sensitivity 11건 경고 |
+| valid restore | `dabbb807-a5c5-4342-89fe-f7451ea853eb` | 성공 | 4개 output과 2개 private audit의 expectation 실패 0건 |
+
+dev Bronze 기준 DLT row count는 principals 40, credentials 20, assets 20, edges 40이었다. 같은 시점의 기존 Silver는 55, 25, 35, 60건이어서 완전 동등하지 않았다. 기존 Silver가 현재 main의 `03_silver.ipynb` 범위보다 많은 source를 포함하거나 다른 Bronze snapshot에서 생성됐는지는 이 작업에서 확인하지 못했으며, 정식 승격 전에 원인을 분리해야 한다. 기존 Silver 4개는 검증 후에도 `MANAGED`이고 owner와 update timestamp가 유지됐으며, DLT 4개 output은 `dlt_test`의 `MATERIALIZED_VIEW`다.
+
 #### Task 실행 기준
 
 `access-drift-pipeline`은 full run도 가능하지만, 기본 운영 기준은 필요한 task만 부분 실행하는 것이다.

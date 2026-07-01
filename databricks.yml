@@ -65,6 +65,18 @@ variables:
   bronze_dlt_fixture_raw_root:
     description: ADLS root used only for Bronze DLT fixture validation
     default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test
+  silver_dlt_source_schema:
+    description: Source schema for Silver DLT validation
+    default: dlt_test
+  silver_dlt_source_table_prefix:
+    description: Prefix for isolated Bronze-shaped Silver DLT fixture tables
+    default: silver_valid_
+  silver_dlt_target_schema:
+    description: Target schema for Silver DLT expectation validation
+    default: dlt_test
+  silver_dlt_event_log_schema:
+    description: Schema for Silver DLT pipeline event logs
+    default: dlt_test
   dev_seed_size:
     description: Number of dev synthetic cases to generate
     default: "20"
@@ -122,6 +134,27 @@ targets:
             schema: ${var.bronze_dlt_event_log_schema}
             name: bronze_dlt_expectations_event_log
 
+        silver-dlt-expectations:
+          name: access-drift-silver-expectations-${bundle.target}
+          catalog: ${var.catalog}
+          target: ${var.silver_dlt_target_schema}
+          serverless: true
+          development: true
+          continuous: false
+          edition: ADVANCED
+          libraries:
+            - file:
+                path: ./notebooks/10_silver_dlt_expectations.py
+          configuration:
+            silver.source_catalog: ${var.catalog}
+            silver.source_schema: ${var.silver_dlt_source_schema}
+            silver.source_table_prefix: ${var.silver_dlt_source_table_prefix}
+            pipelines.metrics.flowTimeReporter.enabled: "true"
+          event_log:
+            catalog: ${var.catalog}
+            schema: ${var.silver_dlt_event_log_schema}
+            name: silver_dlt_expectations_event_log
+
       jobs:
         bronze-dlt-fixture-setup:
           name: access-drift-bronze-dlt-fixture-setup
@@ -134,6 +167,19 @@ targets:
                   fixture_source_root: ${var.bronze_dlt_fixture_source_root}
                   fixture_workspace_root: ${workspace.file_path}
                   fixture_raw_root: ${var.bronze_dlt_fixture_raw_root}
+              existing_cluster_id: ${var.cluster_id}
+
+        silver-dlt-fixture-setup:
+          name: access-drift-silver-dlt-fixture-setup
+          tasks:
+            - task_key: prepare_silver_dlt_fixtures
+              description: 기존 Bronze를 격리된 valid/invalid/empty Silver DLT 입력으로 준비
+              notebook_task:
+                notebook_path: ./notebooks/10_prepare_silver_dlt_fixtures.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  source_schema: bronze
+                  target_schema: ${var.silver_dlt_source_schema}
               existing_cluster_id: ${var.cluster_id}
 
 resources:
