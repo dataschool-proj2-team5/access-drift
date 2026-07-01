@@ -30,6 +30,7 @@ Bronze/Silver 컬럼 계약은 각 schema contract에서 관리한다. 이 문�
 | Microsoft Entra ID | password credential | `endDateTime` | source 원본형 | credential 만료 시각 |
 | Microsoft Entra ID | password credential | `status` | source-like 보강 | 합성 seed에서는 `active`/`expired`를 명시한다. 운영에서는 만료 시각, 회수 상태, 수집 시점 기준으로 계산될 수 있다. |
 | HR/IdP export | identity lifecycle | `userPrincipalName` | source 원본형 | 사용자 식별자 |
+| HR/IdP export | identity lifecycle | `displayName` | source 원본형 | 사용자 표시 이름. 대시보드 표시용 이름이며 식별/조인은 `userPrincipalName`을 기준으로 한다. |
 | HR/IdP export | identity lifecycle | `employmentStatus` | source-like 보강 | 실제 source마다 명칭이 다를 수 있어 공통 seed 필드로 둔다. |
 | HR/IdP export | identity lifecycle | `terminationDate` | source-like 보강 | HR/IdP에서 제공 가능한 퇴사일 또는 비활성 기준일로 가정한다. |
 | Asset inventory | asset | `assetId` | source-like 보강 | CMDB, cloud inventory, tagging export에서 오는 자산 식별자로 가정한다. |
