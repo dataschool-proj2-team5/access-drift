@@ -173,6 +173,7 @@ SHOW GRANTS ON SCHEMA access_drift_dev.dlt_test;
 SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
 SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_state;
+SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_event;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
@@ -286,6 +287,8 @@ databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all
 `bronze_dlt_target_schema=bronze`, dev raw 경로, `bronze_dlt_fixture_mode=false` 조합은 같은 code를 실제 Bronze target에 적용하기 위한 설정입니다. 다만 현재 `access_drift_dev.bronze`의 6개 테이블은 migration과 notebook이 만든 일반 Delta 테이블이므로, DLT가 같은 이름의 materialized dataset을 관리할 수 있는지와 필요한 소유권 전환 절차를 실제 적용 전에 별도로 확인해야 합니다. 이 확인은 config-only 구조가 런타임에서도 성립하는지 검증하는 절차이며, 기존 테이블을 임의로 삭제하거나 교체하지 않습니다.
 
 `dlt_test` 결과를 사용자 또는 리뷰어가 확인하고 기존 Bronze 테이블 전환 방법을 승인하기 전에는 `bronze` target으로 deploy하거나 run하지 않습니다. event log는 target과 분리된 `bronze_dlt_event_log_schema` 설정을 사용하며 기본값은 `dlt_test`입니다.
+
+정식 Bronze 승격 검토 결과와 현재 적용 보류 조건은 [`ADR-0002: Bronze DLT 승격과 ingest 전환 전략`](../docs/adr/0002-bronze-dlt-promotion-strategy.md)을 기준으로 합니다. required column nullability, 기존 managed Delta table과의 충돌, pipeline owner, backup/rollback 조건이 해소되기 전에는 기존 `ingest_task`를 유지합니다.
 
 fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data/dlt-test/README.md)를 참고합니다.
 

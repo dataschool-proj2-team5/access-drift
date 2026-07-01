@@ -121,7 +121,7 @@ Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안
 | source_principal_id | string | yes | Bronze 매핑 | source의 원본 principal id | null 또는 빈 문자열이면 실패. 대응 Bronze `app_id` 또는 `user_principal_name`과 동일해야 한다. |
 | principal_kind | string | yes | Silver 파생 | `HI` 또는 `NHI` | null이면 실패. 값은 `HI`, `NHI` 중 하나여야 한다. 현재 `user`는 `HI`, `app_registration`은 `NHI`로 변환되며 나머지 type 매핑은 `확인 필요`. |
 | principal_type | string | yes | Bronze 매핑 | `user`, `group`, `service_principal`, `app_registration`, `github_app`, `service_account`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 하며 ID 재계산에 같은 값을 사용해야 한다. |
-| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze 표시 이름과 의미가 같아야 한다. |
+| display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze 표시 이름과 의미가 같아야 한다. HI는 `bronze_identity_lifecycle_seed.display_name`을 우선 사용하고, 값이 없으면 `user_principal_name`을 fallback으로 쓸 수 있다. |
 | email | string | no | Bronze 매핑 | 사람 계정의 email 또는 UPN | 값이 있으면 대응 Bronze UPN/email을 보존해야 한다. 허용 포맷은 `확인 필요`. |
 | status | string | yes | Bronze 매핑 | `active`, `inactive`, `terminated`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 상태를 Silver enum으로 매핑하는 전체 규칙은 `확인 필요`. |
 | termination_date | date | no | Bronze 매핑 | 퇴사일 또는 비활성 기준일 | 값이 있으면 date 타입이며 대응 Bronze 날짜와 같아야 한다. `terminated` 상태에서 필수인지 여부는 `확인 필요`. |
@@ -136,7 +136,7 @@ Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안
   "source_principal_id": "kim.minsu@company.com",
   "principal_kind": "HI",
   "principal_type": "user",
-  "display_name": "kim.minsu@company.com",
+  "display_name": "김민수",
   "email": "kim.minsu@company.com",
   "status": "terminated",
   "termination_date": "2024-01-15",

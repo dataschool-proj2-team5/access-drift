@@ -109,6 +109,7 @@ Secret value, token value, private key value는 저장하지 않는다.
 | 컬럼 | 타입 | 필수 | 설명 | Validation |
 | --- | --- | --- | --- | --- |
 | `user_principal_name` | string | no | 사용자 UPN 또는 email | 값이 있으면 Landing `userPrincipalName`과 동일해야 한다. snapshot/run 단위 unique 기준은 `확인 필요`. |
+| `display_name` | string | no | 사용자 표시 이름 | 값이 있으면 Landing `displayName`을 의미 변경 없이 보존해야 한다. |
 | `employment_status` | string | no | 고용 또는 offboarding 상태 | Landing `employmentStatus`를 보존해야 한다. Bronze에서 허용할 source enum은 `확인 필요`. |
 | `termination_date` | date | no | 퇴사일 | Landing `terminationDate`가 있으면 date 변환에 성공하고 같은 날짜를 나타내야 한다. 파싱 실패로 null이 된 row는 실패다. |
 

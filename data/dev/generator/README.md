@@ -78,6 +78,7 @@ python data/dev/generator/verify.py \
 
 - Landing/Eval/Context row count
 - required field와 JSONL 포맷
+- identity lifecycle의 `displayName` 생성과 Bronze/Silver 표시 이름 매핑 가능성
 - app owner, credential, access edge, asset 참조 무결성
 - raw Landing의 eval label 금지
 - secret value, token value, private key value 금지

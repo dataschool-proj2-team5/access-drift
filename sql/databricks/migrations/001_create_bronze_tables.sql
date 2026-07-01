@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_identity_lifecycle_seed (
   _raw_payload STRING NOT NULL,
   _schema_version STRING NOT NULL,
   user_principal_name STRING,
+  display_name STRING,
   employment_status STRING,
   termination_date DATE
 )
