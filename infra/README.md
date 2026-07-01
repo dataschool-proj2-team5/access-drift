@@ -174,8 +174,7 @@ SHOW GRANTS ON SCHEMA access_drift_dev.dlt_test;
 SHOW GRANTS ON TABLE access_drift_dev.context.asset_context;
 SHOW GRANTS ON TABLE access_drift_dev.context.assignment_routing;
 SHOW GRANTS ON TABLE access_drift_dev.app.risk_action_state;
-SHOW GRANTS ON TABLE access_drift_dev.rag.risk_case_documents;
-SHOW GRANTS ON TABLE access_drift_dev.rag.knowledge_chunks;
+SHOW GRANTS ON TABLE access_drift_dev.rag.doc_chunks;
 SHOW GRANTS ON EXTERNAL LOCATION access_drift_lakehouse_ext;
 ```
 
@@ -403,29 +402,22 @@ sql/databricks/queries/de_retry_idempotency_validation.sql
 
 현재 기준은 overwrite 재생성이며, `MERGE INTO`, run_id별 Landing 보존, partial write 자동 복구는 후속 고도화 범위다. 상세 기준은 [`docs/engineering/retry-idempotency-policy.md`](../docs/engineering/retry-idempotency-policy.md)를 따른다.
 
-#### RAG evidence / Vector Search
+#### RAG doc chunks
 
-RAG evidence는 Gold Risk Case와 Risk Card context를 조합해 `access_drift_dev.rag`에 생성한다.
+RAG doc chunks는 공식 remediation playbook seed를 `access_drift_dev.rag.doc_chunks`에 적재한다.
 
 ```bash
 databricks bundle run -t dev access-drift-pipeline \
-  --only rag_evidence_task
+  --only rag_doc_chunks_seed_task
 ```
 
 생성 결과는 아래 테이블에서 확인한다.
 
 ```sql
-SELECT COUNT(*) FROM access_drift_dev.rag.risk_case_documents;
-SELECT COUNT(*) FROM access_drift_dev.rag.knowledge_chunks;
+SELECT COUNT(*) FROM access_drift_dev.rag.doc_chunks;
 ```
 
-Vector Search endpoint/index는 아래 스크립트로 생성한다. 기본 endpoint는 `access-drift-rag-dev`, 기본 index는 `access_drift_dev.rag.knowledge_chunks_index`다.
-
-```bash
-bash infra/databricks/create-rag-vector-search-index.sh
-```
-
-기본 embedding model endpoint는 `databricks-gte-large-en`으로 둔다. workspace에서 해당 embedding endpoint나 Vector Search 권한이 없으면 실패할 수 있으며, 실패 사유를 PR에 기록한다. RAG 품질, prompt, top-k, threshold, 답변 스키마는 DS/AI팀이 조정한다.
+Vector Search endpoint/index 생성, embedding model, retrieval top-k, threshold, 답변 스키마는 DS/AI팀이 조정한다. DE는 `rag.doc_chunks` 테이블, CDF, 권한을 준비한다.
 
 ### 셋업 검증
 

@@ -389,21 +389,22 @@ S1에서 DE는 탐지 의미 판단이나 Risk Card 의미 설계를 주도하�
 - schema diff 자동화
 - CI 기반 contract check
 
-### 6.14 RAG/Vector Search 기반 참고 근거 준비
+### 6.14 RAG 기반 참고 근거 준비
 
-**목적:** S1에서 RAG 기반 참고 근거 출력을 선택사항으로 검토할 수 있도록, DE 관점에서 필요한 데이터 저장 위치와 인덱스 후보를 정리한다.
+**목적:** S1에서 RAG 기반 참고 근거 출력을 선택사항으로 검토할 수 있도록, DE 관점에서 필요한 공식 조치 문서 chunk와 검색 source table 기준을 정리한다.
 
 **주요 내용**
-- 보안 런북/조치 가이드 문서의 저장 위치 후보 정리
-- Vector Search 대상 테이블 또는 인덱스 후보 정리
-- Risk Card 결과와 RAG 참고 근거를 연결할 수 있는 최소 metadata 후보 정리
+- 보안 런북/조치 가이드 문서 chunk의 저장 위치 정리
+- DS/AI가 Vector Search source로 사용할 수 있는 `rag.doc_chunks` 기준 정리
+- Risk Card 현재값은 DS/AI 질의 생성 입력으로 보고, `rag.doc_chunks`에는 공식 문서 corpus만 저장
+- embedding, retrieval 품질, prompt, citation 없는 답변 처리, AI 윤리/가드레일은 DS/AI와 PO/Security 범위로 분리
 - S1 필수 완료 기준이 아니라 선택사항 또는 S2 후보로 관리
 
 **완료 기준**
 - RAG를 S1에서 시도할지 S2로 넘길지 판단할 수 있는 DE 관점 검토 결과가 있다.
-- 시도할 경우 필요한 문서 저장 위치, 인덱스 후보, 연결 metadata 후보가 정리되어 있다.
+- 시도할 경우 필요한 공식 문서 chunk, citation metadata, DS/AI handoff 기준이 정리되어 있다.
 
 **후속 고도화**
-- Vector Search index 자동 갱신
+- Vector Search endpoint/index 생성과 retrieval 품질 검증
 - citation metadata 품질검증
 - RAG 답변 품질 평가와 fallback 정책
