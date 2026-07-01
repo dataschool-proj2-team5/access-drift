@@ -6,10 +6,11 @@ CREATE SCHEMA IF NOT EXISTS ${catalog}.${schema};
 CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.doc_chunks (
   chunk_id STRING NOT NULL,
   doc_id STRING NOT NULL,
-  provider STRING NOT NULL,
-  service STRING NOT NULL,
+  source_system STRING NOT NULL,
+  source_area STRING NOT NULL,
   doc_type STRING NOT NULL,
   drift_type STRING NOT NULL,
+  principal_kind STRING NOT NULL,
   action_type STRING NOT NULL,
   chunk_text STRING NOT NULL,
   chunk_hash STRING NOT NULL,

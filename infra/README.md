@@ -404,7 +404,7 @@ sql/databricks/queries/de_retry_idempotency_validation.sql
 
 #### RAG doc chunks
 
-RAG doc chunks는 공식 remediation playbook seed를 `access_drift_dev.rag.doc_chunks`에 적재한다.
+RAG doc chunks는 합성 정책/playbook/case와 공식 source guide/API reference seed를 `access_drift_dev.rag.doc_chunks`에 적재한다.
 
 ```bash
 databricks bundle run -t dev access-drift-pipeline \

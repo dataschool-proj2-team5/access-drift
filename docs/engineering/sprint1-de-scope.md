@@ -391,18 +391,18 @@ S1에서 DE는 탐지 의미 판단이나 Risk Card 의미 설계를 주도하�
 
 ### 6.14 RAG 기반 참고 근거 준비
 
-**목적:** S1에서 RAG 기반 참고 근거 출력을 선택사항으로 검토할 수 있도록, DE 관점에서 필요한 공식 조치 문서 chunk와 검색 source table 기준을 정리한다.
+**목적:** S1에서 RAG 기반 참고 근거 출력을 선택사항으로 검토할 수 있도록, DE 관점에서 필요한 근거 문서 chunk와 검색 source table 기준을 정리한다.
 
 **주요 내용**
 - 보안 런북/조치 가이드 문서 chunk의 저장 위치 정리
 - DS/AI가 Vector Search source로 사용할 수 있는 `rag.doc_chunks` 기준 정리
-- Risk Card 현재값은 DS/AI 질의 생성 입력으로 보고, `rag.doc_chunks`에는 공식 문서 corpus만 저장
+- Risk Card 현재값은 DS/AI 질의 생성 입력으로 보고, `rag.doc_chunks`에는 정책/playbook/source guide/API reference corpus를 저장
 - embedding, retrieval 품질, prompt, citation 없는 답변 처리, AI 윤리/가드레일은 DS/AI와 PO/Security 범위로 분리
 - S1 필수 완료 기준이 아니라 선택사항 또는 S2 후보로 관리
 
 **완료 기준**
 - RAG를 S1에서 시도할지 S2로 넘길지 판단할 수 있는 DE 관점 검토 결과가 있다.
-- 시도할 경우 필요한 공식 문서 chunk, citation metadata, DS/AI handoff 기준이 정리되어 있다.
+- 시도할 경우 필요한 근거 문서 chunk, citation metadata, DS/AI handoff 기준이 정리되어 있다.
 
 **후속 고도화**
 - Vector Search endpoint/index 생성과 retrieval 품질 검증
