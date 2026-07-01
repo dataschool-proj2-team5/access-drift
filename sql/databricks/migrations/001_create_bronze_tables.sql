@@ -105,3 +105,188 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_access_edges_seed (
   last_used_at TIMESTAMP
 )
 USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_github_apps (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  app_id STRING,
+  slug STRING,
+  display_name STRING,
+  status STRING,
+  owner_email STRING,
+  owner_employment_status STRING,
+  owner_termination_date DATE
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_github_credentials (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  app_id STRING,
+  credential_id STRING,
+  credential_type STRING,
+  display_name STRING,
+  status STRING,
+  expires_at TIMESTAMP
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_github_repos (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  repo_id STRING,
+  name STRING,
+  visibility STRING,
+  environment STRING,
+  sensitivity STRING
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_github_access_edges (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  principal_id STRING,
+  asset_id STRING,
+  relationship STRING,
+  permission STRING,
+  status STRING
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_google_workspace_users (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  user_id STRING,
+  email STRING,
+  display_name STRING,
+  status STRING,
+  employment_status STRING,
+  termination_date DATE
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_google_workspace_assets (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  asset_id STRING,
+  name STRING,
+  asset_type STRING,
+  environment STRING,
+  sensitivity STRING
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_google_workspace_access_edges (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  principal_id STRING,
+  asset_id STRING,
+  relationship STRING,
+  permission STRING,
+  status STRING
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_slack_users (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  user_id STRING,
+  email STRING,
+  display_name STRING,
+  status STRING,
+  employment_status STRING,
+  termination_date DATE
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_slack_channels (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  channel_id STRING,
+  name STRING,
+  channel_type STRING,
+  environment STRING,
+  sensitivity STRING
+)
+USING DELTA;
+
+CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_slack_access_edges (
+  _src_system STRING NOT NULL,
+  _src_object STRING NOT NULL,
+  _src_file_path STRING,
+  _ingestion_ts TIMESTAMP NOT NULL,
+  _run_id STRING,
+  _batch_id STRING,
+  _checksum STRING,
+  _raw_payload STRING NOT NULL,
+  _schema_version STRING NOT NULL,
+  principal_id STRING,
+  asset_id STRING,
+  relationship STRING,
+  permission STRING,
+  status STRING
+)
+USING DELTA;

@@ -32,6 +32,16 @@ data/{poc|dev}/landing/raw/azure/password_credentials.jsonl
 data/{poc|dev}/landing/raw/identity/lifecycle_seed.jsonl
 data/{poc|dev}/landing/raw/assets/assets_seed.jsonl
 data/{poc|dev}/landing/raw/access/access_edges_seed.jsonl
+data/dev/landing/raw/github/apps.jsonl
+data/dev/landing/raw/github/credentials.jsonl
+data/dev/landing/raw/github/repos.jsonl
+data/dev/landing/raw/github/access_edges.jsonl
+data/dev/landing/raw/google_workspace/users.jsonl
+data/dev/landing/raw/google_workspace/assets.jsonl
+data/dev/landing/raw/google_workspace/access_edges.jsonl
+data/dev/landing/raw/slack/users.jsonl
+data/dev/landing/raw/slack/channels.jsonl
+data/dev/landing/raw/slack/access_edges.jsonl
 ```
 
 ## 공통 컬럼
@@ -44,8 +54,8 @@ Bronze row는 재수집과 재실행으로 같은 source record가 여러 번 �
 
 | 컬럼 | 타입 | 필수 | 설명 | Validation |
 | --- | --- | --- | --- | --- |
-| `_src_system` | string | yes | source system 이름 | null 또는 빈 문자열이면 실패. 현재 테이블별 값은 `entra_id`, `identity_seed`, `assets_seed`, `access_seed` 중 하나이며 `_src_object`와 일치해야 한다. |
-| `_src_object` | string | yes | source object 종류 | null 또는 빈 문자열이면 실패. 현재 값은 `applications`, `application_owners`, `password_credentials`, `lifecycle_seed`, `assets_seed`, `access_edges_seed` 중 하나이며 대상 Bronze 테이블과 일치해야 한다. |
+| `_src_system` | string | yes | source system 이름 | null 또는 빈 문자열이면 실패. 현재 테이블별 값은 `entra_id`, `identity_seed`, `assets_seed`, `access_seed`, `github_seed`, `google_workspace_seed`, `slack_seed` 중 하나이며 `_src_object`와 일치해야 한다. |
+| `_src_object` | string | yes | source object 종류 | null 또는 빈 문자열이면 실패. 현재 값은 `applications`, `application_owners`, `password_credentials`, `lifecycle_seed`, `assets_seed`, `access_edges_seed`, `github_apps`, `github_credentials`, `github_repos`, `github_access_edges`, `google_workspace_users`, `google_workspace_assets`, `google_workspace_access_edges`, `slack_users`, `slack_channels`, `slack_access_edges` 중 하나이며 대상 Bronze 테이블과 일치해야 한다. |
 | `_src_file_path` | string | no | landing 파일 경로 | 값이 있으면 ingest의 `raw_base`로부터 실제 읽은 입력 URI를 그대로 보존해야 한다. repo seed 경로와 `abfss://.../raw/{poc\|dev}/...` 경로를 임의로 상호 변환하지 않는다. 경로 정규화 방식은 `확인 필요`. |
 | `_ingestion_ts` | timestamp | yes | Bronze 적재 시각 | null이면 실패. Databricks `timestamp`로 저장되어야 한다. 허용 timezone과 미래 시각 허용 범위는 `확인 필요`. |
 | `_run_id` | string | no | pipeline run id | 값이 있으면 같은 실행에서 일관되어야 한다. 포맷과 unique 범위는 `확인 필요`. |
@@ -136,6 +146,131 @@ Access edge seed 원본을 보존한다.
 | `permission` | string | no | permission 또는 role | 값이 있으면 Landing 값을 의미 변경 없이 보존해야 한다. |
 | `status` | string | no | 관계 상태 | source 값을 보존해야 한다. Bronze에서 허용할 source enum은 `확인 필요`. |
 | `last_used_at` | timestamp | no | 접근 관계의 마지막 사용 시각. 합성 입력에서는 source-like 보강 필드로 둘 수 있다. | Landing `lastUsedDateTime` 또는 `last_used_at`이 있으면 timestamp 변환에 성공하고 같은 시점을 나타내야 한다. 입력에 없을 때만 null을 허용한다. |
+
+## bronze_github_apps
+
+GitHub App 또는 bot principal metadata와 퇴사 owner 근거를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `app_id` | string | no | source GitHub App id | 값이 있으면 Landing `appId`와 동일해야 한다. |
+| `slug` | string | no | GitHub App slug | 값이 있으면 Landing `slug`를 의미 변경 없이 보존해야 한다. |
+| `display_name` | string | no | 표시 이름 | 값이 있으면 Landing `displayName`을 보존해야 한다. |
+| `status` | string | no | app 상태 | source 값을 보존해야 한다. |
+| `owner_email` | string | no | app owner email | 값이 있으면 Landing `ownerEmail`과 동일해야 한다. |
+| `owner_employment_status` | string | no | owner 고용 상태 | Landing `ownerEmploymentStatus`를 보존해야 한다. |
+| `owner_termination_date` | date | no | owner 퇴사일 | Landing `ownerTerminationDate`가 있으면 date 변환에 성공해야 한다. |
+
+## bronze_github_credentials
+
+GitHub App에 연결된 credential metadata를 보존한다. Credential value는 저장하지 않는다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `app_id` | string | no | source GitHub App id | 값이 있으면 Landing `appId`와 동일해야 한다. |
+| `credential_id` | string | no | source credential id | 값이 있으면 Landing `credentialId`와 동일해야 한다. |
+| `credential_type` | string | no | credential 종류 | source 값을 보존해야 한다. |
+| `display_name` | string | no | credential 표시 이름 | 값이 있으면 Landing `displayName`을 보존해야 한다. |
+| `status` | string | no | credential 상태 | source 값을 보존해야 한다. |
+| `expires_at` | timestamp | no | credential 만료 시각 | Landing `expiresAt`이 있으면 timestamp 변환에 성공해야 한다. |
+
+## bronze_github_repos
+
+GitHub repository asset metadata를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `repo_id` | string | no | source repository id | 값이 있으면 Landing `repoId`와 동일해야 한다. |
+| `name` | string | no | repository 이름 | Landing `name`을 보존해야 한다. |
+| `visibility` | string | no | repository 공개 범위 | source 값을 보존해야 한다. |
+| `environment` | string | no | repository 운영 환경 | source 값을 보존해야 한다. |
+| `sensitivity` | string | no | repository 민감도 | source 값을 보존해야 한다. |
+
+## bronze_github_access_edges
+
+GitHub App 또는 bot의 repository 접근 관계를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `principal_id` | string | no | source principal id | 값이 있으면 Landing `principalId`와 동일해야 한다. |
+| `asset_id` | string | no | source repository id | 값이 있으면 Landing `assetId`와 동일해야 한다. |
+| `relationship` | string | no | 관계 유형 | source 값을 보존해야 한다. |
+| `permission` | string | no | permission 또는 role | source 값을 보존해야 한다. |
+| `status` | string | no | 관계 상태 | source 값을 보존해야 한다. |
+
+## bronze_google_workspace_users
+
+Google Workspace 사용자 principal과 퇴사/정지 상태 근거를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `user_id` | string | no | source user id | 값이 있으면 Landing `userId`와 동일해야 한다. |
+| `email` | string | no | 사용자 email | 값이 있으면 Landing `email`과 동일해야 한다. |
+| `display_name` | string | no | 표시 이름 | 값이 있으면 Landing `displayName`을 보존해야 한다. |
+| `status` | string | no | account 상태 | source 값을 보존해야 한다. |
+| `employment_status` | string | no | 고용 상태 | Landing `employmentStatus`를 보존해야 한다. |
+| `termination_date` | date | no | 퇴사일 | Landing `terminationDate`가 있으면 date 변환에 성공해야 한다. |
+
+## bronze_google_workspace_assets
+
+Google Workspace shared drive 또는 문서 asset metadata를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `asset_id` | string | no | source asset id | 값이 있으면 Landing `assetId`와 동일해야 한다. |
+| `name` | string | no | asset 이름 | Landing `name`을 보존해야 한다. |
+| `asset_type` | string | no | asset 종류 | source 값을 보존해야 한다. |
+| `environment` | string | no | asset 운영 환경 | source 값을 보존해야 한다. |
+| `sensitivity` | string | no | asset 민감도 | source 값을 보존해야 한다. |
+
+## bronze_google_workspace_access_edges
+
+Google Workspace 사용자의 asset 접근 관계를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `principal_id` | string | no | source user id | 값이 있으면 Landing `principalId`와 동일해야 한다. |
+| `asset_id` | string | no | source asset id | 값이 있으면 Landing `assetId`와 동일해야 한다. |
+| `relationship` | string | no | 관계 유형 | source 값을 보존해야 한다. |
+| `permission` | string | no | permission 또는 role | source 값을 보존해야 한다. |
+| `status` | string | no | 관계 상태 | source 값을 보존해야 한다. |
+
+## bronze_slack_users
+
+Slack 사용자 principal과 퇴사/비활성 상태 근거를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `user_id` | string | no | source Slack user id | 값이 있으면 Landing `userId`와 동일해야 한다. |
+| `email` | string | no | 사용자 email | 값이 있으면 Landing `email`과 동일해야 한다. |
+| `display_name` | string | no | 표시 이름 | 값이 있으면 Landing `displayName`을 보존해야 한다. |
+| `status` | string | no | account 상태 | source 값을 보존해야 한다. |
+| `employment_status` | string | no | 고용 상태 | Landing `employmentStatus`를 보존해야 한다. |
+| `termination_date` | date | no | 퇴사일 | Landing `terminationDate`가 있으면 date 변환에 성공해야 한다. |
+
+## bronze_slack_channels
+
+Slack private channel asset metadata를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `channel_id` | string | no | source channel id | 값이 있으면 Landing `channelId`와 동일해야 한다. |
+| `name` | string | no | channel 이름 | Landing `name`을 보존해야 한다. |
+| `channel_type` | string | no | channel 종류 | source 값을 보존해야 한다. |
+| `environment` | string | no | channel 운영 환경 | source 값을 보존해야 한다. |
+| `sensitivity` | string | no | channel 민감도 | source 값을 보존해야 한다. |
+
+## bronze_slack_access_edges
+
+Slack 사용자의 channel 접근 관계를 보존한다.
+
+| 컬럼 | 타입 | 필수 | 설명 | Validation |
+| --- | --- | --- | --- | --- |
+| `principal_id` | string | no | source user id | 값이 있으면 Landing `principalId`와 동일해야 한다. |
+| `asset_id` | string | no | source channel id | 값이 있으면 Landing `assetId`와 동일해야 한다. |
+| `relationship` | string | no | 관계 유형 | source 값을 보존해야 한다. |
+| `permission` | string | no | permission 또는 role | source 값을 보존해야 한다. |
+| `status` | string | no | 관계 상태 | source 값을 보존해야 한다. |
 
 ## Bronze에 두지 않는 것
 

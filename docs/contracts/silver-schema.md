@@ -95,6 +95,8 @@ Silver의 내부 id는 deterministic해야 한다. 같은 source record는 재�
 | `google_workspace` | Google Workspace user, shared drive/document, access edge 합성 입력 후보 |
 | `slack` | Slack user, private channel, access edge 합성 입력 후보 |
 
+`source_system`은 ID namespace와 원천 shape 구분에 사용한다. Gold나 화면에서 Azure/GitHub/SaaS 같은 source category를 표시할 때는 `source_system` 단독이 아니라 `principal_type`, `asset_type`을 함께 해석한다.
+
 기본 규칙:
 
 ```text
@@ -117,9 +119,9 @@ Silver의 `*_id` primary key는 Databricks DDL 제약과 별개로 테이블 안
 | 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
 | --- | --- | --- | --- | --- | --- |
 | principal_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 principal source인 `entra_id`, `identity_seed` 중 하나여야 하며 source 확장 시 허용값 갱신이 필요하다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 principal source인 `entra_id`, `identity_seed` 중 하나여야 한다. dev 확장 합성 데이터의 GitHub App은 `entra_id`, Google Workspace/Slack user는 `identity_seed` namespace를 재사용한다. |
 | source_principal_id | string | yes | Bronze 매핑 | source의 원본 principal id | null 또는 빈 문자열이면 실패. 대응 Bronze `app_id` 또는 `user_principal_name`과 동일해야 한다. |
-| principal_kind | string | yes | Silver 파생 | `HI` 또는 `NHI` | null이면 실패. 값은 `HI`, `NHI` 중 하나여야 한다. 현재 `user`는 `HI`, `app_registration`은 `NHI`로 변환되며 나머지 type 매핑은 `확인 필요`. |
+| principal_kind | string | yes | Silver 파생 | `HI` 또는 `NHI` | null이면 실패. 값은 `HI`, `NHI` 중 하나여야 한다. 현재 `user`, Google Workspace user, Slack user는 `HI`, Entra App Registration과 GitHub App은 `NHI`로 변환한다. |
 | principal_type | string | yes | Bronze 매핑 | `user`, `group`, `service_principal`, `app_registration`, `github_app`, `service_account`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 하며 ID 재계산에 같은 값을 사용해야 한다. |
 | display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze 표시 이름과 의미가 같아야 한다. HI는 `bronze_identity_lifecycle_seed.display_name`을 우선 사용하고, 값이 없으면 `user_principal_name`을 fallback으로 쓸 수 있다. |
 | email | string | no | Bronze 매핑 | 사람 계정의 email 또는 UPN | 값이 있으면 대응 Bronze UPN/email을 보존해야 한다. 허용 포맷은 `확인 필요`. |
@@ -153,10 +155,10 @@ Secret value, token value, private key value는 저장하지 않는다.
 | 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
 | --- | --- | --- | --- | --- | --- |
 | credential_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 credential source인 `entra_id`여야 하며 source 확장 시 허용값 갱신이 필요하다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 credential source는 `entra_id`여야 한다. dev 확장 합성 데이터의 GitHub credential도 `entra_id` namespace를 재사용한다. |
 | source_credential_id | string | yes | Bronze 매핑 | source의 원본 credential id | null 또는 빈 문자열이면 실패. 대응 Bronze `key_id`와 동일해야 한다. |
 | bound_principal_id | string | yes | Silver 파생 | credential이 연결된 principal id | null이면 실패. `silver_principals.principal_id`에 존재하고 대응 Bronze `app_id`로 재계산한 principal ID와 같아야 한다. |
-| credential_type | string | yes | Bronze 매핑 | `client_secret`, `certificate`, `pat`, `deploy_key`, `api_key`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. 현재 password credential은 `client_secret`으로 변환된다. |
+| credential_type | string | yes | Bronze 매핑 | `client_secret`, `certificate`, `pat`, `deploy_key`, `api_key`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. Entra password credential은 `client_secret`, GitHub credential은 source 값에 따라 `deploy_key` 또는 `pat`로 변환된다. |
 | display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze `display_name`과 의미가 같아야 한다. |
 | status | string | yes | Bronze 매핑 | `active`, `expired`, `revoked`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 상태 매핑의 전체 규칙은 `확인 필요`. |
 | expires_at | timestamp | no | Bronze 매핑 | 만료 시각 | 값이 있으면 대응 Bronze `end_date_time`과 같은 시점을 나타내야 한다. |
@@ -195,12 +197,12 @@ is_active = status == 'active' AND (expires_at IS NULL OR expires_at > observed_
 | 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
 | --- | --- | --- | --- | --- | --- |
 | asset_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 asset source인 `assets_seed`여야 하며 source 확장 시 허용값 갱신이 필요하다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 asset source는 `assets_seed`여야 한다. dev 확장 합성 데이터의 GitHub repo, Google Workspace asset, Slack channel도 `assets_seed` namespace를 재사용한다. |
 | source_asset_id | string | yes | Bronze 매핑 | source의 원본 asset id | null 또는 빈 문자열이면 실패. 대응 Bronze `asset_id`와 동일해야 한다. |
-| asset_type | string | yes | Bronze 매핑 | `cloud_resource`, `repo`, `database`, `workspace`, `saas_app`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. 현재 asset seed는 `cloud_resource`로 변환된다. |
+| asset_type | string | yes | Bronze 매핑 | `cloud_resource`, `repo`, `database`, `workspace`, `saas_app`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. asset seed는 `cloud_resource`, GitHub repo는 `repo`, Google Workspace asset은 `workspace`, Slack channel은 `saas_app`으로 변환된다. |
 | display_name | string | no | Bronze 매핑 | 표시 이름 | 값이 있으면 대응 Bronze `name`과 의미가 같아야 한다. |
 | environment | string | yes | Bronze 매핑 | `production`, `staging`, `development`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 값 매핑의 전체 규칙은 `확인 필요`. |
-| sensitivity | string | yes | Bronze 매핑 | `high`, `medium`, `low`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. source 값 매핑의 전체 규칙은 `확인 필요`. |
+| sensitivity | string | yes | Bronze 매핑 | `critical`, `high`, `medium`, `low`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 하며 Bronze source 값을 임의로 낮추지 않는다. |
 | observed_at | timestamp | yes | Bronze 매핑 | 이 사실을 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` | null이면 실패. 대응 Bronze `_ingestion_ts`와 같은 시점을 나타내야 한다. |
 
 예시:
@@ -225,7 +227,7 @@ Principal, credential, asset 사이의 관계를 담는다.
 | 컬럼 | 타입 | 필수 | 처리 방식 | 설명 | Validation |
 | --- | --- | --- | --- | --- | --- |
 | edge_id | string | yes | Silver 파생 | 내부 stable id | null 또는 빈 문자열이면 실패. 테이블 안에서 unique하고 정규화된 relationship 기준 ID 생성 규칙으로 재계산한 값과 일치해야 한다. |
-| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 owner edge는 `entra_id`, access edge는 `access_seed`여야 한다. |
+| source_system | string | yes | Bronze 매핑 | 데이터 원천 | null이면 실패. 현재 owner edge는 `entra_id`, access edge와 dev 확장 합성 데이터의 GitHub/Google Workspace/Slack access edge는 `access_seed`를 사용한다. |
 | from_id | string | yes | Silver 파생 | 출발 노드 id | null이면 실패. `from_type`이 가리키는 Silver 테이블에 존재해야 한다. |
 | from_type | string | yes | Silver 파생 | `principal`, `credential`, `asset` | null이면 실패. 명시된 enum 안의 값이고 `relationship` 방향 규칙과 일치해야 한다. |
 | to_id | string | yes | Silver 파생 | 도착 노드 id | null이면 실패. `to_type`이 가리키는 Silver 테이블에 존재해야 한다. |

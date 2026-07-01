@@ -64,6 +64,7 @@ Slack HI 케이스:
 
 GitHub의 residual 근거는 `github/apps.jsonl`의 owner 상태 필드에서, Google Workspace의 residual 근거는 `google_workspace/users.jsonl`의 user 상태 필드에서, Slack의 residual 근거는 `slack/users.jsonl`의 user 상태 필드에서 확인한다.
 
+
 ## 대시보드 라벨 재현 기준
 
 `seed_finding_type`은 합성 데이터 생성 의도를 설명하는 eval 전용 필드다. 탐지 결과가 반드시 이 값을 맞춰야 하는 hard assertion은 아니며, 대시보드 대표 라벨 샘플을 재현하기 위한 기준으로만 사용한다.
@@ -76,6 +77,7 @@ GitHub의 residual 근거는 `github/apps.jsonl`의 owner 상태 필드에서, G
 | `HI Access Drift` | `eval-gws-hi-001`, `eval-slack-hi-001` | 퇴사/비활성 HI가 민감 자산에 접근 가능한 경로 |
 | `HI Permission Drift` | `eval-gws-hi-002`, `eval-slack-hi-003` | viewer/editor/member 권한이 남은 경로 |
 | `HI Stale Access` | `eval-gws-hi-005`, `eval-slack-hi-002` | 퇴사/비활성 계정 또는 멤버십이 stale 상태로 남은 경로 |
+
 
 ## 20건 샘플 구성
 
