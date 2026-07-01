@@ -67,7 +67,9 @@ Bronze/Silver 컬럼 계약은 각 schema contract에서 관리한다. 이 문�
 | token value | 저장 금지 | 저장하지 않는다. |
 | private key value | 저장 금지 | 저장하지 않는다. |
 
+
 GitHub, Google Workspace, Slack 확장 예시는 기존 Entra ID 기반 eval key를 변경하지 않고 뒤에 append한다. eval label, planted risk 여부, expected severity, seed finding type은 기존과 동일하게 Eval 입력에만 둔다.
+
 
 ## 작성 기준
 

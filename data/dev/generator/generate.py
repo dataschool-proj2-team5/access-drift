@@ -270,7 +270,9 @@ class SaasCaseSpec:
     permission: str
     drift_type: str
     pattern: str
+
     seed_finding_type: str
+
     assignee_name: str
     assignee_team: str
     data_scope_label: str
@@ -302,7 +304,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="admin",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+
         seed_finding_type="NHI Access Drift",
+
         assignee_name="박서준",
         assignee_team="개발 플랫폼팀",
         data_scope_label="결제 서비스 소스코드",
@@ -332,7 +336,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="read",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+
         seed_finding_type="NHI Credential Drift",
+
         assignee_name="정우진",
         assignee_team="보안 플랫폼팀",
         data_scope_label="인프라 보안 설정",
@@ -362,7 +368,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="write",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+
         seed_finding_type="NHI Permission Drift",
+
         assignee_name="이다영",
         assignee_team="CRM 데이터 운영팀",
         data_scope_label="고객 Export 배치 코드",
@@ -392,7 +400,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="write",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+
         seed_finding_type="NHI Permission Drift",
+
         assignee_name="박서준",
         assignee_team="재무 데이터팀",
         data_scope_label="재무 원장 처리 코드",
@@ -422,7 +432,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="admin",
         drift_type=DRIFT_TYPE,
         pattern="P2",
+
         seed_finding_type="NHI Access Drift",
+
         assignee_name="김하나",
         assignee_team="고객지원 데이터팀",
         data_scope_label="고객지원 자동화 코드",
@@ -452,7 +464,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="editor",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Access Drift",
+
         assignee_name="김하나",
         assignee_team="고객지원 데이터팀",
         data_scope_label="고객지원 공유 드라이브",
@@ -482,7 +496,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="viewer",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Permission Drift",
+
         assignee_name="박서준",
         assignee_team="재무 데이터팀",
         data_scope_label="월마감 재무 문서",
@@ -512,7 +528,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="editor",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Access Drift",
+
         assignee_name="이다영",
         assignee_team="CRM 데이터 운영팀",
         data_scope_label="VIP 고객 리스트",
@@ -542,7 +560,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="viewer",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Permission Drift",
+
         assignee_name="한지민",
         assignee_team="정산 플랫폼팀",
         data_scope_label="판매자 정산 공유 드라이브",
@@ -572,7 +592,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="editor",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Stale Access",
+
         assignee_name="오세훈",
         assignee_team="마케팅 데이터팀",
         data_scope_label="마케팅 세그먼트 문서",
@@ -602,7 +624,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Access Drift",
+
         assignee_name="김하나",
         assignee_team="고객지원 데이터팀",
         data_scope_label="고객지원 private channel",
@@ -632,7 +656,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Stale Access",
+
         assignee_name="정우진",
         assignee_team="보안 플랫폼팀",
         data_scope_label="보안 incident channel",
@@ -662,7 +688,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Permission Drift",
+
         assignee_name="한지민",
         assignee_team="정산 플랫폼팀",
         data_scope_label="정산 private channel",
@@ -692,7 +720,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Access Drift",
+
         assignee_name="이다영",
         assignee_team="CRM 데이터 운영팀",
         data_scope_label="VIP 고객 운영 channel",
@@ -722,7 +752,9 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         permission="member",
         drift_type="hi_residual_access",
         pattern="P1",
+
         seed_finding_type="HI Stale Access",
+
         assignee_name="최하은",
         assignee_team="운영 데이터팀",
         data_scope_label="운영 runbook channel",
@@ -1293,7 +1325,9 @@ def build_eval_records(
                 "is_distractor": False,
                 "pattern": case.pattern,
                 "expected_severity": _expected_severity(case.sensitivity),
+
                 "seed_finding_type": case.seed_finding_type,
+
                 "label_reason": case.label_reason,
                 "created_at": created_at,
             }
