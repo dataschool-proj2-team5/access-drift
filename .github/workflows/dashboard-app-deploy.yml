@@ -1,0 +1,77 @@
+name: Dashboard Databricks Apps Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/dashboard/**
+      - .github/workflows/dashboard-app-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: dashboard-databricks-apps-deploy
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_AUTH_TYPE: azure-cli
+  DATABRICKS_CONFIG_FILE: /dev/null
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Databricks CLI
+        uses: databricks/setup-cli@main
+        with:
+          version: 1.4.0
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Compile dashboard Python files
+        run: python -m compileall apps/dashboard/src apps/dashboard/pages apps/dashboard/app.py
+
+      - name: Validate dashboard app bundle
+        working-directory: apps/dashboard
+        run: >
+          databricks bundle validate -t dev
+          --var="databricks_host=${DATABRICKS_HOST}"
+          --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
+          --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+          --var="catalog=${{ secrets.ACCESS_DRIFT_CATALOG }}"
+          --var="gold_schema=${{ secrets.ACCESS_DRIFT_GOLD_SCHEMA }}"
+          --var="app_schema=${{ secrets.ACCESS_DRIFT_APP_SCHEMA }}"
+          --var="actor_id=${{ secrets.ACCESS_DRIFT_ACTOR_ID }}"
+          --var="actor_name=${{ secrets.ACCESS_DRIFT_ACTOR_NAME }}"
+
+      - name: Deploy dashboard app
+        working-directory: apps/dashboard
+        run: >
+          databricks apps deploy -t dev --auto-approve --skip-validation
+          --var="databricks_host=${DATABRICKS_HOST}"
+          --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
+          --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+          --var="catalog=${{ secrets.ACCESS_DRIFT_CATALOG }}"
+          --var="gold_schema=${{ secrets.ACCESS_DRIFT_GOLD_SCHEMA }}"
+          --var="app_schema=${{ secrets.ACCESS_DRIFT_APP_SCHEMA }}"
+          --var="actor_id=${{ secrets.ACCESS_DRIFT_ACTOR_ID }}"
+          --var="actor_name=${{ secrets.ACCESS_DRIFT_ACTOR_NAME }}"
