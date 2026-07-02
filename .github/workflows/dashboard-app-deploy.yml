@@ -58,11 +58,6 @@ jobs:
           --var="databricks_host=${DATABRICKS_HOST}"
           --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
           --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
-          --var="catalog=${{ secrets.ACCESS_DRIFT_CATALOG }}"
-          --var="gold_schema=${{ secrets.ACCESS_DRIFT_GOLD_SCHEMA }}"
-          --var="app_schema=${{ secrets.ACCESS_DRIFT_APP_SCHEMA }}"
-          --var="actor_id=${{ secrets.ACCESS_DRIFT_ACTOR_ID }}"
-          --var="actor_name=${{ secrets.ACCESS_DRIFT_ACTOR_NAME }}"
 
       - name: Deploy dashboard app
         working-directory: apps/dashboard
@@ -71,11 +66,6 @@ jobs:
           --var="databricks_host=${DATABRICKS_HOST}"
           --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
           --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
-          --var="catalog=${{ secrets.ACCESS_DRIFT_CATALOG }}"
-          --var="gold_schema=${{ secrets.ACCESS_DRIFT_GOLD_SCHEMA }}"
-          --var="app_schema=${{ secrets.ACCESS_DRIFT_APP_SCHEMA }}"
-          --var="actor_id=${{ secrets.ACCESS_DRIFT_ACTOR_ID }}"
-          --var="actor_name=${{ secrets.ACCESS_DRIFT_ACTOR_NAME }}"
 
       - name: Show dashboard app info
         run: |

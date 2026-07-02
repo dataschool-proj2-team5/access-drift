@@ -104,11 +104,16 @@ Databricks Apps runtime은 아래 환경 변수를 읽습니다.
 | `DATABRICKS_HOST` | Databricks workspace host |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
 | `DATABRICKS_TOKEN` | Databricks SQL Statement API 호출 token |
-| `ACCESS_DRIFT_CATALOG` | Dashboard view catalog |
-| `ACCESS_DRIFT_GOLD_SCHEMA` | Gold fallback schema |
-| `ACCESS_DRIFT_APP_SCHEMA` | App view/action state schema |
-| `ACCESS_DRIFT_ACTOR_ID` | Action State/Event 작성 actor id |
-| `ACCESS_DRIFT_ACTOR_NAME` | Action State/Event 작성 actor name |
+
+배포 앱은 아래 값을 기본값으로 사용합니다.
+
+| 항목 | 기본값 |
+| --- | --- |
+| Catalog | `access_drift_dev` |
+| Gold schema | `gold` |
+| App schema | `app` |
+| Action actor id | `databricks_apps_user` |
+| Action actor name | `Databricks Apps User` |
 
 ## GitHub Actions 자동 CD
 
@@ -124,11 +129,6 @@ Databricks Apps runtime은 아래 환경 변수를 읽습니다.
 | `DATABRICKS_HOST` | Databricks workspace host |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
 | `DATABRICKS_TOKEN` | Dashboard runtime SQL Statement API token |
-| `ACCESS_DRIFT_CATALOG` | 예: `access_drift_dev` |
-| `ACCESS_DRIFT_GOLD_SCHEMA` | 예: `gold` |
-| `ACCESS_DRIFT_APP_SCHEMA` | 예: `app` |
-| `ACCESS_DRIFT_ACTOR_ID` | 예: `databricks_apps_user` |
-| `ACCESS_DRIFT_ACTOR_NAME` | 예: `Databricks Apps User` |
 
 secret 값은 PR, 로그, 문서에 직접 남기지 않습니다.
 
