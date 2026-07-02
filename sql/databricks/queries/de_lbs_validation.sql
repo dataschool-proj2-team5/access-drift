@@ -259,3 +259,18 @@ LEFT JOIN access_drift_dev.context.assignment_routing r
  AND r.asset_id = g.asset_id
  AND r.drift_type = g.drift_type
 WHERE r.subject_id IS NULL;
+
+
+-- 13. Access edge common metadata coverage by source
+
+-- Base, GitHub, Google Workspace, Slack access edge 모두 permission/status/last_used_at을 보존해야 한다.
+SELECT
+  evidence_source,
+  COUNT(*) AS total_access_edges,
+  SUM(CASE WHEN permission IS NULL OR trim(permission) = '' THEN 1 ELSE 0 END) AS missing_permission,
+  SUM(CASE WHEN status IS NULL OR trim(status) = '' THEN 1 ELSE 0 END) AS missing_status,
+  SUM(CASE WHEN last_used_at IS NULL THEN 1 ELSE 0 END) AS missing_last_used_at
+FROM access_drift_dev.silver.silver_edges
+WHERE relationship = 'accesses_asset'
+GROUP BY evidence_source
+ORDER BY evidence_source;

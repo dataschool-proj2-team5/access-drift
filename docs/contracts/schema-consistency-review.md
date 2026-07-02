@@ -39,6 +39,9 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 | `bronze_identity_lifecycle_seed` | `bronze_identity_lifecycle_seed` | PASS | `user_principal_name`, `display_name`, `employment_status`, `termination_date`가 DDL에 존재한다. |
 | `bronze_assets_seed` | `bronze_assets_seed` | PASS | `asset_id`, `name`, `environment`, `sensitivity`가 DDL에 존재한다. |
 | `bronze_access_edges_seed` | `bronze_access_edges_seed` | PASS | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at`가 DDL에 존재한다. |
+| `bronze_github_access_edges` | `bronze_github_access_edges` | PASS | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at`가 DDL에 존재한다. |
+| `bronze_google_workspace_access_edges` | `bronze_google_workspace_access_edges` | PASS | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at`가 DDL에 존재한다. |
+| `bronze_slack_access_edges` | `bronze_slack_access_edges` | PASS | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at`가 DDL에 존재한다. |
 
 ### raw seed JSONL vs Bronze DDL
 
@@ -50,6 +53,9 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 | `identity/lifecycle_seed.jsonl` | `userPrincipalName`, `displayName`, `employmentStatus`, `terminationDate` | `user_principal_name`, `display_name`, `employment_status`, `termination_date` | PASS | 사용자 식별자, 표시 이름, 퇴사/재직 상태 seed가 Bronze 컬럼과 맞는다. |
 | `assets/assets_seed.jsonl` | `assetId`, `name`, `environment`, `sensitivity` | `asset_id`, `name`, `environment`, `sensitivity` | PASS | asset seed와 Bronze DDL의 명칭이 일치한다. |
 | `access/access_edges_seed.jsonl` | `principalId`, `assetId`, `relationship`, `permission`, `status`, optional `lastUsedDateTime` / `last_used_at` | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at` | PASS | access edge seed가 Bronze 관계 테이블에 들어간다. 마지막 사용 시각은 있으면 보존하고 없으면 null로 둔다. |
+| `github/access_edges.jsonl` | `principalId`, `assetId`, `relationship`, `permission`, `status`, `lastUsedDateTime` | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at` | PASS | GitHub access edge 마지막 사용 시각을 Bronze에 보존한다. |
+| `google_workspace/access_edges.jsonl` | `principalId`, `assetId`, `relationship`, `permission`, `status`, `lastUsedDateTime` | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at` | PASS | Google Workspace access edge 마지막 사용 시각을 Bronze에 보존한다. |
+| `slack/access_edges.jsonl` | `principalId`, `assetId`, `relationship`, `permission`, `status`, `lastUsedDateTime` | `principal_id`, `asset_id`, `relationship`, `permission`, `status`, `last_used_at` | PASS | Slack access edge 마지막 사용 시각을 Bronze에 보존한다. |
 
 ### Silver 계약 vs `002_create_silver_tables.sql`
 
@@ -107,6 +113,9 @@ Bronze는 source 원본 보존을 위해 business key를 nullable로 허용한�
 | `bronze_assets_seed` | `silver_assets` | Bronze `asset_id`가 `source_asset_id`로 보존된 row가 존재한다. | Bronze `asset_id` null 여부 → asset 변환 로직 |
 | `bronze_azure_application_owners` | `silver_edges` | human principal에서 NHI principal로 향하는 `owns_principal` edge가 존재한다. | Bronze owner key null 여부 → owner edge 변환 로직 |
 | `bronze_access_edges_seed` | `silver_edges` | NHI principal에서 asset으로 향하는 `accesses_asset` edge가 존재하고, `last_used_at`이 있으면 Silver edge에 보존된다. | Bronze edge key/relationship/last_used_at 여부 → access edge 변환 로직 |
+| `bronze_github_access_edges` | `silver_edges` | GitHub App principal에서 repository asset으로 향하는 `accesses_asset` edge가 존재하고, `last_used_at`이 Silver edge에 보존된다. | Bronze edge key/relationship/last_used_at 여부 → GitHub access edge 변환 로직 |
+| `bronze_google_workspace_access_edges` | `silver_edges` | Google Workspace user principal에서 workspace asset으로 향하는 `accesses_asset` edge가 존재하고, `last_used_at`이 Silver edge에 보존된다. | Bronze edge key/relationship/last_used_at 여부 → Google Workspace access edge 변환 로직 |
+| `bronze_slack_access_edges` | `silver_edges` | Slack user principal에서 channel asset으로 향하는 `accesses_asset` edge가 존재하고, `last_used_at`이 Silver edge에 보존된다. | Bronze edge key/relationship/last_used_at 여부 → Slack access edge 변환 로직 |
 
 #### 변환별 검증 기준
 
