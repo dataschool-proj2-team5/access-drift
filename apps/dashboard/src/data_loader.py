@@ -210,7 +210,9 @@ def _normalize_app_view_rows(
     normalized["action_plan"] = [[] for _ in range(len(rows))]
     normalized["ai_agent_messages"] = [[] for _ in range(len(rows))]
     normalized["overview_title"] = _first_present(rows, ["drift_type_label", "card_title", "drift_type"])
-    normalized["ai_summary"] = _first_present(rows, ["risk_summary", "deterministic_recommended_action"])
+    source_ai_summary = _first_present(rows, ["ai_summary", "ai_summary_detail", "recommendation_summary"])
+    generated_ai_summary = rows.apply(_ai_summary_from_row, axis=1)
+    normalized["ai_summary"] = source_ai_summary.where(_has_value(source_ai_summary), generated_ai_summary)
     normalized["reference_docs"] = [[] for _ in range(len(rows))]
 
     return normalized
@@ -258,7 +260,9 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["action_plan"] = [[] for _ in range(len(gold_core))]
     normalized["ai_agent_messages"] = [[] for _ in range(len(gold_core))]
     normalized["overview_title"] = _first_present(gold_core, ["drift_type"])
-    normalized["ai_summary"] = _first_present(gold_core, ["evidence_summary"])
+    source_ai_summary = _first_present(gold_core, ["ai_summary", "recommendation_summary"])
+    generated_ai_summary = gold_core.apply(_ai_summary_from_row, axis=1)
+    normalized["ai_summary"] = source_ai_summary.where(_has_value(source_ai_summary), generated_ai_summary)
     normalized["reference_docs"] = [[] for _ in range(len(gold_core))]
     return normalized
 
@@ -574,6 +578,55 @@ def _risk_factors_from_row(row: pd.Series) -> list[str]:
     if str(sensitive_access).lower() in {"true", "1", "yes"}:
         factors.append("Sensitive asset access")
     return factors
+
+
+def _ai_summary_from_row(row: pd.Series) -> str:
+    recommended_action = _row_value(row, ["deterministic_recommended_action", "recommended_action"])
+    risk_summary = _row_value(row, ["risk_summary", "evidence_summary"])
+    credential_type = _humanize_label(_row_value(row, ["credential_type", "credential_type_detail", "credential_type_path"]))
+    credential_status = str(_row_value(row, ["credential_status", "credential_status_detail", "credential_status_path"])).lower()
+    credential_active = str(_row_value(row, ["credential_is_active", "credential_is_active_detail", "factor_credential_active"])).lower()
+    owner_status = str(_row_value(row, ["owner_account_status", "factor_owner_status", "subject_status"])).lower()
+    asset_source = str(_row_value(row, ["asset_display_name", "asset_display_name_detail", "asset_display_name_path", "asset_type", "asset_type_detail", "asset_type_path"]))
+    asset_type = _humanize_label(_row_value(row, ["asset_type", "asset_type_detail", "asset_type_path"]))
+    permission = _row_value(row, ["access_permission", "access_permission_detail", "access_permission_path", "factor_permission"])
+
+    credential_label = credential_type or "인증 수단"
+    asset_label = "Storage Account" if "storage" in asset_source.lower() else asset_type or "관련 자산"
+    has_inactive_owner = any(token in owner_status for token in ["inactive", "terminated", "disabled", "offboard"])
+    has_active_credential = credential_active in {"true", "1", "yes", "active"} or credential_status == "active"
+
+    if has_inactive_owner and has_active_credential:
+        return (
+            f"담당자와 실제 사용 목적을 확인한 후, 퇴사자와 연결된 활성 {credential_label}을 즉시 교체해야 합니다. "
+            f"이후 {asset_label}의 RBAC 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+        )
+
+    if credential_type:
+        return (
+            f"담당자와 실제 사용 목적을 확인한 후, 잔존 {credential_label}의 필요 여부를 검토하고 교체 또는 폐기해야 합니다. "
+            f"이후 {asset_label}의 권한 설정을 점검해야 합니다."
+        )
+
+    if permission:
+        return (
+            "담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한의 필요 여부를 검토하고 불필요한 권한을 회수해야 합니다. "
+            f"이후 {asset_label}의 접근 정책을 점검해야 합니다."
+        )
+
+    if recommended_action:
+        return (
+            f"담당자와 실제 사용 목적을 확인한 후, {recommended_action} "
+            f"이후 {asset_label}의 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+        )
+
+    if risk_summary:
+        return (
+            "위험 요약을 기준으로 담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한과 관련 인증 수단을 우선 점검해야 합니다. "
+            "이후 관련 자산의 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+        )
+
+    return "담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한과 관련 자산의 권한 설정을 점검해야 합니다."
 
 
 def _row_value(row: pd.Series, columns: list[str]) -> object:
