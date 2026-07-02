@@ -259,3 +259,16 @@ LEFT JOIN access_drift_dev.context.assignment_routing r
  AND r.asset_id = g.asset_id
  AND r.drift_type = g.drift_type
 WHERE r.subject_id IS NULL;
+
+-- 10. Access edge common metadata coverage by source
+-- accesses_asset edge는 source와 무관하게 permission/status/last_used_at을 제공해야 한다.
+SELECT
+  evidence_source,
+  COUNT(*) AS total_access_edges,
+  SUM(CASE WHEN permission IS NULL OR trim(permission) = '' THEN 1 ELSE 0 END) AS missing_permission,
+  SUM(CASE WHEN status IS NULL OR trim(status) = '' THEN 1 ELSE 0 END) AS missing_status,
+  SUM(CASE WHEN last_used_at IS NULL THEN 1 ELSE 0 END) AS missing_last_used_at
+FROM access_drift_dev.silver.silver_edges
+WHERE relationship = 'accesses_asset'
+GROUP BY evidence_source
+ORDER BY evidence_source;

@@ -106,6 +106,7 @@ SAAS_EXPECTED_FIELDS = {
         "relationship",
         "permission",
         "status",
+        "lastUsedDateTime",
     },
     "google_users": {
         "userId",
@@ -128,6 +129,7 @@ SAAS_EXPECTED_FIELDS = {
         "relationship",
         "permission",
         "status",
+        "lastUsedDateTime",
     },
     "slack_users": {
         "userId",
@@ -150,6 +152,7 @@ SAAS_EXPECTED_FIELDS = {
         "relationship",
         "permission",
         "status",
+        "lastUsedDateTime",
     },
 }
 
@@ -1177,6 +1180,10 @@ def build_landing_records(
     return records
 
 
+def _saas_last_used_at(reference_date: date, source_offset: int, case_index: int) -> str:
+    return _iso_ts(reference_date - timedelta(days=source_offset + case_index + 1))
+
+
 def build_saas_landing_records(reference_date: date) -> dict[str, list[dict[str, object]]]:
     expires_at = f"{(reference_date + timedelta(days=365)).isoformat()}T00:00:00Z"
     github_cases = [case for case in SAAS_CASE_SPECS if case.source == "github"]
@@ -1223,8 +1230,9 @@ def build_saas_landing_records(reference_date: date) -> dict[str, list[dict[str,
                 "relationship": "accesses_asset",
                 "permission": case.permission,
                 "status": "active",
+                "lastUsedDateTime": _saas_last_used_at(reference_date, 10, index),
             }
-            for case in github_cases
+            for index, case in enumerate(github_cases)
         ],
         "google_users": [
             {
@@ -1254,8 +1262,9 @@ def build_saas_landing_records(reference_date: date) -> dict[str, list[dict[str,
                 "relationship": "accesses_asset",
                 "permission": case.permission,
                 "status": "active",
+                "lastUsedDateTime": _saas_last_used_at(reference_date, 20, index),
             }
-            for case in google_cases
+            for index, case in enumerate(google_cases)
         ],
         "slack_users": [
             {
@@ -1285,8 +1294,9 @@ def build_saas_landing_records(reference_date: date) -> dict[str, list[dict[str,
                 "relationship": "accesses_asset",
                 "permission": case.permission,
                 "status": "active",
+                "lastUsedDateTime": _saas_last_used_at(reference_date, 30, index),
             }
-            for case in slack_cases
+            for index, case in enumerate(slack_cases)
         ],
     }
 
@@ -1624,7 +1634,7 @@ def validate_landing_records(
                 raise ValueError(f"{label} must not expose generated index suffix")
 
 
-def validate_saas_landing_records(records: dict[str, list[dict[str, object]]]) -> None:
+def validate_saas_landing_records(records: dict[str, list[dict[str, object]]], reference_date: date) -> None:
     if set(records) != set(SAAS_LANDING_FILE_PATHS):
         raise ValueError("unexpected SaaS landing record groups")
 
@@ -1699,6 +1709,12 @@ def validate_saas_landing_records(records: dict[str, list[dict[str, object]]]) -
 
     for row in records["github_credentials"]:
         _validate_timestamp(row["expiresAt"], "expiresAt")
+
+    for group in ("github_access_edges", "google_access_edges", "slack_access_edges"):
+        for row in records[group]:
+            _validate_timestamp(row["lastUsedDateTime"], f"{group}.lastUsedDateTime")
+            if _parse_date(str(row["lastUsedDateTime"])) > reference_date:
+                raise ValueError(f"{group}.lastUsedDateTime must not be after reference_date")
 
 
 def validate_eval_records(
@@ -1919,7 +1935,7 @@ def generate(
     eval_rows = build_eval_records(specs, reference_date)
     context = build_context_records(specs)
     validate_landing_records(landing, size, reference_date)
-    validate_saas_landing_records(saas_landing)
+    validate_saas_landing_records(saas_landing, reference_date)
     validate_eval_records(eval_rows, landing, saas_landing, size)
     validate_context_records(context, landing, saas_landing, eval_rows, size)
     write_landing_records(landing, landing_output_root)

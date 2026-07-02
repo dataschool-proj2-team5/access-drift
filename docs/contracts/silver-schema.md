@@ -235,6 +235,7 @@ Principal, credential, asset 사이의 관계를 담는다.
 | relationship | string | yes | Silver 파생 | `owns_principal`, `owns_credential`, `manages_principal`, `manages_credential`, `accesses_credential`, `manages_asset`, `accesses_asset`, `unknown` | null이면 실패. 명시된 enum 안의 값이며 아래 관계유형 규칙의 `from_type -> to_type` 조합을 만족해야 한다. |
 | permission | string | no | Bronze 매핑 | role 또는 permission 이름 | 값이 있으면 대응 Bronze permission을 정규화한 결과여야 한다. 동일 edge의 대표 권한 선택 규칙은 `확인 필요`. |
 | status | string | yes | Bronze 매핑 | `active`, `inactive`, `unknown` | null이면 실패. 명시된 enum 안의 값이어야 한다. owner edge의 현재 고정값은 `active`다. |
+| last_used_at | timestamp | no | Bronze 매핑 | 접근 관계의 마지막 사용 시각 | `accesses_asset` 관계에서 Bronze source가 마지막 사용 시각을 제공하면 같은 시점을 보존해야 한다. 입력에 없거나 owner/credential 관계이면 null을 허용한다. |
 | evidence_source | string | no | Silver 파생 | 관계를 확인한 source 또는 방법 | 값이 있으면 관계를 만든 Bronze source 또는 테이블을 식별할 수 있어야 한다. 허용값 목록은 `확인 필요`. |
 | observed_at | timestamp | yes | Bronze 매핑 | 이 관계를 관측한 시각. 기본값은 원천 Bronze row의 `_ingestion_ts` | null이면 실패. 관계의 근거가 된 Bronze row의 `_ingestion_ts`와 같은 시점을 나타내야 한다. |
 
@@ -251,6 +252,7 @@ Principal, credential, asset 사이의 관계를 담는다.
   "relationship": "accesses_asset",
   "permission": "invoke",
   "status": "active",
+  "last_used_at": "2026-06-24T00:00:00Z",
   "evidence_source": "bronze_access_edges_seed",
   "observed_at": "2026-06-23T00:00:00Z"
 }

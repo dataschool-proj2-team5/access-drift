@@ -197,6 +197,7 @@ GitHub App 또는 bot의 repository 접근 관계를 보존한다.
 | `relationship` | string | no | 관계 유형 | source 값을 보존해야 한다. |
 | `permission` | string | no | permission 또는 role | source 값을 보존해야 한다. |
 | `status` | string | no | 관계 상태 | source 값을 보존해야 한다. |
+| `last_used_at` | timestamp | no | 접근 관계의 마지막 사용 시각 | Landing `lastUsedDateTime`이 있으면 timestamp 변환에 성공해야 한다. |
 
 ## bronze_google_workspace_users
 
@@ -234,6 +235,7 @@ Google Workspace 사용자의 asset 접근 관계를 보존한다.
 | `relationship` | string | no | 관계 유형 | source 값을 보존해야 한다. |
 | `permission` | string | no | permission 또는 role | source 값을 보존해야 한다. |
 | `status` | string | no | 관계 상태 | source 값을 보존해야 한다. |
+| `last_used_at` | timestamp | no | 접근 관계의 마지막 사용 시각 | Landing `lastUsedDateTime`이 있으면 timestamp 변환에 성공해야 한다. |
 
 ## bronze_slack_users
 
@@ -271,6 +273,7 @@ Slack 사용자의 channel 접근 관계를 보존한다.
 | `relationship` | string | no | 관계 유형 | source 값을 보존해야 한다. |
 | `permission` | string | no | permission 또는 role | source 값을 보존해야 한다. |
 | `status` | string | no | 관계 상태 | source 값을 보존해야 한다. |
+| `last_used_at` | timestamp | no | 접근 관계의 마지막 사용 시각 | Landing `lastUsedDateTime`이 있으면 timestamp 변환에 성공해야 한다. |
 
 ## Bronze에 두지 않는 것
 
