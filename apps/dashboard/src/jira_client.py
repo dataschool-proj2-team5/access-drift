@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import base64
 import json
+import os
 import tomllib
 import urllib.error
 import urllib.request
@@ -89,6 +90,10 @@ def create_jira_issue(
 
 
 def _read_jira_secrets() -> dict[str, object]:
+    env_secrets = _read_jira_env()
+    if env_secrets:
+        return env_secrets
+
     try:
         import streamlit as st
 
@@ -100,6 +105,18 @@ def _read_jira_secrets() -> dict[str, object]:
     if DEFAULT_SECRET_PATH.exists():
         return dict(tomllib.loads(DEFAULT_SECRET_PATH.read_text(encoding="utf-8")).get("jira", {}))
     return {}
+
+
+def _read_jira_env() -> dict[str, object]:
+    mapping = {
+        "base_url": "JIRA_BASE_URL",
+        "email": "JIRA_EMAIL",
+        "api_token": "JIRA_API_TOKEN",
+        "project_key": "JIRA_PROJECT_KEY",
+        "issue_type": "JIRA_ISSUE_TYPE",
+    }
+    values = {key: os.getenv(env_name, "").strip() for key, env_name in mapping.items()}
+    return values if all(values.values()) else {}
 
 
 def _to_adf(text: str) -> dict[str, object]:

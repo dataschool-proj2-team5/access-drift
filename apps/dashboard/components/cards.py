@@ -531,7 +531,7 @@ def render_ticket_form_placeholder(case: pd.Series) -> None:
 
     config = jira_client.load_jira_config()
     if config is None:
-        st.error("Jira secrets 설정이 없습니다. apps/dashboard/.streamlit/secrets.toml의 [jira] 섹션을 확인하세요.")
+        st.error("Jira 설정이 없습니다. 로컬 secrets.toml의 [jira] 섹션 또는 Databricks Apps 환경 변수를 확인하세요.")
         return
 
     full_explanation = _append_jira_sidebar_fields(explanation, assignee, team, reporter)
