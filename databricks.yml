@@ -87,6 +87,12 @@ variables:
   silver_publish_replace_existing_tables:
     description: Whether Silver publish step may rename existing Delta tables before creating stable views
     default: "false"
+  dlt_cutover_enabled:
+    description: Whether one-time Bronze/Silver DLT cutover preparation may run
+    default: "false"
+  dlt_cutover_replace_existing_tables:
+    description: Whether DLT cutover preparation may rename existing Bronze Delta tables to legacy names
+    default: "false"
   dev_seed_size:
     description: Number of dev synthetic cases to generate
     default: "20"
@@ -202,9 +208,23 @@ targets:
               description: ADLS raw JSONL → Bronze DLT materialized views + expectation
               depends_on:
                 - task_key: synthetic_data_task
+                - task_key: prepare_dlt_cutover_task
               pipeline_task:
                 pipeline_id: ${resources.pipelines.bronze_dlt_writer.id}
                 full_refresh: true
+
+            - task_key: prepare_dlt_cutover_task
+              description: One-time DLT cutover guard — 기존 Bronze table을 legacy rename할지 점검
+              depends_on:
+                - task_key: migration_task
+              notebook_task:
+                notebook_path: ./notebooks/13_prepare_dlt_cutover.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  bronze_schema: ${var.bronze_dlt_target_schema}
+                  cutover_enabled: ${var.dlt_cutover_enabled}
+                  replace_existing_tables: ${var.dlt_cutover_replace_existing_tables}
+              existing_cluster_id: ${var.cluster_id}
 
             - task_key: silver_dlt_task
               description: Bronze DLT → Silver DLT staging materialized views + integrity audit
@@ -401,8 +421,8 @@ targets:
 
 resources:
   jobs:
-    access-drift-pipeline:
-      name: access-drift-pipeline
+    access-drift-legacy-pipeline:
+      name: access-drift-legacy-pipeline
       tasks:
         - task_key: migration_task
           description: DDL 적용 — sql/databricks/migrations/*.sql 순서대로 실행

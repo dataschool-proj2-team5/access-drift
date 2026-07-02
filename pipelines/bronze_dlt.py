@@ -100,6 +100,8 @@ SOURCE_FIELDS = {
         "relationship",
         "permission",
         "status",
+        "lastUsedDateTime",
+        "last_used_at",
     ],
     "google_workspace/users.jsonl": [
         "userId",
@@ -122,6 +124,8 @@ SOURCE_FIELDS = {
         "relationship",
         "permission",
         "status",
+        "lastUsedDateTime",
+        "last_used_at",
     ],
     "slack/users.jsonl": [
         "userId",
@@ -144,6 +148,8 @@ SOURCE_FIELDS = {
         "relationship",
         "permission",
         "status",
+        "lastUsedDateTime",
+        "last_used_at",
     ],
 }
 
@@ -559,12 +565,16 @@ def _build_github_repos():
 def _build_access_edge_source(relative_path, src_system, src_object):
     df, path = _read_source(relative_path)
     df = _add_metadata(df, src_system, src_object, path)
+    raw_last_used = F.coalesce(
+        _source_col(df, "lastUsedDateTime"), _source_col(df, "last_used_at")
+    )
     df = (
         df.withColumn("principal_id", _source_col(df, "principalId"))
         .withColumn("asset_id", _source_col(df, "assetId"))
         .withColumn("relationship", _source_col(df, "relationship"))
         .withColumn("permission", _source_col(df, "permission"))
         .withColumn("status", _source_col(df, "status"))
+        .withColumn("last_used_at", F.try_to_timestamp(raw_last_used))
     )
     return _finalize(
         df,
@@ -574,6 +584,7 @@ def _build_access_edge_source(relative_path, src_system, src_object):
             "relationship": "string",
             "permission": "string",
             "status": "string",
+            "last_used_at": "timestamp",
         },
     )
 
@@ -836,11 +847,19 @@ ACCESS_EDGE_HARD = {
     "valid_relationship_type": "typeof(relationship) = 'string'",
     "valid_permission_type": "typeof(permission) = 'string'",
     "valid_status_type": "typeof(status) = 'string'",
+    "valid_last_used_at_type": "typeof(last_used_at) = 'timestamp'",
     "preserved_principal_id": _source_value("principalId", "principal_id"),
     "preserved_asset_id": _source_value("assetId", "asset_id"),
     "preserved_relationship": _source_value("relationship", "relationship"),
     "preserved_permission": _source_value("permission", "permission"),
     "preserved_status": _source_value("status", "status"),
+    "parsed_last_used_at": (
+        "coalesce(get_json_object(_raw_payload, '$.lastUsedDateTime'), "
+        "get_json_object(_raw_payload, '$.last_used_at')) IS NULL OR "
+        "(last_used_at IS NOT NULL AND last_used_at = try_to_timestamp(coalesce("
+        "get_json_object(_raw_payload, '$.lastUsedDateTime'), "
+        "get_json_object(_raw_payload, '$.last_used_at'))))"
+    ),
 }
 ACCESS_EDGE_WARN = {
     "ready_principal_id": "principal_id IS NOT NULL AND trim(principal_id) <> ''",
