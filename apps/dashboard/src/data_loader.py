@@ -197,7 +197,10 @@ def _normalize_app_view_rows(
     normalized["data_scope"] = _first_present(rows, ["data_scope_label"])
     normalized["data_categories"] = _array_to_display(_first_present(rows, ["sensitive_data_examples"]))
     normalized["permission_level"] = _first_present(rows, ["access_permission", "access_permission_detail", "access_permission_path", "factor_permission"])
-    normalized["last_accessed_at"] = pd.NaT
+    normalized["last_accessed_at"] = _first_present(
+        rows,
+        ["last_accessed_at", "last_accessed_at_detail", "last_accessed_at_path", "access_last_used_at"],
+    )
     normalized["detected_at"] = _first_present(rows, ["detected_at", "detected_at_detail", "detected_at_path"])
     normalized["created_at"] = pd.NaT
     normalized["rotation_status"] = _rotation_status_from_credential(rows)
@@ -251,7 +254,7 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["data_scope"] = ""
     normalized["data_categories"] = ""
     normalized["permission_level"] = ""
-    normalized["last_accessed_at"] = pd.NaT
+    normalized["last_accessed_at"] = _first_present(gold_core, ["last_accessed_at", "access_last_used_at"])
     normalized["detected_at"] = _first_present(gold_core, ["detected_at"])
     normalized["created_at"] = pd.NaT
     normalized["rotation_status"] = ""
