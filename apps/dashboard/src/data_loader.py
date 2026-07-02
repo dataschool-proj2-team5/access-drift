@@ -207,12 +207,16 @@ def _normalize_app_view_rows(
     normalized["recommended_action"] = _first_present(rows, ["deterministic_recommended_action", "recommended_action"])
     normalized["risk_summary"] = _first_present(rows, ["risk_summary", "evidence_summary"])
     normalized["risk_factors"] = rows.apply(_risk_factors_from_row, axis=1)
-    normalized["action_plan"] = [[] for _ in range(len(rows))]
     normalized["ai_agent_messages"] = [[] for _ in range(len(rows))]
     normalized["overview_title"] = _first_present(rows, ["drift_type_label", "card_title", "drift_type"])
     source_ai_summary = _first_present(rows, ["ai_summary", "ai_summary_detail", "recommendation_summary"])
     generated_ai_summary = rows.apply(_ai_summary_from_row, axis=1)
     normalized["ai_summary"] = source_ai_summary.where(_has_value(source_ai_summary), generated_ai_summary)
+    source_action_plan = _first_present(rows, ["action_plan", "action_steps", "recommended_steps"])
+    normalized["action_plan"] = source_action_plan.where(
+        _has_value(source_action_plan),
+        normalized["ai_summary"].map(_action_plan_from_ai_summary),
+    )
     normalized["reference_docs"] = [[] for _ in range(len(rows))]
 
     return normalized
@@ -257,12 +261,16 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["recommended_action"] = _first_present(gold_core, ["recommended_action"])
     normalized["risk_summary"] = _first_present(gold_core, ["evidence_summary"])
     normalized["risk_factors"] = [[] for _ in range(len(gold_core))]
-    normalized["action_plan"] = [[] for _ in range(len(gold_core))]
     normalized["ai_agent_messages"] = [[] for _ in range(len(gold_core))]
     normalized["overview_title"] = _first_present(gold_core, ["drift_type"])
     source_ai_summary = _first_present(gold_core, ["ai_summary", "recommendation_summary"])
     generated_ai_summary = gold_core.apply(_ai_summary_from_row, axis=1)
     normalized["ai_summary"] = source_ai_summary.where(_has_value(source_ai_summary), generated_ai_summary)
+    source_action_plan = _first_present(gold_core, ["action_plan", "action_steps", "recommended_steps"])
+    normalized["action_plan"] = source_action_plan.where(
+        _has_value(source_action_plan),
+        normalized["ai_summary"].map(_action_plan_from_ai_summary),
+    )
     normalized["reference_docs"] = [[] for _ in range(len(gold_core))]
     return normalized
 
@@ -627,6 +635,42 @@ def _ai_summary_from_row(row: pd.Series) -> str:
         )
 
     return "담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한과 관련 자산의 권한 설정을 점검해야 합니다."
+
+
+def _action_plan_from_ai_summary(value: object) -> list[str]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+
+    normalized = re.sub(r"\s+", " ", text)
+    steps: list[str] = []
+
+    if "담당자" in normalized or "사용 목적" in normalized:
+        steps.append("담당자와 실제 사용 목적을 확인합니다.")
+
+    if "Client Secret" in normalized or "credential" in normalized or "인증 수단" in normalized:
+        if "교체" in normalized or "rotation" in normalized.lower():
+            steps.append("활성 Client Secret 또는 credential을 교체합니다.")
+        elif "폐기" in normalized or "revoke" in normalized.lower():
+            steps.append("불필요한 credential을 폐기합니다.")
+        else:
+            steps.append("관련 credential의 유효성과 필요 여부를 점검합니다.")
+
+    if "RBAC" in normalized or "권한" in normalized:
+        steps.append("자산의 RBAC 및 잔존 접근 권한을 점검합니다.")
+
+    if "공개 접근" in normalized or "public" in normalized.lower():
+        steps.append("공개 접근 설정과 예외 정책을 점검합니다.")
+
+    if not steps:
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?。])\s+|(?<=다\.)\s*", normalized) if part.strip()]
+        steps = sentences[:5]
+
+    unique_steps: list[str] = []
+    for step in steps:
+        if step and step not in unique_steps:
+            unique_steps.append(step)
+    return unique_steps[:5]
 
 
 def _row_value(row: pd.Series, columns: list[str]) -> object:

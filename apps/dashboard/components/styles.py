@@ -611,22 +611,22 @@ def apply_dashboard_style(page: str | None = None) -> None:
 
         .ad-step {
           display: grid;
-          grid-template-columns: 42px 1fr;
-          gap: 16px;
+          grid-template-columns: 25px 1fr;
+          gap: 10px;
           align-items: center;
           margin: 17px 0;
-          font-size: 18px;
+          font-size: 16px;
         }
 
         .ad-step-number {
-          width: 30px;
-          height: 30px;
+          width: 25px;
+          height: 25px;
           border-radius: 999px;
           background: var(--ad-blue);
           color: #fff;
           display: grid;
           place-items: center;
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 900;
         }
 
