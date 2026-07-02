@@ -23,6 +23,7 @@
 | `risk_card_detail_view` | Risk Card header, summary, owner, reviewer, recommendation 정보 |
 | `risk_access_path_view` | Risk Card Access Path 구성 정보 |
 | `risk_action_state` | Review Status 표시용 상태 |
+| `risk_action_event` | Review Status 변경 이력 저장 |
 
 `gold_core`는 화면용 주 소스가 아니라 app view가 비어 있을 때 fallback 또는 검증용 원천으로만 사용합니다.
 
@@ -128,10 +129,10 @@ Access Path에서 `asset_name`은 요약 표시용으로 쓰고, 원본 asset �
 - `pages/`와 `components/`에서 해당 컬럼을 표시, 집계, 필터, 정렬에 사용하는지 여부
 - `apps/dashboard/README.md`의 실행/데이터 로딩 설명
 - mock data fallback이 계속 동작하는지 여부
+- Databricks write-back이 필요한 변경이면 `src/action_state.py`의 helper를 통해 처리하는지 여부
 
 ## 아직 구현하지 않은 항목
 
-- `risk_action_state`에 대한 Databricks write-back
-- `risk_action_event` insert
+- Review Status 외 note 입력 UI
 - 실제 RAG/AI Agent 연동
 - 실제 Ticket API 연동

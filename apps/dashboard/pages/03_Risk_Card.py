@@ -17,6 +17,7 @@ from components.risk_text_panels import (
     render_review_info_card,
 )
 from components.styles import apply_dashboard_style
+import src.action_state as action_state
 import src.data_loader as data_loader
 from src.session_state import (
     REVIEW_STATUS_OPTIONS,
@@ -26,6 +27,7 @@ from src.session_state import (
 
 
 card_components = importlib.reload(card_components)
+action_state = importlib.reload(action_state)
 data_loader = importlib.reload(data_loader)
 
 
@@ -232,7 +234,23 @@ def main() -> None:
                 key=f"review_status_{selected_case_id}",
                 label_visibility="collapsed",
             )
-    set_review_status(selected_case_id, selected_status)
+    if selected_status != current_status:
+        config = action_state.get_databricks_action_config()
+        if action_state.can_write_action_state(config, result.using_mock):
+            try:
+                write_result = action_state.persist_review_status_change(
+                    config,
+                    risk_case_key=str(case["risk_case_key"]),
+                    previous_status=current_status,
+                    new_status=selected_status,
+                )
+                if write_result.persisted:
+                    st.toast("Review status saved to Databricks.", icon="✅")
+            except Exception:
+                st.toast("Databricks write failed. Status is kept in this Streamlit session.", icon="⚠️")
+        else:
+            st.toast("Review status is kept in this Streamlit session.", icon="ℹ️")
+        set_review_status(selected_case_id, selected_status)
     case["review_status"] = selected_status
 
     risk_tab, action_tab, ticket_tab = st.tabs(["\uc704\ud5d8 \ubd84\uc11d", "\uad8c\uc7a5 \uc870\uce58", "\ud2f0\ucf13 \ubc1c\uae09"])
