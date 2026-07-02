@@ -331,6 +331,7 @@ def silver_edges():
         F.col("relationship"),
         F.col("permission"),
         F.col("status"),
+        F.col("last_used_at"),
         F.lit("bronze_access_edges_seed").alias("evidence_source"),
         F.col("_ingestion_ts").alias("observed_at"),
     )
@@ -350,6 +351,7 @@ def silver_edges():
         F.lit("owns_principal").alias("relationship"),
         F.lit(None).cast("string").alias("permission"),
         F.lit("active").alias("status"),
+        F.lit(None).cast("timestamp").alias("last_used_at"),
         F.lit("bronze_azure_application_owners").alias("evidence_source"),
         F.col("_ingestion_ts").alias("observed_at"),
     )
@@ -377,6 +379,7 @@ def silver_edges():
         F.lit("owns_credential").alias("relationship"),
         F.lit(None).cast("string").alias("permission"),
         F.col("status"),
+        F.lit(None).cast("timestamp").alias("last_used_at"),
         F.lit("bronze_github_credentials").alias("evidence_source"),
         F.col("_ingestion_ts").alias("observed_at"),
     )
@@ -396,6 +399,7 @@ def silver_edges():
         F.col("relationship"),
         F.col("permission"),
         F.col("status"),
+        F.lit(None).cast("timestamp").alias("last_used_at"),
         F.lit("bronze_github_access_edges").alias("evidence_source"),
         F.col("_ingestion_ts").alias("observed_at"),
     )
@@ -415,6 +419,7 @@ def silver_edges():
         F.col("relationship"),
         F.col("permission"),
         F.col("status"),
+        F.lit(None).cast("timestamp").alias("last_used_at"),
         F.lit("bronze_google_workspace_access_edges").alias("evidence_source"),
         F.col("_ingestion_ts").alias("observed_at"),
     )
@@ -434,6 +439,7 @@ def silver_edges():
         F.col("relationship"),
         F.col("permission"),
         F.col("status"),
+        F.lit(None).cast("timestamp").alias("last_used_at"),
         F.lit("bronze_slack_access_edges").alias("evidence_source"),
         F.col("_ingestion_ts").alias("observed_at"),
     )
