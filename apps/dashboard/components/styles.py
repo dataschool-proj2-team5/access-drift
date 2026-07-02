@@ -618,6 +618,13 @@ def apply_dashboard_style(page: str | None = None) -> None:
           font-size: 16px;
         }
 
+        .ad-action-steps,
+        .ad-action-steps .ad-step,
+        .ad-action-steps .ad-step > div:not(.ad-step-number) {
+          font-size: 16px !important;
+          line-height: 1.45;
+        }
+
         .ad-step-number {
           width: 25px;
           height: 25px;
@@ -628,14 +635,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
           place-items: center;
           font-size: 12px;
           font-weight: 900;
-        }
-
-        .ad-step:nth-child(3) .ad-step-number {
-          background: var(--ad-red);
-        }
-
-        .ad-step:nth-child(n+4) .ad-step-number {
-          background: #6f7785;
         }
 
         .ad-agent-header {
@@ -1331,6 +1330,23 @@ def apply_dashboard_style(page: str | None = None) -> None:
             .ad-panel p {
               font-size: 16px;
               line-height: 1.55;
+            }
+
+            .ad-panel .ad-step {
+              grid-template-columns: 25px 1fr !important;
+              gap: 10px !important;
+              font-size: 16px !important;
+            }
+
+            .ad-panel .ad-step > div:not(.ad-step-number) {
+              font-size: 16px !important;
+              line-height: 1.45;
+            }
+
+            .ad-panel .ad-step-number {
+              width: 25px !important;
+              height: 25px !important;
+              font-size: 12px !important;
             }
 
             .ad-factor {

@@ -348,7 +348,7 @@ def render_recommendation_panel(case: pd.Series) -> None:
             {''.join(_doc_card(doc, index) for index, doc in enumerate(docs))}
           </div>
           <h3>실행 단계 <span style="color:#aeb5bf; font-size:16px">ⓘ</span></h3>
-          <div>
+          <div class="ad-action-steps">
             {''.join(_action_step(step, index + 1) for index, step in enumerate(plan))}
           </div>
         </div>
@@ -745,12 +745,25 @@ def _doc_card(doc: str, index: int) -> str:
 
 
 def _action_step(step: str, index: int) -> str:
+    color = _action_step_color(step)
     return f"""
-    <div class="ad-step">
-      <div class="ad-step-number">{index}</div>
-      <div>{escape(step)}</div>
+    <div class="ad-step" style="display:grid; grid-template-columns:25px 1fr; gap:10px; align-items:center; margin:17px 0; font-size:16px !important; line-height:1.45;">
+      <div class="ad-step-number" style="width:25px; height:25px; min-width:25px; border-radius:999px; display:grid; place-items:center; font-size:12px !important; background:{color};">{index}</div>
+      <div style="font-size:16px !important; line-height:1.45;">{escape(step)}</div>
     </div>
     """
+
+
+def _action_step_color(step: str) -> str:
+    normalized = step.lower()
+    if any(keyword in normalized for keyword in ["점검", "audit", "check"]):
+        return "#6f7785"
+    if any(
+        keyword in normalized
+        for keyword in ["교체", "폐기", "회수", "삭제", "rotation", "rotate", "revoke", "replace"]
+    ):
+        return "#f23d42"
+    return "#003b68"
 
 
 def _asset_data_uri(directory: str, filename: str) -> str:

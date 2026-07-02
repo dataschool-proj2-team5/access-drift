@@ -56,7 +56,7 @@ def render_recommendation_panel(case: pd.Series) -> None:
             {''.join(_doc_card(doc, index) for index, doc in enumerate(docs))}
           </div>
           <h3>\uc2e4\ud589 \ub2e8\uacc4 <span style="color:#aeb5bf; font-size:16px">\u24d8</span></h3>
-          <div>
+          <div class="ad-action-steps">
             {''.join(_action_step(step, index + 1) for index, step in enumerate(plan))}
           </div>
         </div>
