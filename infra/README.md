@@ -100,7 +100,7 @@ az login
 | dev raw | ADLS `lakehouse/raw/dev/...` | `dev` target 실행 시 S1 개발 데이터와 대표 데모 케이스가 적재되는 입력 경로 |
 | 본개발 원본 | ADLS `lakehouse/raw/<source>/...` | 실제 수집기가 쓰는 경로. 레포에 포함되지 않음 |
 
-현재 `data/poc/landing/raw/`는 PoC seed 경로 이름을 유지합니다. `poc` target은 기존 PoC와 동일하게 `lakehouse/raw/{source}/...` 경로로 적재하고, `dev` target은 S1 확장 합성 데이터 생성/적재 기준에 맞춰 `lakehouse/raw/dev/{source}/...` 경로를 사용합니다. 이후 `02_ingest.ipynb`가 target별 raw 경로를 읽어 Bronze로 적재합니다.
+현재 `data/poc/landing/raw/`는 PoC seed 경로 이름을 유지합니다. `poc` target은 기존 PoC와 동일하게 `lakehouse/raw/{source}/...` 경로와 notebook ingest를 사용합니다. `dev` target은 S1 확장 합성 데이터 생성/적재 기준에 맞춰 `lakehouse/raw/dev/{source}/...` 경로를 사용하고, Bronze/Silver writer는 DLT task가 담당합니다.
 
 #### `access_drift` catalog (PoC)
 
@@ -209,6 +209,14 @@ databricks bundle run access-drift-pipeline
 
 일반 `poc`/`dev` target의 bundle deploy 시 `notebooks/`, `data/poc/landing/raw/`, `data/poc/eval/`, `data/dev/`가 `/Workspace/Shared/access-drift/files/` 아래에 배포됩니다.
 
+#### Bronze/Silver DLT writer 기준
+
+`dev` target의 `access-drift-pipeline`은 ADR-0003 기준으로 Bronze/Silver 정식 writer를 DLT로 전환한다. 기존 notebook writer인 `02_ingest.ipynb`, `03_silver.ipynb`는 `dev` DAG에서 제외되고, `bronze_dlt_task -> silver_dlt_task -> publish_silver_views_task` 성공 후 eval/context/intermediate/gold downstream이 실행된다.
+
+Silver DLT는 `silver_dlt_principals`, `silver_dlt_credentials`, `silver_dlt_assets`, `silver_dlt_edges` staging output을 만들고, publish task가 기존 consumer 이름인 `silver_principals`, `silver_credentials`, `silver_assets`, `silver_edges` view를 갱신한다. 기존 `silver_*`가 일반 Delta table이면 publish task는 기본값으로 실패한다. 실제 전환 전 backup/rollback을 확인한 뒤 `silver_publish_replace_existing_tables=true`로 실행해야 legacy table을 rename하고 view를 생성한다.
+
+이번 DLT 전환 결정은 [`ADR-0003: Bronze/Silver DLT writer 전환`](../docs/adr/0003-bronze-silver-dlt-writer-cutover.md)을 기준으로 한다. ADR-0002는 전환 전 검토/보류 근거로 남긴다.
+
 #### Bronze DLT expectation 검증
 
 Bronze DLT expectation은 기존 notebook job과 분리된 `bronze-dlt-expectations` pipeline으로 실행합니다. bundle 배포 상태도 기존 `poc`/`dev` target과 충돌하지 않도록 DLT 리소스와 `data/dlt-test` fixture sync는 `dlt-test` target에만 둡니다. pipeline의 기본 catalog/schema target은 `access_drift_dev.dlt_test`이며, DLT Python 코드에는 catalog나 schema를 하드코딩하지 않습니다. `dlt_test` schema는 bootstrap에서 준비된 상태를 전제로 하며 이 절차에서는 생성하지 않습니다.
@@ -286,11 +294,7 @@ databricks bundle deploy -t dlt-test \
 databricks bundle run -t dlt-test bronze-dlt-expectations --full-refresh-all
 ```
 
-`bronze_dlt_target_schema=bronze`, dev raw 경로, `bronze_dlt_fixture_mode=false` 조합은 같은 code를 실제 Bronze target에 적용하기 위한 설정입니다. 다만 현재 `access_drift_dev.bronze`의 6개 테이블은 migration과 notebook이 만든 일반 Delta 테이블이므로, DLT가 같은 이름의 materialized dataset을 관리할 수 있는지와 필요한 소유권 전환 절차를 실제 적용 전에 별도로 확인해야 합니다. 이 확인은 config-only 구조가 런타임에서도 성립하는지 검증하는 절차이며, 기존 테이블을 임의로 삭제하거나 교체하지 않습니다.
-
-`dlt_test` 결과를 사용자 또는 리뷰어가 확인하고 기존 Bronze 테이블 전환 방법을 승인하기 전에는 `bronze` target으로 deploy하거나 run하지 않습니다. event log는 target과 분리된 `bronze_dlt_event_log_schema` 설정을 사용하며 기본값은 `dlt_test`입니다.
-
-정식 Bronze 승격 검토 결과와 현재 적용 보류 조건은 [`ADR-0002: Bronze DLT 승격과 ingest 전환 전략`](../docs/adr/0002-bronze-dlt-promotion-strategy.md)을 기준으로 합니다. required column nullability, 기존 managed Delta table과의 충돌, pipeline owner, backup/rollback 조건이 해소되기 전에는 기존 `ingest_task`를 유지합니다.
+`dlt-test`는 정식 writer가 아니라 fixture 기반 smoke 검증 target이다. `dev` 정식 writer 전환 기준은 위 Bronze/Silver DLT writer 기준과 ADR-0003을 따른다.
 
 fixture 상세와 현재 미구현 기준은 [`data/dlt-test/README.md`](../data/dlt-test/README.md)를 참고합니다.
 
@@ -330,7 +334,7 @@ workflow는 `azure/login@v2`로 Azure 로그인 후 `DATABRICKS_AUTH_TYPE=azure-
 | 환경 준비 또는 DDL 변경 | `migration_task` |
 | dev 합성 seed 재생성 | `generate_dev_seed_task` |
 | 생성된 seed를 ADLS raw/dev로 배치 | `synthetic_data_task` |
-| DE Landing/Bronze/Silver 재처리 | `ingest_task,silver_task` |
+| DE Landing/Bronze/Silver 재처리 | `bronze_dlt_task,silver_dlt_task,publish_silver_views_task` |
 | eval/context seed 갱신 | `eval_seed_task,context_seed_task` |
 | DS Intermediate/Gold 재처리 | `intermediate_task,gold_task` |
 
@@ -345,8 +349,8 @@ workflow는 `azure/login@v2`로 Azure 로그인 후 `DATABRICKS_AUTH_TYPE=azure-
 | DDL만 변경 | `migration_task` |
 | dev seed 생성 규칙만 변경 | `generate_dev_seed_task` |
 | seed/raw 배치만 변경 | `synthetic_data_task` |
-| Bronze 변환만 변경 | `ingest_task` |
-| Silver 변환만 변경 | `silver_task` |
+| Bronze 변환만 변경 | `bronze_dlt_task` |
+| Silver 변환만 변경 | `silver_dlt_task,publish_silver_views_task` |
 | eval 파일만 변경 | `eval_seed_task` |
 | context 파일만 변경 | `context_seed_task` |
 | DS 탐지 변경 | `intermediate_task` |
@@ -360,7 +364,7 @@ DE가 Landing/Bronze/Silver와 Risk Card context seed 적재만 확인할 때는
 databricks bundle validate -t dev
 databricks bundle deploy -t dev
 databricks bundle run -t dev access-drift-pipeline \
-  --only migration_task,generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+  --only migration_task,generate_dev_seed_task,synthetic_data_task,bronze_dlt_task,silver_dlt_task,publish_silver_views_task,eval_seed_task,context_seed_task
 ```
 
 `data/dev/landing/raw/`, `data/dev/eval/*.jsonl`, `data/dev/context/*.jsonl`은 Git에 커밋하지 않는 생성 파일입니다. 기본 흐름에서는 `generate_dev_seed_task`가 Databricks workspace에서 생성한다. 로컬 생성 결과를 검증용으로 직접 올려야 할 때만 아래처럼 workspace에 import합니다.
@@ -384,7 +388,7 @@ databricks bundle deploy -t dev \
   --var="eval_seed_path=data/poc/eval/ground_truth_case.jsonl"
 
 databricks bundle run -t dev access-drift-pipeline \
-  --only migration_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task
+  --only migration_task,synthetic_data_task,bronze_dlt_task,silver_dlt_task,publish_silver_views_task,eval_seed_task
 
 # smoke test 후 dev 기본 seed 경로로 job parameter를 되돌립니다.
 databricks bundle deploy -t dev
@@ -407,11 +411,11 @@ sql/databricks/queries/de_lbs_validation.sql
 ```bash
 # 1차 snapshot 생성
 databricks bundle run -t dev access-drift-pipeline \
-  --only generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+  --only generate_dev_seed_task,synthetic_data_task,bronze_dlt_task,silver_dlt_task,publish_silver_views_task,eval_seed_task,context_seed_task
 
 # Bronze/Silver 재실행
 databricks bundle run -t dev access-drift-pipeline \
-  --only ingest_task,silver_task
+  --only bronze_dlt_task,silver_dlt_task,publish_silver_views_task
 
 # Eval/Context 재실행
 databricks bundle run -t dev access-drift-pipeline \
@@ -419,7 +423,7 @@ databricks bundle run -t dev access-drift-pipeline \
 
 # 같은 seed 기준 end-to-end 재실행
 databricks bundle run -t dev access-drift-pipeline \
-  --only generate_dev_seed_task,synthetic_data_task,ingest_task,silver_task,eval_seed_task,context_seed_task
+  --only generate_dev_seed_task,synthetic_data_task,bronze_dlt_task,silver_dlt_task,publish_silver_views_task,eval_seed_task,context_seed_task
 ```
 
 각 실행 후 아래 SQL을 실행해 결과 snapshot을 비교한다.

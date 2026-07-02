@@ -465,6 +465,32 @@ def _audit_row(check_name, violations):
     ).select("check_name", "violation_count")
 
 
+def _owner_edge_kind_violations(edges, principals):
+    hi_principals = principals.where("principal_kind = 'HI'").select(
+        F.col("principal_id").alias("hi_principal_id")
+    )
+    nhi_principals = principals.where("principal_kind = 'NHI'").select(
+        F.col("principal_id").alias("nhi_principal_id")
+    )
+    owner_edges = edges.where("relationship = 'owns_principal'")
+    return (
+        owner_edges.join(hi_principals, owner_edges.from_id == hi_principals.hi_principal_id, "left")
+        .join(nhi_principals, owner_edges.to_id == nhi_principals.nhi_principal_id, "left")
+        .where("hi_principal_id IS NULL OR nhi_principal_id IS NULL")
+    )
+
+
+def _credential_bound_kind_violations(credentials, principals):
+    nhi_principals = principals.where("principal_kind = 'NHI'").select(
+        F.col("principal_id").alias("nhi_principal_id")
+    )
+    return credentials.join(
+        nhi_principals,
+        credentials.bound_principal_id == nhi_principals.nhi_principal_id,
+        "left_anti",
+    )
+
+
 @dlt.table(name="silver_integrity_audit", temporary=True)
 @dlt.expect_all_or_fail({"no_integrity_violations": "violation_count = 0"})
 def silver_integrity_audit():
@@ -497,6 +523,15 @@ def silver_integrity_audit():
         _audit_row(
             "edge_to_asset_orphan",
             edges.where("to_type = 'asset'").join(assets, edges.to_id == assets.asset_id, "left_anti"),
+        ),
+        _audit_row("owner_edge_not_hi_to_nhi", _owner_edge_kind_violations(edges, principals)),
+        _audit_row("credential_bound_principal_not_nhi", _credential_bound_kind_violations(credentials, principals)),
+        _audit_row(
+            "access_metadata_on_non_access_edge",
+            edges.where(
+                "relationship <> 'accesses_asset' "
+                "AND ((permission IS NOT NULL AND trim(permission) <> '') OR last_used_at IS NOT NULL)"
+            ),
         ),
     ]
     return reduce(lambda left, right: left.unionByName(right), checks)
