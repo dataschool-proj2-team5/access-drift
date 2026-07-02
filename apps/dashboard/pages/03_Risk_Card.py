@@ -276,7 +276,7 @@ def main() -> None:
             """
             <div style="display:flex; justify-content:flex-end; margin:0 0 10px;">
               <div class="ad-reviewer-chip" style="display:flex; align-items:center; gap:10px; min-width:150px; padding:9px 12px; background:#fff; border:1px solid #E2E6EB; border-radius:999px; box-shadow:0 1px 2px rgba(15,23,42,0.04); box-sizing:border-box;">
-                <div class="ad-reviewer-avatar" style="width:30px; height:30px; border-radius:999px; background:#E8F1FA; border:1px solid #D8E4F0; flex:0 0 30px;"></div>
+                <div class="ad-reviewer-avatar" style="width:30px; height:30px; border-radius:999px; background:linear-gradient(135deg,#0A66C2,#74B9FF); border:1px solid #D8E4F0; flex:0 0 30px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:800;">박</div>
                 <div style="line-height:1.15; text-align:left; min-width:0;">
                   <div style="font-size:13px; font-weight:700; color:#111827; white-space:nowrap;">&#48149;&#51648;&#50672;</div>
                   <div style="font-size:11px; font-weight:600; color:#6B7280; margin-top:3px; white-space:nowrap;">SecOps&#54016;</div>
