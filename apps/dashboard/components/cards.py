@@ -516,7 +516,7 @@ def render_ticket_form_placeholder(case: pd.Series) -> None:
                         index=priority_options.index(ticket["priority"]),
                     )
                     label = st.text_input("레이블", value=ticket["label"])
-                    due_date = st.text_input("기한", value=_default_jira_due_date(), placeholder="YYYY.MM.DD")
+                    due_date = st.text_input("기한", value=_default_jira_due_date(), placeholder="YYYY-MM-DD")
                     team = st.text_input("Team", value=ticket["team"])
                     reporter = st.text_input("보고자", value=_display_person_name(ticket["reporter"]))
                     st.html('<div class="ad-jira-button-spacer"></div>')
@@ -527,7 +527,7 @@ def render_ticket_form_placeholder(case: pd.Series) -> None:
 
     normalized_due_date = _normalize_jira_due_date(due_date)
     if normalized_due_date is None:
-        st.error("기한은 YYYY.MM.DD 형식으로 입력해야 합니다.")
+        st.error("기한은 YYYY-MM-DD 형식으로 입력해야 합니다.")
         return
 
     config = jira_client.load_jira_config()
@@ -630,7 +630,7 @@ def _normalize_jira_due_date(value: str) -> str | None:
     text = str(value).strip()
     if not text:
         return ""
-    match = re.fullmatch(r"(\d{4})\.(\d{2})\.(\d{2})", text)
+    match = re.fullmatch(r"(\d{4})[-.](\d{2})[-.](\d{2})", text)
     if not match:
         return None
     normalized = "-".join(match.groups())
@@ -642,7 +642,7 @@ def _normalize_jira_due_date(value: str) -> str | None:
 
 
 def _default_jira_due_date() -> str:
-    return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y.%m.%d")
+    return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
 
 
 def _display_person_name(value: str) -> str:
@@ -807,6 +807,5 @@ def _format_datetime(value: object) -> str:
         timestamp = timestamp.tz_localize("UTC")
     timestamp = timestamp.tz_convert("Asia/Seoul")
     return timestamp.strftime("%Y/%m/%d %H:%M")
-
 
 
