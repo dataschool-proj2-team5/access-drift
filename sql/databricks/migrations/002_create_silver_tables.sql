@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.silver_edges (
   relationship STRING NOT NULL,
   permission STRING,
   status STRING NOT NULL,
+  last_used_at TIMESTAMP,
   evidence_source STRING,
   observed_at TIMESTAMP NOT NULL,
   CONSTRAINT silver_edges_pk PRIMARY KEY (edge_id)

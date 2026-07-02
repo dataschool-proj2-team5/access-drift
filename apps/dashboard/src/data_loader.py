@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import hashlib
 import json
@@ -345,6 +346,10 @@ def _load_databricks_config() -> DatabricksConfig | None:
 
 
 def _read_databricks_secrets() -> dict[str, object]:
+    env_config = _read_databricks_env()
+    if _has_required_databricks_config(env_config):
+        return env_config
+
     try:
         import streamlit as st
 
@@ -355,7 +360,29 @@ def _read_databricks_secrets() -> dict[str, object]:
 
     if DEFAULT_SECRET_PATH.exists():
         return dict(tomllib.loads(DEFAULT_SECRET_PATH.read_text(encoding="utf-8")).get("databricks", {}))
+    if env_config:
+        return env_config
     return {}
+
+
+def _has_required_databricks_config(config: dict[str, object]) -> bool:
+    required = ["server_hostname", "http_path", "access_token", "catalog", "gold_schema", "app_schema"]
+    return all(config.get(key) for key in required)
+
+
+def _read_databricks_env() -> dict[str, object]:
+    mapping = {
+        "server_hostname": "DATABRICKS_HOST",
+        "http_path": "DATABRICKS_HTTP_PATH",
+        "access_token": "DATABRICKS_TOKEN",
+        "catalog": "ACCESS_DRIFT_CATALOG",
+        "gold_schema": "ACCESS_DRIFT_GOLD_SCHEMA",
+        "app_schema": "ACCESS_DRIFT_APP_SCHEMA",
+        "actor_id": "ACCESS_DRIFT_ACTOR_ID",
+        "actor_name": "ACCESS_DRIFT_ACTOR_NAME",
+    }
+    config = {key: os.environ.get(env_name, "") for key, env_name in mapping.items()}
+    return {key: value for key, value in config.items() if value}
 
 
 def _merge_by_case_key(left: pd.DataFrame, right: pd.DataFrame, suffix: str) -> pd.DataFrame:

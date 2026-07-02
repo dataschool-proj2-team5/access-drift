@@ -177,7 +177,8 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_github_access_edges (
   asset_id STRING,
   relationship STRING,
   permission STRING,
-  status STRING
+  status STRING,
+  last_used_at TIMESTAMP
 )
 USING DELTA;
 
@@ -232,7 +233,8 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_google_workspace_access_e
   asset_id STRING,
   relationship STRING,
   permission STRING,
-  status STRING
+  status STRING,
+  last_used_at TIMESTAMP
 )
 USING DELTA;
 
@@ -287,6 +289,7 @@ CREATE TABLE IF NOT EXISTS ${catalog}.${schema}.bronze_slack_access_edges (
   asset_id STRING,
   relationship STRING,
   permission STRING,
-  status STRING
+  status STRING,
+  last_used_at TIMESTAMP
 )
 USING DELTA;
