@@ -141,6 +141,13 @@ def _bump_status_widget_version(case_id: str) -> None:
     versions[key] = int(versions.get(key, 0)) + 1
 
 
+def _rerun_app() -> None:
+    try:
+        st.rerun(scope="app")
+    except TypeError:
+        st.rerun()
+
+
 def _persist_or_fallback_status_change(pending: dict[str, str], reason: str, using_mock: bool) -> None:
     case_id = str(pending["case_id"])
     previous_status = str(pending["previous_status"])
@@ -189,7 +196,7 @@ def _open_status_change_dialog(using_mock: bool) -> None:
             if st.button("\ucde8\uc18c", use_container_width=True):
                 st.session_state.pop(PENDING_STATUS_CHANGE_KEY, None)
                 _bump_status_widget_version(str(pending["case_id"]))
-                st.rerun()
+                _rerun_app()
         with confirm_col:
             if st.button("\uc800\uc7a5", type="primary", use_container_width=True, key="status_change_save"):
                 if not str(reason).strip():
@@ -198,7 +205,7 @@ def _open_status_change_dialog(using_mock: bool) -> None:
                 _persist_or_fallback_status_change(pending, str(reason), using_mock)
                 st.session_state.pop(PENDING_STATUS_CHANGE_KEY, None)
                 _bump_status_widget_version(str(pending["case_id"]))
-                st.rerun()
+                _rerun_app()
 
     _render_dialog()
 
