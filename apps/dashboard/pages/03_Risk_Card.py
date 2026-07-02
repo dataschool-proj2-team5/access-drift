@@ -238,18 +238,14 @@ def main() -> None:
         config = action_state.get_databricks_action_config()
         if action_state.can_write_action_state(config, result.using_mock):
             try:
-                write_result = action_state.persist_review_status_change(
+                action_state.persist_review_status_change(
                     config,
                     risk_case_key=str(case["risk_case_key"]),
                     previous_status=current_status,
                     new_status=selected_status,
                 )
-                if write_result.persisted:
-                    st.toast("Review status saved to Databricks.", icon="✅")
             except Exception:
-                st.toast("Databricks write failed. Status is kept in this Streamlit session.", icon="⚠️")
-        else:
-            st.toast("Review status is kept in this Streamlit session.", icon="ℹ️")
+                pass
         set_review_status(selected_case_id, selected_status)
     case["review_status"] = selected_status
 
