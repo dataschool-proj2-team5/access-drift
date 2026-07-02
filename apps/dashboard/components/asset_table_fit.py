@@ -27,12 +27,11 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
 
     rows = []
     for _, case in assets.reset_index(drop=True).iterrows():
-        display_case_id = case.get("display_case_id", case["case_id"])
-        risk_card_href = f"/Risk_Card?case={quote(str(display_case_id))}"
+        risk_card_href = f"/Risk_Card?case_id={quote(str(case['case_id']))}"
         rows.append(
             f"""
             <div class="ad-asset-row">
-              <div class="ad-asset-value ad-asset-case-id">{escape(str(display_case_id))}</div>
+              <div class="ad-asset-value ad-asset-case-id">{escape(str(case["case_id"]))}</div>
               <div class="ad-asset-value">{escape(str(case["drift_label"]))}</div>
               <div class="ad-asset-value">{escape(str(case["environment"]))}</div>
               <div class="ad-asset-value">{escape(str(case["identity_name"]))}</div>
@@ -59,7 +58,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-table-header,
           .ad-asset-row {{
             display: grid;
-            grid-template-columns: 112px 148px 84px minmax(220px, 0.8fr) 56px 120px 140px 104px 72px;
+            grid-template-columns: 80px 180px 84px minmax(220px, 0.8fr) 56px 120px 140px 104px 72px;
             column-gap: 12px;
             align-items: center;
             min-width: 0;
@@ -88,7 +87,6 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-case-id {{
             color: #9ba3b1;
             font-size: 13px;
-            white-space: nowrap;
           }}
 
           .ad-asset-value {{
@@ -132,27 +130,17 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             min-width: 52px;
             padding: 0 8px;
             border-radius: 9px;
-            border: 1px solid #b9d2e7;
-            background: #ffffff;
-            color: var(--ad-blue);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 13px;
             justify-self: center;
-            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-          }}
-
-          .ad-asset-row .ad-button:hover {{
-            background: var(--ad-blue);
-            border-color: var(--ad-blue);
-            color: #ffffff;
           }}
 
           @media (max-width: 1400px) {{
             .ad-asset-table-header,
             .ad-asset-row {{
-              grid-template-columns: 94px 100px 70px minmax(140px, 0.7fr) 42px 106px 104px 76px 56px;
+              grid-template-columns: 64px 130px 70px minmax(140px, 0.7fr) 42px 106px 104px 76px 56px;
               column-gap: 8px;
             }}
           }}

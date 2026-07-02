@@ -815,6 +815,33 @@ def apply_dashboard_style(page: str | None = None) -> None:
               color: var(--ad-text);
             }
 
+            .ad-overview-title-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 10px;
+              margin: 0 0 10px;
+            }
+
+            .ad-overview-title-row .ad-overview-title {
+              margin: 0;
+            }
+
+            .ad-low-excluded-pill {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 999px;
+              background: #f1f5f9;
+              border: 1px solid #e2e8f0;
+              color: #64748b;
+              font-size: 10px;
+              line-height: 1;
+              font-weight: 600 !important;
+              padding: 5px 8px;
+              white-space: nowrap;
+            }
+
             .ad-overview-summary-card {
               height: 244px;
               overflow: visible;

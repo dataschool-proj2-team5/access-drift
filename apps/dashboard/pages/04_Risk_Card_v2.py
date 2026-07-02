@@ -10,12 +10,15 @@ import pandas as pd
 import streamlit as st
 
 from components.cards import (
-    render_ai_agent_placeholder,
-    render_recommendation_panel,
     render_risk_factors_card_v2,
     render_risk_header_card_v2,
     render_risk_summary_card_v2,
     render_ticket_form_placeholder,
+)
+from components.risk_text_panels import (
+    render_ai_agent_placeholder,
+    render_recommendation_panel,
+    render_review_info_card,
 )
 from components.styles import apply_dashboard_style
 from src.data_loader import load_access_drift_data

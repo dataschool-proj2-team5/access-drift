@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import importlib
-
 import streamlit as st
 
-import components.asset_table_fit as asset_table_components
+from components.asset_table_fit import render_asset_table_fit
 from components.styles import apply_dashboard_style
-import src.data_loader as data_loader
+from src.data_loader import load_access_drift_data
 from src.session_state import apply_review_status_overrides
-
-
-asset_table_components = importlib.reload(asset_table_components)
-data_loader = importlib.reload(data_loader)
 
 
 st.set_page_config(page_title="Access Drift Asset List", page_icon="AD", layout="wide")
@@ -45,24 +39,6 @@ def main() -> None:
             font-size: 12px;
             font-weight: 700;
           }
-
-          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
-            background: transparent !important;
-            border: 1px solid #d1d5db !important;
-            box-shadow: none !important;
-          }
-
-          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover,
-          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {
-            background: transparent !important;
-            border-color: #9ca3af !important;
-            box-shadow: none !important;
-          }
-
-          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] div,
-          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] input {
-            background: transparent !important;
-          }
         </style>
         """,
         unsafe_allow_html=True,
@@ -75,14 +51,14 @@ def main() -> None:
         with st.container(key="asset_status_filter"):
             status_filter = st.selectbox("Status", STATUS_FILTER_OPTIONS, index=0)
 
-    result = data_loader.load_access_drift_data()
+    result = load_access_drift_data()
     if result.using_mock:
         st.sidebar.info("Using mock data")
 
     data = apply_review_status_overrides(result.data)
     if status_filter != "All":
         data = data[data["review_status"].eq(status_filter)]
-    asset_table_components.render_asset_table_fit(data)
+    render_asset_table_fit(data)
 
 
 main()
