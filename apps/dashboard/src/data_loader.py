@@ -43,8 +43,8 @@ class DatabricksConfig:
     catalog: str
     gold_schema: str
     app_schema: str
-    actor_id: str = "streamlit_local_user"
-    actor_name: str = "Streamlit Local User"
+    actor_id: str = "streamlit_dashboard"
+    actor_name: str = "Streamlit Dashboard"
 
     @property
     def warehouse_id(self) -> str:
@@ -208,10 +208,16 @@ def _normalize_app_view_rows(
     normalized["recommended_action"] = _first_present(rows, ["deterministic_recommended_action", "recommended_action"])
     normalized["risk_summary"] = _first_present(rows, ["risk_summary", "evidence_summary"])
     normalized["risk_factors"] = rows.apply(_risk_factors_from_row, axis=1)
-    normalized["action_plan"] = [[] for _ in range(len(rows))]
     normalized["ai_agent_messages"] = [[] for _ in range(len(rows))]
     normalized["overview_title"] = _first_present(rows, ["drift_type_label", "card_title", "drift_type"])
-    normalized["ai_summary"] = _first_present(rows, ["risk_summary", "deterministic_recommended_action"])
+    source_ai_summary = _first_present(rows, ["ai_summary", "ai_summary_detail", "recommendation_summary"])
+    generated_ai_summary = rows.apply(_ai_summary_from_row, axis=1)
+    normalized["ai_summary"] = source_ai_summary.where(_has_value(source_ai_summary), generated_ai_summary)
+    source_action_plan = _first_present(rows, ["action_plan", "action_steps", "recommended_steps"])
+    normalized["action_plan"] = source_action_plan.where(
+        _has_value(source_action_plan),
+        normalized["ai_summary"].map(_action_plan_from_ai_summary),
+    )
     normalized["reference_docs"] = [[] for _ in range(len(rows))]
 
     return normalized
@@ -256,10 +262,16 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["recommended_action"] = _first_present(gold_core, ["recommended_action"])
     normalized["risk_summary"] = _first_present(gold_core, ["evidence_summary"])
     normalized["risk_factors"] = [[] for _ in range(len(gold_core))]
-    normalized["action_plan"] = [[] for _ in range(len(gold_core))]
     normalized["ai_agent_messages"] = [[] for _ in range(len(gold_core))]
     normalized["overview_title"] = _first_present(gold_core, ["drift_type"])
-    normalized["ai_summary"] = _first_present(gold_core, ["evidence_summary"])
+    source_ai_summary = _first_present(gold_core, ["ai_summary", "recommendation_summary"])
+    generated_ai_summary = gold_core.apply(_ai_summary_from_row, axis=1)
+    normalized["ai_summary"] = source_ai_summary.where(_has_value(source_ai_summary), generated_ai_summary)
+    source_action_plan = _first_present(gold_core, ["action_plan", "action_steps", "recommended_steps"])
+    normalized["action_plan"] = source_action_plan.where(
+        _has_value(source_action_plan),
+        normalized["ai_summary"].map(_action_plan_from_ai_summary),
+    )
     normalized["reference_docs"] = [[] for _ in range(len(gold_core))]
     return normalized
 
@@ -328,8 +340,8 @@ def _load_databricks_config() -> DatabricksConfig | None:
         catalog=str(secrets["catalog"]),
         gold_schema=str(secrets["gold_schema"]),
         app_schema=str(secrets["app_schema"]),
-        actor_id=str(secrets.get("actor_id", "streamlit_local_user")),
-        actor_name=str(secrets.get("actor_name", "Streamlit Local User")),
+        actor_id=str(secrets.get("actor_id") or "streamlit_dashboard"),
+        actor_name=str(secrets.get("actor_name") or "Streamlit Dashboard"),
     )
 
 
@@ -601,6 +613,91 @@ def _risk_factors_from_row(row: pd.Series) -> list[str]:
     if str(sensitive_access).lower() in {"true", "1", "yes"}:
         factors.append("Sensitive asset access")
     return factors
+
+
+def _ai_summary_from_row(row: pd.Series) -> str:
+    recommended_action = _row_value(row, ["deterministic_recommended_action", "recommended_action"])
+    risk_summary = _row_value(row, ["risk_summary", "evidence_summary"])
+    credential_type = _humanize_label(_row_value(row, ["credential_type", "credential_type_detail", "credential_type_path"]))
+    credential_status = str(_row_value(row, ["credential_status", "credential_status_detail", "credential_status_path"])).lower()
+    credential_active = str(_row_value(row, ["credential_is_active", "credential_is_active_detail", "factor_credential_active"])).lower()
+    owner_status = str(_row_value(row, ["owner_account_status", "factor_owner_status", "subject_status"])).lower()
+    asset_source = str(_row_value(row, ["asset_display_name", "asset_display_name_detail", "asset_display_name_path", "asset_type", "asset_type_detail", "asset_type_path"]))
+    asset_type = _humanize_label(_row_value(row, ["asset_type", "asset_type_detail", "asset_type_path"]))
+    permission = _row_value(row, ["access_permission", "access_permission_detail", "access_permission_path", "factor_permission"])
+
+    credential_label = credential_type or "인증 수단"
+    asset_label = "Storage Account" if "storage" in asset_source.lower() else asset_type or "관련 자산"
+    has_inactive_owner = any(token in owner_status for token in ["inactive", "terminated", "disabled", "offboard"])
+    has_active_credential = credential_active in {"true", "1", "yes", "active"} or credential_status == "active"
+
+    if has_inactive_owner and has_active_credential:
+        return (
+            f"담당자와 실제 사용 목적을 확인한 후, 퇴사자와 연결된 활성 {credential_label}을 즉시 교체해야 합니다. "
+            f"이후 {asset_label}의 RBAC 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+        )
+
+    if credential_type:
+        return (
+            f"담당자와 실제 사용 목적을 확인한 후, 잔존 {credential_label}의 필요 여부를 검토하고 교체 또는 폐기해야 합니다. "
+            f"이후 {asset_label}의 권한 설정을 점검해야 합니다."
+        )
+
+    if permission:
+        return (
+            "담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한의 필요 여부를 검토하고 불필요한 권한을 회수해야 합니다. "
+            f"이후 {asset_label}의 접근 정책을 점검해야 합니다."
+        )
+
+    if recommended_action:
+        return (
+            f"담당자와 실제 사용 목적을 확인한 후, {recommended_action} "
+            f"이후 {asset_label}의 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+        )
+
+    if risk_summary:
+        return (
+            "위험 요약을 기준으로 담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한과 관련 인증 수단을 우선 점검해야 합니다. "
+            "이후 관련 자산의 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+        )
+
+    return "담당자와 실제 사용 목적을 확인한 후, 잔존 접근 권한과 관련 자산의 권한 설정을 점검해야 합니다."
+
+
+def _action_plan_from_ai_summary(value: object) -> list[str]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+
+    normalized = re.sub(r"\s+", " ", text)
+    steps: list[str] = []
+
+    if "담당자" in normalized or "사용 목적" in normalized:
+        steps.append("담당자와 실제 사용 목적을 확인합니다.")
+
+    if "Client Secret" in normalized or "credential" in normalized or "인증 수단" in normalized:
+        if "교체" in normalized or "rotation" in normalized.lower():
+            steps.append("활성 Client Secret 또는 credential을 교체합니다.")
+        elif "폐기" in normalized or "revoke" in normalized.lower():
+            steps.append("불필요한 credential을 폐기합니다.")
+        else:
+            steps.append("관련 credential의 유효성과 필요 여부를 점검합니다.")
+
+    if "RBAC" in normalized or "권한" in normalized:
+        steps.append("자산의 RBAC 및 잔존 접근 권한을 점검합니다.")
+
+    if "공개 접근" in normalized or "public" in normalized.lower():
+        steps.append("공개 접근 설정과 예외 정책을 점검합니다.")
+
+    if not steps:
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?。])\s+|(?<=다\.)\s*", normalized) if part.strip()]
+        steps = sentences[:5]
+
+    unique_steps: list[str] = []
+    for step in steps:
+        if step and step not in unique_steps:
+            unique_steps.append(step)
+    return unique_steps[:5]
 
 
 def _row_value(row: pd.Series, columns: list[str]) -> object:
