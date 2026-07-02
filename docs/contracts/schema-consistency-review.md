@@ -58,7 +58,7 @@ PoC 파이프라인의 계약 문서, DDL, notebook 변환 로직, seed 데이�
 | `silver_principals` | `principal_id`, `source_system`, `source_principal_id`, `principal_kind`, `principal_type`, `display_name`, `email`, `status`, `termination_date`, `observed_at` | PASS | 계약 컬럼과 동일하다. |
 | `silver_credentials` | `credential_id`, `source_system`, `source_credential_id`, `bound_principal_id`, `credential_type`, `display_name`, `status`, `expires_at`, `is_active`, `observed_at` | PASS | 계약 컬럼과 동일하다. |
 | `silver_assets` | `asset_id`, `source_system`, `source_asset_id`, `asset_type`, `display_name`, `environment`, `sensitivity`, `observed_at` | PASS | 계약 컬럼과 동일하다. |
-| `silver_edges` | `edge_id`, `source_system`, `from_id`, `from_type`, `to_id`, `to_type`, `relationship`, `permission`, `status`, `evidence_source`, `observed_at` | PASS | 계약 컬럼과 동일하다. |
+| `silver_edges` | `edge_id`, `source_system`, `from_id`, `from_type`, `to_id`, `to_type`, `relationship`, `permission`, `status`, `last_used_at`, `evidence_source`, `observed_at` | PASS | 계약 컬럼과 동일하다. |
 
 ### `03_silver.ipynb` vs Silver 계약
 
@@ -106,7 +106,7 @@ Bronze는 source 원본 보존을 위해 business key를 nullable로 허용한�
 | `bronze_azure_password_credentials` | `silver_credentials` | `key_id`가 `source_credential_id`로 보존되고 `app_id`로 만든 principal에 연결된 row가 존재한다. | Bronze `key_id`/`app_id` null 여부 → credential 변환 로직 |
 | `bronze_assets_seed` | `silver_assets` | Bronze `asset_id`가 `source_asset_id`로 보존된 row가 존재한다. | Bronze `asset_id` null 여부 → asset 변환 로직 |
 | `bronze_azure_application_owners` | `silver_edges` | human principal에서 NHI principal로 향하는 `owns_principal` edge가 존재한다. | Bronze owner key null 여부 → owner edge 변환 로직 |
-| `bronze_access_edges_seed` | `silver_edges` | NHI principal에서 asset으로 향하는 `accesses_asset` edge가 존재한다. | Bronze edge key/relationship 여부 → access edge 변환 로직 |
+| `bronze_access_edges_seed` | `silver_edges` | NHI principal에서 asset으로 향하는 `accesses_asset` edge가 존재하고, `last_used_at`이 있으면 Silver edge에 보존된다. | Bronze edge key/relationship/last_used_at 여부 → access edge 변환 로직 |
 
 #### 변환별 검증 기준
 
