@@ -19,7 +19,7 @@ Access Drift 대시보드는 Databricks app view를 기반으로 access drift ri
   - 선택한 case의 상세 분석 화면
   - Access Path, Risk Summary, Risk Factors
   - 권장 조치, 참고 문서, 실행 단계, AI Agent placeholder
-  - Review Status 변경 시 Databricks `risk_action_state`와 `risk_action_event`에 저장합니다.
+  - Review Status는 Streamlit session 안에서만 변경됩니다.
 
 ## 로컬 실행
 
@@ -71,8 +71,6 @@ access_token = "..."
 catalog = "access_drift_dev"
 gold_schema = "gold"
 app_schema = "app"
-actor_id = "streamlit_local_user"      # optional
-actor_name = "Streamlit Local User"    # optional
 ```
 
 토큰, hostname, http path는 코드에 하드코딩하지 않습니다.
@@ -116,33 +114,12 @@ apps/dashboard/
 - 화면 컴포넌트는 `components/`에 둡니다.
 - 페이지별 조합은 `pages/`에서 처리합니다.
 - 소스별 컬럼 매핑, display normalization, fallback 로직은 `src/data_loader.py`에 유지합니다.
-- Databricks write-back 로직은 `src/action_state.py`에 유지합니다.
 - 내부 컬럼 계약은 `src/schema.py`와 `data/README.md`를 함께 갱신합니다.
-- ticket 발급, RAG/AI Agent 연동은 아직 구현하지 않습니다.
+- 실제 write-back, ticket 발급, RAG/AI Agent 연동은 아직 구현하지 않습니다.
 
 ## 현재 제한 사항
 
-- Databricks secrets가 없거나 write에 실패하면 Review Status 변경은 Streamlit session 안에서만 반영됩니다.
-- Review Status 외 note 입력과 action event note 편집 UI는 구현하지 않았습니다.
+- Review Status 변경은 현재 Streamlit session 안에서만 반영됩니다.
+- Databricks `risk_action_state` write-back은 구현하지 않았습니다.
+- `risk_action_event` insert는 구현하지 않았습니다.
 - AI Agent, RAG, Ticket API는 placeholder입니다.
-
-## Review Status 저장 확인
-
-Databricks secrets가 있는 상태에서 Risk Card의 Review Status를 변경하면 아래 두 작업을 같은 사용자 조작으로 수행합니다.
-
-```text
-app.risk_action_state upsert
-  + app.risk_action_event append
-```
-
-저장 확인 예시:
-
-```sql
-SELECT risk_case_key, status, updated_by, updated_at
-FROM access_drift_dev.app.risk_action_state
-ORDER BY updated_at DESC;
-
-SELECT event_id, risk_case_key, event_type, previous_status, new_status, actor_id, actor_name, event_at
-FROM access_drift_dev.app.risk_action_event
-ORDER BY event_at DESC;
-```
