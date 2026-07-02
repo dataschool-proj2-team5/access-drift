@@ -775,12 +775,22 @@ def _iso_ts(value: date) -> str:
     return f"{value.isoformat()}T09:00:00Z"
 
 
+def _last_used_ts(value: date, label: str) -> str:
+    digest = hashlib.sha256(f"last-used:{value.isoformat()}:{label}".encode("utf-8")).digest()
+    kst_hour = 9 + (digest[0] % 10)
+    minute = digest[1] % 60
+    second = digest[2] % 60
+    utc_hour = kst_hour - 9
+    return f"{value.isoformat()}T{utc_hour:02d}:{minute:02d}:{second:02d}Z"
+
+
 def _parse_date(value: str) -> date:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
 
 
 def _saas_last_used_at(reference_date: date, source_offset: int, case_index: int) -> str:
-    return _iso_ts(reference_date - timedelta(days=source_offset + case_index + 1))
+    last_used_date = reference_date - timedelta(days=source_offset + case_index + 1)
+    return _last_used_ts(last_used_date, f"saas:{source_offset}:{case_index}")
 
 
 def _stable_uuid(seed: int, label: str) -> str:
@@ -885,6 +895,69 @@ def _service_name(slug: str, environment: str) -> str:
     return f"{slug}-{suffix}"
 
 
+def _base_service_slug(slug: str) -> str:
+    for suffix in ("-prod", "-staging", "-dev"):
+        if slug.endswith(suffix):
+            return slug[: -len(suffix)]
+    return slug
+
+
+def _app_display_name(slug: str, environment: str) -> str:
+    suffix_by_env = {
+        "production": "prod",
+        "staging": "staging",
+        "development": "dev",
+    }
+    role_by_keyword = (
+        ("notification", "sender"),
+        ("dashboard", "sync"),
+        ("preview", "preview"),
+        ("events", "consumer"),
+        ("report", "report-job"),
+        ("ledger", "ledger-job"),
+        ("settlement", "settlement-job"),
+        ("segment", "segment-sync"),
+        ("audience", "audience-sync"),
+        ("case", "case-sync"),
+        ("export", "exporter"),
+    )
+    base = _base_service_slug(slug)
+    role = "automation"
+    for keyword, candidate in role_by_keyword:
+        if keyword in base:
+            role = candidate
+            break
+    return f"sp-{base}-{role}-{suffix_by_env[environment]}"
+
+
+def _asset_display_name(slug: str, environment: str) -> str:
+    suffix_by_env = {
+        "production": "prod",
+        "staging": "staging",
+        "development": "dev",
+    }
+    kind_by_keyword = (
+        ("notification", "topic"),
+        ("dashboard", "workspace"),
+        ("preview", "sandbox"),
+        ("events", "stream"),
+        ("report", "dataset"),
+        ("ledger", "table"),
+        ("settlement", "dataset"),
+        ("segment", "dataset"),
+        ("audience", "dataset"),
+        ("case", "dataset"),
+        ("export", "storage"),
+    )
+    base = _base_service_slug(slug)
+    kind = "dataset"
+    for keyword, candidate in kind_by_keyword:
+        if keyword in base:
+            kind = candidate
+            break
+    return f"{base}-{kind}-{suffix_by_env[environment]}"
+
+
 def _secret_name(environment: str) -> str:
     suffix_by_env = {
         "production": "prod",
@@ -948,7 +1021,7 @@ def _positive_spec(seed: int, index: int, fake: Faker, reference_date: date) -> 
             owner_display_name="김민수",
             asset_id="asset-customer-export-storage-prod",
             app_name="sp-crm-customer-export-prod",
-            asset_name="customer-export-storage-prod",
+            asset_name="crm-customer-export-storage-prod",
             credential_name="prod-secret",
             app_created_at="2026-03-15T09:00:00Z",
             employment_status="terminated",
@@ -983,8 +1056,8 @@ def _positive_spec(seed: int, index: int, fake: Faker, reference_date: date) -> 
         owner_upn=owner,
         owner_display_name=_owner_display_name(seed, index),
         asset_id=f"asset-{asset_slug}-{index:04d}",
-        app_name=_service_name(asset_slug, env),
-        asset_name=_service_name(asset_slug, env),
+        app_name=_app_display_name(asset_slug, env),
+        asset_name=_asset_display_name(asset_slug, env),
         credential_name=_secret_name(env),
         app_created_at=None,
         employment_status="terminated",
@@ -1036,10 +1109,9 @@ def _distractor_spec(
     asset_slug = _distractor_service_slug(index, distractor_type)
     env = "development" if distractor_type == "asset_low_dev" else "production"
     asset_id = f"asset-{asset_slug}-{index:04d}"
-    service_name = _service_name(asset_slug, env)
     values["asset_id"] = asset_id
-    values["app_name"] = service_name
-    values["asset_name"] = service_name
+    values["app_name"] = _app_display_name(asset_slug, env)
+    values["asset_name"] = _asset_display_name(asset_slug, env)
     values["credential_name"] = _secret_name(env)
     values["environment"] = env
 
@@ -1116,8 +1188,8 @@ def _normal_spec(seed: int, index: int, fake: Faker, reference_date: date) -> Ca
         owner_upn=owner,
         owner_display_name=_owner_display_name(seed, index),
         asset_id=asset_id,
-        app_name=_service_name(asset_slug, env),
-        asset_name=_service_name(asset_slug, env),
+        app_name=_app_display_name(asset_slug, env),
+        asset_name=_asset_display_name(asset_slug, env),
         credential_name=_secret_name(env),
         app_created_at=None,
         employment_status=employment_status,
@@ -1255,7 +1327,7 @@ def build_landing_records(
                 "relationship": "accesses_asset",
                 "permission": spec.permission,
                 "status": edge_status,
-                "lastUsedDateTime": _iso_ts(last_used),
+                "lastUsedDateTime": _last_used_ts(last_used, f"azure:{spec.app_id}:{spec.asset_id}"),
             }
         )
 
@@ -1629,6 +1701,15 @@ def _validate_timestamp(value: object, label: str) -> None:
     datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _validate_last_used_business_hour(value: object, label: str) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a timestamp string")
+    timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    kst_timestamp = timestamp + timedelta(hours=9)
+    if not 9 <= kst_timestamp.hour <= 18:
+        raise ValueError(f"{label} must be between 09:00 and 18:59 KST")
+
+
 def _iter_record_values(value: object):
     if isinstance(value, dict):
         for item in value.values():
@@ -1712,6 +1793,7 @@ def validate_landing_records(
         _validate_timestamp(apps[app_id]["createdDateTime"], "createdDateTime")
         _validate_timestamp(credential["endDateTime"], "endDateTime")
         _validate_timestamp(edge["lastUsedDateTime"], "lastUsedDateTime")
+        _validate_last_used_business_hour(edge["lastUsedDateTime"], "lastUsedDateTime")
 
         credential_end = _parse_date(str(credential["endDateTime"]))
         last_used = _parse_date(str(edge["lastUsedDateTime"]))
@@ -1817,6 +1899,7 @@ def validate_saas_landing_records(
     for group in ("github_access_edges", "google_access_edges", "slack_access_edges"):
         for row in records[group]:
             _validate_timestamp(row["lastUsedDateTime"], f"{group}.lastUsedDateTime")
+            _validate_last_used_business_hour(row["lastUsedDateTime"], f"{group}.lastUsedDateTime")
             if _parse_date(str(row["lastUsedDateTime"])) > reference_date:
                 raise ValueError(f"{group}.lastUsedDateTime must not be after reference_date")
 

@@ -87,6 +87,7 @@ python data/dev/generator/verify.py \
 - Slack source id는 `slack-` namespace 사용
 - GitHub/Google Workspace/Slack source 내부 참조 무결성
 - expired credential의 `lastUsedDateTime <= endDateTime`
+- `lastUsedDateTime`은 KST 기준 09~18시 업무시간 범위 안에서 seed 기반으로 재현 가능하게 분산
 - application `displayName`, asset `name`에 생성 index suffix 미노출
 - eval key가 Landing source id로 추적 가능한지
 - `expected_severity = asset sensitivity` 대문자 매핑
