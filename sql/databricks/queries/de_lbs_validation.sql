@@ -185,7 +185,28 @@ WHERE e.relationship = 'owns_principal'
   AND (owner.principal_id IS NULL OR app.principal_id IS NULL);
 
 
--- 8. Eval positive case -> Silver principal/asset match check
+-- 8. GitHub owner edge -> owner status check
+SELECT COUNT(*) AS github_owner_edges_missing_or_null_owner_status
+FROM access_drift_dev.bronze.bronze_github_apps g
+LEFT JOIN access_drift_dev.silver.silver_principals owner
+  ON owner.source_principal_id = g.owner_email
+ AND owner.principal_kind = 'HI'
+LEFT JOIN access_drift_dev.silver.silver_principals app
+  ON app.source_principal_id = g.app_id
+ AND app.principal_type = 'github_app'
+LEFT JOIN access_drift_dev.silver.silver_edges e
+  ON e.from_id = owner.principal_id
+ AND e.to_id = app.principal_id
+ AND e.relationship = 'owns_principal'
+WHERE g.owner_email IS NOT NULL
+  AND (
+    owner.principal_id IS NULL
+    OR owner.status IS NULL
+    OR app.principal_id IS NULL
+    OR e.edge_id IS NULL
+  );
+
+-- 9. Eval positive case -> Silver principal/asset match check
 SELECT COUNT(*) AS positive_eval_without_silver_match
 
 FROM access_drift_dev.eval.ground_truth_case g
@@ -207,14 +228,14 @@ WHERE g.is_planted_risk = true
   AND (p.principal_id IS NULL OR a.asset_id IS NULL);
 
 
--- 9. Context asset_context -> Silver asset match check
+-- 10. Context asset_context -> Silver asset match check
 SELECT COUNT(*) AS context_assets_without_silver_match
 FROM access_drift_dev.context.asset_context c
 LEFT JOIN access_drift_dev.silver.silver_assets a
   ON c.source_asset_id = a.source_asset_id
 WHERE a.asset_id IS NULL;
 
--- 10. Context assignment_routing -> Eval match check
+-- 11. Context assignment_routing -> Eval match check
 
 -- assignment_routing은 eval key와 같은 source key를 써야 한다.
 SELECT COUNT(*) AS assignment_routing_without_eval_match
@@ -227,7 +248,7 @@ LEFT JOIN access_drift_dev.eval.ground_truth_case g
 WHERE g.case_id IS NULL;
 
 
--- 11. Eval -> Context assignment_routing match check
+-- 12. Eval -> Context assignment_routing match check
 
 -- Eval에 있는 케이스는 조치 담당자 라우팅 context를 가져야 한다.
 SELECT COUNT(*) AS eval_without_assignment_routing_match
