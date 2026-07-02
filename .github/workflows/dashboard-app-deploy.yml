@@ -21,6 +21,7 @@ env:
   DATABRICKS_AUTH_TYPE: azure-cli
   DATABRICKS_CONFIG_FILE: /dev/null
   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DASHBOARD_APP_NAME: access-drift-dashboard-dev
 
 jobs:
   deploy:
@@ -75,3 +76,14 @@ jobs:
           --var="app_schema=${{ secrets.ACCESS_DRIFT_APP_SCHEMA }}"
           --var="actor_id=${{ secrets.ACCESS_DRIFT_ACTOR_ID }}"
           --var="actor_name=${{ secrets.ACCESS_DRIFT_ACTOR_NAME }}"
+
+      - name: Show dashboard app info
+        run: |
+          mkdir -p artifacts/dashboard-app
+          databricks apps get "$DASHBOARD_APP_NAME" -o json | tee artifacts/dashboard-app/app-info.json
+
+      - name: Upload dashboard app info
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-app-info
+          path: artifacts/dashboard-app/app-info.json
