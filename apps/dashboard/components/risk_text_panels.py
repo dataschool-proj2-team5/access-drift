@@ -6,7 +6,6 @@ import pandas as pd
 import streamlit as st
 
 from components.cards import (
-    _action_step,
     _as_list,
     _doc_card,
     _format_datetime,
@@ -44,24 +43,27 @@ def render_review_info_card(case: pd.Series) -> None:
 def render_recommendation_panel(case: pd.Series) -> None:
     docs = _as_list(case["reference_docs"])
     plan = _as_list(case["action_plan"])
-    st.html(
-        f"""
-        <div class="ad-card ad-panel">
-          <div class="ad-card ad-panel" style="background:#f8f9fb; box-shadow:none">
-            <h3>AI Summary</h3>
-            <p>{escape(str(case["ai_summary"]))}</p>
-          </div>
-          <h3 style="margin-top:28px">\ucc38\uc870 \ubb38\uc11c</h3>
-          <div class="ad-doc-grid">
-            {''.join(_doc_card(doc, index) for index, doc in enumerate(docs))}
-          </div>
-          <h3>\uc2e4\ud589 \ub2e8\uacc4 <span style="color:#aeb5bf; font-size:16px">\u24d8</span></h3>
-          <div class="ad-action-steps">
-            {''.join(_action_step(step, index + 1) for index, step in enumerate(plan))}
-          </div>
-        </div>
-        """
-    )
+    with st.container(border=True):
+        st.markdown("### AI Summary")
+        st.write(str(case["ai_summary"]))
+
+        st.markdown("### 참조 문서")
+        if docs:
+            st.html(f'<div class="ad-doc-grid">{"".join(_doc_card(doc, index) for index, doc in enumerate(docs))}</div>')
+        else:
+            st.caption("연결된 참조 문서가 없습니다.")
+
+        st.markdown("### 실행 단계 ⓘ")
+        if not plan:
+            st.caption("생성된 실행 단계가 없습니다.")
+            return
+
+        for index, step in enumerate(plan, start=1):
+            number_col, step_col = st.columns([0.08, 0.92], vertical_alignment="center")
+            with number_col:
+                st.markdown(f"**{index}**")
+            with step_col:
+                st.write(str(step))
 
 
 def render_ai_agent_placeholder(case: pd.Series) -> None:
