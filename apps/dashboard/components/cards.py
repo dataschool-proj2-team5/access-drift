@@ -798,6 +798,9 @@ def _format_datetime(value: object) -> str:
     timestamp = pd.to_datetime(value, errors="coerce")
     if pd.isna(timestamp):
         return ""
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize("UTC")
+    timestamp = timestamp.tz_convert("Asia/Seoul")
     return timestamp.strftime("%Y/%m/%d %H:%M")
 
 
