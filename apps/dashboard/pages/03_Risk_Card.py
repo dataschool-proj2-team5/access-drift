@@ -38,7 +38,7 @@ def render_access_path_v2_inline(case: pd.Series) -> None:
     owner_caption = f"{escape(str(case['owner_team']))}<br>{escape(str(case['related_person_status']))}"
     identity_caption = escape(str(case["identity_name"]))
     credential_caption = _credential_expiry_caption(case)
-    asset_caption = escape(str(case.get("asset_full_name", case["asset_name"])))
+    asset_caption = _asset_caption(case)
     sensitivity_label = str(case.get("asset_sensitivity", "") or "")
     steps = [
         ("accesspath-icon-human.svg", case["owner_name"], owner_caption, "badge-owner.svg", "Owner", "", 187, 165),
@@ -79,6 +79,14 @@ def render_access_path_v2_inline(case: pd.Series) -> None:
 def _credential_expiry_caption(case: pd.Series) -> str:
     expires_at = str(case.get("credential_expires_at", "") or "").strip()
     return f"\ub9cc\ub8cc\uc77c: {escape(expires_at) if expires_at else '-'}"
+
+
+def _asset_caption(case: pd.Series) -> str:
+    asset_name = str(case.get("asset_name", "") or "").strip()
+    asset_full_name = str(case.get("asset_full_name", "") or "").strip()
+    if not asset_full_name or asset_full_name == asset_name:
+        return ""
+    return escape(asset_full_name)
 
 
 def _path_text_badge(label: str) -> str:

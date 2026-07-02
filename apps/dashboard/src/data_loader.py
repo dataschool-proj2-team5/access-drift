@@ -186,6 +186,7 @@ def _normalize_app_view_rows(
         normalized["credential_status"].astype(str).str.len().gt(0),
         _credential_status_from_active(_first_present(rows, ["credential_is_active", "credential_is_active_detail", "factor_credential_active"])),
     )
+    normalized["credential_status"] = _display_label_series(normalized["credential_status"])
     normalized["owner_status"] = _first_present(rows, ["owner_account_status", "factor_owner_status", "subject_status"])
     normalized["owner_name"] = _first_present(rows, ["owner_name", "owner_display_name", "owner_display_name_detail", "owner_display_name_path"])
     normalized["owner_team"] = _first_present(rows, ["assignee_team", "reviewer_team"])
@@ -195,7 +196,9 @@ def _normalize_app_view_rows(
     normalized["asset_name"] = _asset_summary_series(asset_full_name)
     normalized["asset_full_name"] = asset_full_name
     normalized["asset_type"] = _first_present(rows, ["asset_type"])
-    normalized["asset_sensitivity"] = _first_present(rows, ["asset_sensitivity", "asset_sensitivity_detail", "asset_sensitivity_path"])
+    normalized["asset_sensitivity"] = _display_label_series(
+        _first_present(rows, ["asset_sensitivity", "asset_sensitivity_detail", "asset_sensitivity_path"])
+    )
     normalized["data_scope"] = _first_present(rows, ["data_scope_label"])
     normalized["data_categories"] = _array_to_display(_first_present(rows, ["sensitive_data_examples"]))
     normalized["permission_level"] = _first_present(rows, ["access_permission", "access_permission_detail", "access_permission_path", "factor_permission"])
@@ -413,6 +416,19 @@ def _has_value(series: pd.Series) -> pd.Series:
 
 def _replace_ascii_arrow(series: pd.Series) -> pd.Series:
     return series.astype(str).str.replace(" -> ", " \u2192 ", regex=False)
+
+
+def _display_label_series(series: pd.Series) -> pd.Series:
+    return series.fillna("").astype(str).map(_display_label)
+
+
+def _display_label(value: object) -> str:
+    text = str(value).strip()
+    if not text:
+        return ""
+    if re.fullmatch(r"[a-z]+(?:[_-][a-z]+)*", text):
+        return _humanize_label(text)
+    return text
 
 
 def _normalize_severity(series: pd.Series) -> pd.Series:
