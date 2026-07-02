@@ -108,15 +108,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
           color: #f5f5f5;
         }
 
-        [data-testid="stSidebarHeader"] {
-          display: none !important;
-          height: 0 !important;
-          min-height: 0 !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          overflow: hidden !important;
-        }
-
         .ad-summary-grid {
           display: grid;
           grid-template-columns: 1.02fr 1.15fr 0.9fr;
@@ -473,13 +464,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
           margin-bottom: 14px;
         }
 
-        .ad-icon-box img {
-          display: block;
-          width: 28px;
-          height: 28px;
-          object-fit: contain;
-        }
-
         .ad-path-label {
           color: var(--ad-muted);
           font-weight: 800;
@@ -546,13 +530,14 @@ def apply_dashboard_style(page: str | None = None) -> None:
           height: 22px;
           display: grid;
           place-items: center;
+          border: 1px solid var(--ad-red);
+          color: var(--ad-red);
+          font-weight: 900;
         }
 
-        .ad-factor-icon img {
-          display: block;
-          width: 22px;
-          height: 22px;
-          object-fit: contain;
+        .ad-factor:first-child .ad-factor-icon {
+          border-color: var(--ad-green);
+          color: var(--ad-green);
         }
 
         .ad-review-actions {
@@ -588,15 +573,11 @@ def apply_dashboard_style(page: str | None = None) -> None:
           width: 38px;
           height: 38px;
           border-radius: 8px;
+          background: var(--ad-blue-soft);
           display: grid;
           place-items: center;
-        }
-
-        .ad-doc-icon img {
-          display: block;
-          width: 38px;
-          height: 38px;
-          object-fit: contain;
+          color: var(--ad-blue);
+          font-weight: 900;
         }
 
         .ad-doc-title {
@@ -645,45 +626,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
           font-size: 24px;
           font-weight: 800;
           margin-bottom: 18px;
-        }
-
-        .ad-agent-icon {
-          display: block;
-          width: 30px;
-          height: 30px;
-          object-fit: contain;
-        }
-
-        .ad-pill-icon {
-          display: block;
-          width: 14px;
-          height: 14px;
-          object-fit: contain;
-        }
-
-        .ad-risk-badge-img,
-        .ad-identity-badge-img,
-        .ad-status-badge-img {
-          display: inline-block;
-          vertical-align: middle;
-          object-fit: contain;
-          flex: 0 0 auto;
-        }
-
-        .ad-risk-badge-img {
-          width: auto;
-          height: 34px;
-        }
-
-        .ad-identity-badge-img {
-          width: auto;
-          height: 24px;
-          margin-left: 8px;
-        }
-
-        .ad-status-badge-img {
-          width: auto;
-          height: 23px;
         }
 
         .ad-agent-body {
@@ -769,77 +711,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
           font-weight: 600 !important;
         }
 
-        span[class*="material-symbols"],
-        i[class*="material-symbols"],
-        [class*="material-symbols"],
-        span[class*="material-icons"],
-        i[class*="material-icons"],
-        [class*="material-icons"],
-        span[class*="MaterialIcon"],
-        i[class*="MaterialIcon"],
-        [class*="MaterialIcon"],
-        [data-testid="stIconMaterial"] {
-          font-family: "Material Symbols Rounded", "Material Symbols Outlined", "Material Icons" !important;
-          font-weight: normal !important;
-          font-style: normal !important;
-          font-size: inherit;
-          line-height: 1 !important;
-          letter-spacing: normal !important;
-          text-transform: none !important;
-          white-space: nowrap !important;
-          word-wrap: normal !important;
-          direction: ltr !important;
-          -webkit-font-feature-settings: "liga" !important;
-          font-feature-settings: "liga" !important;
-          -webkit-font-smoothing: antialiased;
-        }
-
-        [data-testid="stSidebarCollapseButton"],
-        [data-testid="stExpandSidebarButton"],
-        [data-testid="collapsedControl"] {
-          font-size: 0 !important;
-        }
-
-        [data-testid="stSidebarCollapseButton"] *,
-        [data-testid="stExpandSidebarButton"] *,
-        [data-testid="collapsedControl"] * {
-          font-size: 0 !important;
-        }
-
-        [data-testid="stSidebarCollapseButton"]::before,
-        [data-testid="stExpandSidebarButton"]::before,
-        [data-testid="collapsedControl"]::before {
-          content: "\\2039";
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          color: #ffffff;
-          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-          font-size: 28px !important;
-          line-height: 1 !important;
-          font-weight: 700 !important;
-        }
-
-        [data-testid="stSidebarHeader"] [data-testid="stIconMaterial"] {
-          display: none !important;
-        }
-
-        [data-testid="stSidebarHeader"] button::before {
-          content: "\\2039";
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          color: #ffffff;
-          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-          font-size: 28px !important;
-          line-height: 1 !important;
-          font-weight: 700 !important;
-        }
-
         @media (max-width: 1100px) {
           .ad-summary-grid,
           .ad-analysis-grid,
@@ -893,33 +764,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
               line-height: 1.1;
               margin: 0 0 10px;
               color: var(--ad-text);
-            }
-
-            .ad-overview-title-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 10px;
-              margin: 0 0 10px;
-            }
-
-            .ad-overview-title-row .ad-overview-title {
-              margin: 0;
-            }
-
-            .ad-low-excluded-pill {
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-              border-radius: 999px;
-              background: #f1f5f9;
-              border: 1px solid #e2e8f0;
-              color: #64748b;
-              font-size: 10px;
-              line-height: 1;
-              font-weight: 600 !important;
-              padding: 5px 8px;
-              white-space: nowrap;
             }
 
             .ad-overview-summary-card {
@@ -1045,7 +889,7 @@ def apply_dashboard_style(page: str | None = None) -> None:
 
             .ad-overview-top-drifts .ad-card-title {
               font-size: 25px;
-              margin-bottom: 4px;
+              margin-bottom: 10px;
             }
 
             .ad-overview-top-drifts .ad-top-drift-row {
@@ -1108,22 +952,8 @@ def apply_dashboard_style(page: str | None = None) -> None:
             }
 
             .ad-overview-priority .ad-row-subline {
-              gap: 14px;
+              gap: 8px;
               margin-top: 12px;
-              flex-wrap: nowrap;
-            }
-
-            .ad-overview-priority .ad-risk-badge-slot {
-              width: 104px;
-              flex: 0 0 104px;
-              display: inline-flex;
-              align-items: center;
-            }
-
-            .ad-overview-priority .ad-risk-badge-slot .ad-risk-badge-img {
-              height: 34px;
-              width: 96px;
-              max-width: 96px;
             }
 
             .ad-overview-priority .ad-col-label {
@@ -1151,21 +981,11 @@ def apply_dashboard_style(page: str | None = None) -> None:
               min-width: 124px;
               padding: 0 16px;
               border-radius: 10px;
-              border: 1px solid #b9d2e7;
-              background: #ffffff;
-              color: var(--ad-blue);
               display: flex;
               align-items: center;
               justify-content: center;
               font-size: 14px;
               justify-self: end;
-              transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-            }
-
-            .ad-overview-priority .ad-button:hover {
-              background: var(--ad-blue);
-              border-color: var(--ad-blue);
-              color: #ffffff;
             }
 
             .ad-overview-priority .ad-identity-type-pill {
@@ -1279,11 +1099,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
               font-size: 12px;
             }
 
-            .ad-icon-box img {
-              width: 18px;
-              height: 18px;
-            }
-
             .ad-path-label {
               font-size: 10px;
               margin-bottom: 4px;
@@ -1340,104 +1155,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
 
             .ad-review-actions {
               margin-top: 16px;
-            }
-
-            .ad-risk-header-v2 {
-              min-height: 184px;
-            }
-
-            .ad-risk-v2-status-label {
-              color: var(--ad-muted);
-              font-size: 12px;
-              font-weight: 600 !important;
-              margin: 4px 0 8px;
-              text-align: left;
-            }
-
-            div[data-testid="stSelectbox"] label {
-              display: none;
-            }
-
-            div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
-              min-height: 36px;
-              border-radius: 999px;
-              border-color: #d7dde5;
-              background: #ffffff;
-              box-shadow: none;
-            }
-
-            div[data-testid="stSelectbox"] [data-baseweb="select"] span {
-              font-size: 13px;
-              font-weight: 700 !important;
-              color: var(--ad-text);
-            }
-
-            .ad-access-card-v2 .ad-access-canvas {
-              padding: 22px 14px;
-              gap: 14px;
-              align-items: stretch;
-            }
-
-            .ad-access-card-v2 .ad-path-step {
-              min-height: 122px;
-              height: 122px;
-              padding: 13px 12px;
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-start;
-              box-sizing: border-box;
-            }
-
-            .ad-access-card-v2 .ad-path-main-row {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              min-height: 34px;
-              margin-bottom: 8px;
-            }
-
-            .ad-access-card-v2 .ad-icon-box {
-              width: 30px;
-              height: 30px;
-              min-width: 30px;
-              margin-bottom: 0;
-            }
-
-            .ad-access-card-v2 .ad-icon-box img {
-              width: 21px;
-              height: 21px;
-            }
-
-            .ad-access-card-v2 .ad-path-value {
-              min-height: 0;
-              display: block;
-              font-size: 15px;
-              line-height: 1.25;
-              margin-bottom: 0;
-            }
-
-            .ad-access-card-v2 .ad-path-caption {
-              min-height: 30px;
-              font-size: 12px;
-              line-height: 1.35;
-            }
-
-            .ad-access-card-v2 .ad-path-pill-slot {
-              margin-top: auto;
-              min-height: 22px;
-              display: flex;
-              align-items: flex-end;
-            }
-
-            .ad-access-card-v2 .ad-path-step .ad-pill {
-              font-size: 11px;
-              padding: 5px 9px;
-            }
-
-            .ad-panel-v2-equal {
-              min-height: 196px;
-              height: 100%;
-              box-sizing: border-box;
             }
             </style>
             """,
