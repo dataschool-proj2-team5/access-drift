@@ -120,6 +120,8 @@ def normalize_to_internal_schema(data: pd.DataFrame) -> pd.DataFrame:
     normalized["asset_full_name"] = normalized["asset_full_name"].where(
         _has_value(normalized["asset_full_name"]), normalized["asset_name"]
     )
+    normalized["risk_title"] = _format_display_title(normalized["risk_title"])
+    normalized["overview_title"] = _format_display_title(normalized["overview_title"])
 
     normalized = normalized[EXPECTED_COLUMNS]
 
@@ -167,6 +169,9 @@ def _normalize_app_view_rows(
     normalized["risk_title"] = _first_present(rows, ["card_title", "drift_type_label", "drift_type"])
     normalized["risk_level"] = _normalize_severity(_first_present(rows, ["severity", "severity_detail", "severity_path"]))
     normalized["drift_type"] = _first_present(rows, ["drift_type_label", "drift_type_detail", "drift_type"])
+    normalized["source_system"] = _first_present(rows, ["source_system", "source_system_detail", "source_system_path"])
+    normalized["principal_kind"] = _first_present(rows, ["principal_kind", "principal_kind_detail", "principal_kind_path"])
+    normalized["principal_type"] = _first_present(rows, ["principal_type", "principal_type_detail", "principal_type_path"])
     normalized["identity_name"] = _first_present(rows, ["identity_name", "subject_display_name", "subject_display_name_detail", "subject_display_name_path"])
     normalized["identity_type"] = _normalize_identity_type(_first_present(rows, ["identity_type", "subject_type", "subject_type_detail", "subject_type_path"]))
     normalized["object_name"] = _first_present(rows, ["subject_display_name_detail", "subject_display_name_path", "identity_name"])
@@ -184,6 +189,7 @@ def _normalize_app_view_rows(
         normalized["credential_status"].astype(str).str.len().gt(0),
         _credential_status_from_active(_first_present(rows, ["credential_is_active", "credential_is_active_detail", "factor_credential_active"])),
     )
+    normalized["credential_status"] = _display_label_series(normalized["credential_status"])
     normalized["owner_status"] = _first_present(rows, ["owner_account_status", "factor_owner_status", "subject_status"])
     normalized["owner_name"] = _first_present(rows, ["owner_name", "owner_display_name", "owner_display_name_detail", "owner_display_name_path"])
     normalized["owner_team"] = _first_present(rows, ["assignee_team", "reviewer_team"])
@@ -193,11 +199,16 @@ def _normalize_app_view_rows(
     normalized["asset_name"] = _asset_summary_series(asset_full_name)
     normalized["asset_full_name"] = asset_full_name
     normalized["asset_type"] = _first_present(rows, ["asset_type"])
-    normalized["asset_sensitivity"] = _first_present(rows, ["asset_sensitivity", "asset_sensitivity_detail", "asset_sensitivity_path"])
+    normalized["asset_sensitivity"] = _display_label_series(
+        _first_present(rows, ["asset_sensitivity", "asset_sensitivity_detail", "asset_sensitivity_path"])
+    )
     normalized["data_scope"] = _first_present(rows, ["data_scope_label"])
     normalized["data_categories"] = _array_to_display(_first_present(rows, ["sensitive_data_examples"]))
     normalized["permission_level"] = _first_present(rows, ["access_permission", "access_permission_detail", "access_permission_path", "factor_permission"])
-    normalized["last_accessed_at"] = pd.NaT
+    normalized["last_accessed_at"] = _first_present(
+        rows,
+        ["last_accessed_at", "last_accessed_at_detail", "last_accessed_at_path", "access_last_used_at"],
+    )
     normalized["detected_at"] = _first_present(rows, ["detected_at", "detected_at_detail", "detected_at_path"])
     normalized["created_at"] = pd.NaT
     normalized["rotation_status"] = _rotation_status_from_credential(rows)
@@ -231,6 +242,9 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["risk_title"] = _first_present(gold_core, ["drift_type"])
     normalized["risk_level"] = _normalize_severity(_first_present(gold_core, ["severity"]))
     normalized["drift_type"] = _first_present(gold_core, ["drift_type"])
+    normalized["source_system"] = _first_present(gold_core, ["source_system"])
+    normalized["principal_kind"] = _first_present(gold_core, ["principal_kind"])
+    normalized["principal_type"] = _first_present(gold_core, ["principal_type", "subject_type"])
     normalized["identity_name"] = _first_present(gold_core, ["subject_display_name"])
     normalized["identity_type"] = _normalize_identity_type(_first_present(gold_core, ["subject_type"]))
     normalized["object_name"] = _first_present(gold_core, ["subject_display_name"])
@@ -251,7 +265,7 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["data_scope"] = ""
     normalized["data_categories"] = ""
     normalized["permission_level"] = ""
-    normalized["last_accessed_at"] = pd.NaT
+    normalized["last_accessed_at"] = _first_present(gold_core, ["last_accessed_at", "access_last_used_at"])
     normalized["detected_at"] = _first_present(gold_core, ["detected_at"])
     normalized["created_at"] = pd.NaT
     normalized["rotation_status"] = ""
@@ -404,6 +418,27 @@ def _first_present(data: pd.DataFrame, columns: list[str], default: object = "")
 
 def _has_value(series: pd.Series) -> pd.Series:
     return series.notna() & series.astype(str).ne("")
+
+
+def _format_display_title(series: pd.Series) -> pd.Series:
+    return (
+        series.astype(str)
+        .str.replace(" -> ", " \u2192 ", regex=False)
+        .str.replace(" - ", " \u00b7 ", n=1, regex=False)
+    )
+
+
+def _display_label_series(series: pd.Series) -> pd.Series:
+    return series.fillna("").astype(str).map(_display_label)
+
+
+def _display_label(value: object) -> str:
+    text = str(value).strip()
+    if not text:
+        return ""
+    if re.fullmatch(r"[a-z]+(?:[_-][a-z]+)*", text):
+        return _humanize_label(text)
+    return text
 
 
 def _normalize_severity(series: pd.Series) -> pd.Series:
