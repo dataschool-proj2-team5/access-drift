@@ -27,11 +27,12 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
 
     rows = []
     for _, case in assets.reset_index(drop=True).iterrows():
-        risk_card_href = f"/Risk_Card?case_id={quote(str(case['case_id']))}"
+        display_case_id = case.get("display_case_id", case["case_id"])
+        risk_card_href = f"/Risk_Card?case={quote(str(display_case_id))}"
         rows.append(
             f"""
             <div class="ad-asset-row">
-              <div class="ad-asset-value ad-asset-case-id">{escape(str(case["case_id"]))}</div>
+              <div class="ad-asset-value ad-asset-case-id">{escape(str(display_case_id))}</div>
               <div class="ad-asset-value">{escape(str(case["drift_label"]))}</div>
               <div class="ad-asset-value">{escape(str(case["environment"]))}</div>
               <div class="ad-asset-value">{escape(str(case["identity_name"]))}</div>

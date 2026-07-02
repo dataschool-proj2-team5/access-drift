@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import importlib
+
 import streamlit as st
 
-from components.asset_table_fit import render_asset_table_fit
+import components.asset_table_fit as asset_table_components
 from components.styles import apply_dashboard_style
-from src.data_loader import load_access_drift_data
+import src.data_loader as data_loader
 from src.session_state import apply_review_status_overrides
+
+
+asset_table_components = importlib.reload(asset_table_components)
+data_loader = importlib.reload(data_loader)
 
 
 st.set_page_config(page_title="Access Drift Asset List", page_icon="AD", layout="wide")
@@ -69,14 +75,14 @@ def main() -> None:
         with st.container(key="asset_status_filter"):
             status_filter = st.selectbox("Status", STATUS_FILTER_OPTIONS, index=0)
 
-    result = load_access_drift_data()
+    result = data_loader.load_access_drift_data()
     if result.using_mock:
         st.sidebar.info("Using mock data")
 
     data = apply_review_status_overrides(result.data)
     if status_filter != "All":
         data = data[data["review_status"].eq(status_filter)]
-    render_asset_table_fit(data)
+    asset_table_components.render_asset_table_fit(data)
 
 
 main()
