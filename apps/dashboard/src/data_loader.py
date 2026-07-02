@@ -334,6 +334,10 @@ def _load_databricks_config() -> DatabricksConfig | None:
 
 
 def _read_databricks_secrets() -> dict[str, object]:
+    env_config = _read_databricks_env()
+    if _has_required_databricks_config(env_config):
+        return env_config
+
     try:
         import streamlit as st
 
@@ -344,10 +348,14 @@ def _read_databricks_secrets() -> dict[str, object]:
 
     if DEFAULT_SECRET_PATH.exists():
         return dict(tomllib.loads(DEFAULT_SECRET_PATH.read_text(encoding="utf-8")).get("databricks", {}))
-    env_config = _read_databricks_env()
     if env_config:
         return env_config
     return {}
+
+
+def _has_required_databricks_config(config: dict[str, object]) -> bool:
+    required = ["server_hostname", "http_path", "access_token", "catalog", "gold_schema", "app_schema"]
+    return all(config.get(key) for key in required)
 
 
 def _read_databricks_env() -> dict[str, object]:
