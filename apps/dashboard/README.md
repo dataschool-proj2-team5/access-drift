@@ -36,7 +36,8 @@ streamlit run app.py
 대시보드는 아래 순서로 데이터를 읽습니다.
 
 1. `.streamlit/secrets.toml`에 Databricks 설정이 있으면 Databricks app schema의 dashboard view를 조회합니다.
-2. Databricks를 사용할 수 없으면 `src/mock_data.py`에서 mock row를 생성합니다.
+2. Databricks Apps 또는 GitHub Actions 배포 환경에서는 환경 변수 기반 설정을 사용합니다.
+3. Databricks를 사용할 수 없으면 `src/mock_data.py`에서 mock row를 생성합니다.
 
 mock row를 사용하는 경우 화면에 `Using mock data` 안내가 표시됩니다.
 
@@ -77,6 +78,72 @@ actor_name = "Streamlit Local User"    # optional
 
 토큰, hostname, http path는 코드에 하드코딩하지 않습니다.
 
+## Databricks Apps 배포
+
+Databricks Apps 배포 설정은 대시보드 디렉터리 안에 둡니다.
+
+```text
+apps/dashboard/app.yml
+apps/dashboard/databricks.yml
+```
+
+앱 이름은 `access-drift-dashboard-dev`입니다. 배포 전 로컬에서 아래를 확인합니다.
+
+```bash
+python3 -m compileall apps/dashboard/src apps/dashboard/pages apps/dashboard/app.py
+
+cd apps/dashboard
+databricks bundle validate -t dev
+databricks apps deploy -t dev --auto-approve --skip-validation
+```
+
+Databricks Apps runtime은 아래 환경 변수를 읽습니다.
+
+| 환경 변수 | 용도 |
+| --- | --- |
+| `DATABRICKS_HOST` | Databricks workspace host |
+| `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
+| `DATABRICKS_TOKEN` | Databricks SQL Statement API 호출 token |
+
+배포 앱은 아래 값을 기본값으로 사용합니다.
+
+| 항목 | 기본값 |
+| --- | --- |
+| Catalog | `access_drift_dev` |
+| Gold schema | `gold` |
+| App schema | `app` |
+| Action actor id | `databricks_apps_user` |
+| Action actor name | `Databricks Apps User` |
+
+## GitHub Actions 자동 CD
+
+`main` 브랜치의 dashboard 관련 파일이 변경되면 `.github/workflows/dashboard-app-deploy.yml`이 Databricks Apps dev 배포를 자동 실행합니다.
+
+자동 CD에 필요한 GitHub Actions secrets는 저장소 Settings → Secrets and variables → Actions에 등록합니다.
+
+| Secret | 용도 |
+| --- | --- |
+| `AZURE_CLIENT_ID` | Azure OIDC login client id |
+| `AZURE_TENANT_ID` | Azure tenant id |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription id |
+| `DATABRICKS_HOST` | Databricks workspace host |
+| `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
+| `DATABRICKS_TOKEN` | Dashboard runtime SQL Statement API token |
+
+secret 값은 PR, 로그, 문서에 직접 남기지 않습니다.
+
+배포 후 Databricks Apps URL에서 Overview와 Risk Card가 열리는지 확인합니다. Review Status를 변경했다면 아래 SQL로 저장 상태를 확인합니다.
+
+```sql
+SELECT risk_case_key, status, updated_by, updated_at
+FROM access_drift_dev.app.risk_action_state
+ORDER BY updated_at DESC;
+
+SELECT event_id, risk_case_key, event_type, previous_status, new_status, actor_id, actor_name, event_at
+FROM access_drift_dev.app.risk_action_event
+ORDER BY event_at DESC;
+```
+
 ## 표시용 Case ID
 
 Databricks의 원본 `risk_case_key`는 내부 조회, navigation, session key로만 사용합니다. 화면에는 원본 key를 직접 노출하지 않습니다.
@@ -89,6 +156,8 @@ Databricks의 원본 `risk_case_key`는 내부 조회, navigation, session key�
 ```text
 apps/dashboard/
 ├─ app.py
+├─ app.yml
+├─ databricks.yml
 ├─ pages/
 │  ├─ 01_Overview.py
 │  ├─ 02_Asset_List.py
@@ -100,6 +169,7 @@ apps/dashboard/
 │  ├─ risk_text_panels.py
 │  └─ styles.py
 ├─ src/
+│  ├─ action_state.py
 │  ├─ data_loader.py
 │  ├─ mock_data.py
 │  ├─ schema.py
@@ -118,6 +188,7 @@ apps/dashboard/
 - 소스별 컬럼 매핑, display normalization, fallback 로직은 `src/data_loader.py`에 유지합니다.
 - Databricks write-back 로직은 `src/action_state.py`에 유지합니다.
 - 내부 컬럼 계약은 `src/schema.py`와 `data/README.md`를 함께 갱신합니다.
+- Databricks Apps 배포 설정은 `app.yml`, `databricks.yml`, GitHub Actions workflow를 함께 확인합니다.
 - ticket 발급, RAG/AI Agent 연동은 아직 구현하지 않습니다.
 
 ## 현재 제한 사항
