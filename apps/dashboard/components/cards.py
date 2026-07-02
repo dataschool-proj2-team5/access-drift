@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import base64
+import mimetypes
+from functools import lru_cache
 from html import escape
+from pathlib import Path
 from textwrap import dedent
 from urllib.parse import quote
 
@@ -8,6 +12,9 @@ import pandas as pd
 import streamlit as st
 
 RISK_LEVELS = ["Critical", "High", "Medium", "Low"]
+ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
+ICON_DIR = ASSET_DIR / "icons"
+BADGE_DIR = ASSET_DIR / "badges"
 
 
 def render_summary_cards(data: pd.DataFrame) -> None:
@@ -115,7 +122,7 @@ def render_priority_review_list(data: pd.DataFrame) -> None:
                   <span class="ad-row-title">{escape(str(case["risk_title"]))}</span>
                 </div>
                 <div class="ad-row-subline">
-                  {_risk_badge(str(case["risk_level"]), compact=True)}
+                  <span class="ad-risk-badge-slot">{_risk_badge(str(case["risk_level"]), compact=True)}</span>
                   <span class="ad-pill ad-owner-pill">{escape(str(case["owner"]))}</span>
                 </div>
               </div>
@@ -139,7 +146,6 @@ def render_priority_review_list(data: pd.DataFrame) -> None:
         <div class="ad-card ad-priority-card ad-overview-priority">
           <div class="ad-section-header">
             <div class="ad-section-title">Priority Review</div>
-            <div class="ad-count-pill">{len(priority)} review items</div>
           </div>
           {''.join(rows)}
         </div>
@@ -171,6 +177,70 @@ def render_risk_header_card(case: pd.Series) -> None:
     )
 
 
+def render_risk_header_card_v2(case: pd.Series) -> None:
+    st.html(
+        f"""
+        <div class="ad-card ad-risk-header ad-risk-header-v2">
+          <div class="ad-risk-heading">
+            <h2>{escape(str(case["identity_name"]))}</h2>
+            {_risk_badge(str(case["risk_level"]))}
+          </div>
+          <div class="ad-risk-subtitle">
+            {escape(str(case["drift_type"]))} &#183; {escape(str(case["object_type"]))} &#183; {escape(str(case["credential_status"]))}
+          </div>
+          <div class="ad-risk-subtitle">{escape(str(case["linked_owner_label"]))}</div>
+          <div class="ad-risk-meta">
+            {_meta_item("Object type", case["object_type"])}
+            {_meta_item("Identity type", case["identity_type"])}
+            {_meta_item("Credential status", case["credential_status"])}
+            {_meta_item("Last Accessed", _format_datetime(case["last_accessed_at"]))}
+          </div>
+        </div>
+        """
+    )
+
+
+def render_risk_summary_card_v2(case: pd.Series) -> None:
+    st.html(
+        f"""
+        <div class="ad-card ad-panel ad-panel-v2-equal">
+          <h3>Risk Summary</h3>
+          <p>{escape(str(case["risk_summary"]))}</p>
+        </div>
+        """
+    )
+
+
+def render_risk_factors_card_v2(case: pd.Series) -> None:
+    factors = _as_list(case["risk_factors"]) or [
+        f"Owner status: {case['owner_status']}",
+        f"Credential status: {case['credential_status']}",
+        f"Asset sensitivity: {case['asset_sensitivity']}",
+        f"Permission level: {case['permission_level']}",
+        f"Rotation status: {case['rotation_status']}",
+    ]
+    factor_html = []
+    for index, factor in enumerate(factors):
+        icon_file = "riskfactors-icon-check.svg" if index == 0 else "riskfactors-icon-noncheck.svg"
+        icon = _icon_img(icon_file, "Risk factor status", "ad-factor-status-icon")
+        factor_html.append(
+            f"""
+            <div class="ad-factor">
+              <span class="ad-factor-icon">{icon}</span>
+              <span>{escape(factor)}</span>
+            </div>
+            """
+        )
+    st.html(
+        f"""
+        <div class="ad-card ad-panel ad-panel-v2-equal">
+          <h3>Risk Factors</h3>
+          {''.join(factor_html)}
+        </div>
+        """
+    )
+
+
 def render_risk_summary_card(case: pd.Series) -> None:
     st.html(
         f"""
@@ -192,7 +262,8 @@ def render_risk_factors_card(case: pd.Series) -> None:
     ]
     factor_html = []
     for index, factor in enumerate(factors):
-        icon = "✓" if index == 0 else "!"
+        icon_file = "riskfactors-icon-check.svg" if index == 0 else "riskfactors-icon-noncheck.svg"
+        icon = _icon_img(icon_file, "Risk factor status", "ad-factor-status-icon")
         factor_html.append(
             f"""
             <div class="ad-factor">
@@ -268,7 +339,7 @@ def render_ai_agent_placeholder(case: pd.Series) -> None:
     st.html(
         f"""
         <div class="ad-card ad-panel">
-          <div class="ad-agent-header">💠 AI Agent</div>
+          <div class="ad-agent-header">{_icon_img("icon-azure-openai.svg", "AI Agent", "ad-agent-icon")} AI Agent</div>
           <div class="ad-agent-body">
             <div class="ad-chat-bubble">
               <div class="ad-chat-name">AI Agent</div>
@@ -329,19 +400,24 @@ def _percentage(value: int, total: int) -> float:
 
 
 def _risk_badge(level: str, compact: bool = False) -> str:
-    css = "ad-pill-critical" if level == "Critical" else "ad-pill-high"
-    label = escape(level) if compact else f"▮▮▮ {escape(level)}"
-    return f'<span class="ad-pill {css}">{label}</span>'
+    badge_file = "badge-critical.svg" if level == "Critical" else "badge-high.svg"
+    return _badge_img(badge_file, level, "ad-risk-badge-img")
 
 
 def _status_badge(status: str) -> str:
+    status_badges = {
+        "Open": "badge-priorityreview-open.svg",
+        "In Review": "badge-priorityreview-inreview.svg",
+    }
+    if status in status_badges:
+        return _badge_img(status_badges[status], status, "ad-status-badge-img")
     css = "ad-pill-open" if status == "Open" else "ad-pill-in-review"
     return f'<span class="ad-pill {css}">{escape(status)}</span>'
 
 
 def _identity_badge(identity_type: str) -> str:
-    css = "ad-pill-nhi" if identity_type == "NHI" else "ad-pill-hi"
-    return f'<span class="ad-pill {css} ad-identity-type-pill" style="margin-left:8px">{escape(identity_type)}</span>'
+    badge_file = "badge-nhi.svg" if identity_type == "NHI" else "badge-hi.svg"
+    return _badge_img(badge_file, identity_type, "ad-identity-badge-img")
 
 
 def _meta_item(label: str, value: object) -> str:
@@ -357,10 +433,11 @@ def _doc_card(doc: str, index: int) -> str:
     parts = [part.strip() for part in doc.split(" / ", 1)]
     title = parts[0]
     subtitle = parts[1] if len(parts) > 1 else ""
-    icons = ["PDF", "✓", "A", "◆"]
+    icons = ["icon-pdf.png", "icon-policy-yellow.png", "icon-azure.svg", "icon-policy-green.png"]
+    icon = _icon_img(icons[index % len(icons)], title, "ad-doc-card-icon")
     return f"""
     <div class="ad-doc-card">
-      <div class="ad-doc-icon">{escape(icons[index % len(icons)])}</div>
+      <div class="ad-doc-icon">{icon}</div>
       <div>
         <div class="ad-doc-title">{escape(title)}</div>
         <div class="ad-doc-subtitle">{escape(subtitle)}</div>
@@ -376,6 +453,26 @@ def _action_step(step: str, index: int) -> str:
       <div>{escape(step)}</div>
     </div>
     """
+
+
+def _asset_data_uri(directory: str, filename: str) -> str:
+    path = ASSET_DIR / directory / filename
+    mime_type = mimetypes.guess_type(path.name)[0] or "image/svg+xml"
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
+
+
+def _asset_img(directory: str, filename: str, alt: str, class_name: str = "") -> str:
+    class_attr = f' class="{escape(class_name)}"' if class_name else ""
+    return f'<img src="{_asset_data_uri(directory, filename)}" alt="{escape(alt)}"{class_attr} />'
+
+
+def _icon_img(filename: str, alt: str, class_name: str = "") -> str:
+    return _asset_img("icons", filename, alt, class_name)
+
+
+def _badge_img(filename: str, alt: str, class_name: str = "") -> str:
+    return _asset_img("badges", filename, alt, class_name)
 
 
 def _as_list(value: object) -> list[str]:
