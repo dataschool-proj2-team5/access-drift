@@ -120,8 +120,8 @@ def normalize_to_internal_schema(data: pd.DataFrame) -> pd.DataFrame:
     normalized["asset_full_name"] = normalized["asset_full_name"].where(
         _has_value(normalized["asset_full_name"]), normalized["asset_name"]
     )
-    normalized["risk_title"] = _replace_ascii_arrow(normalized["risk_title"])
-    normalized["overview_title"] = _replace_ascii_arrow(normalized["overview_title"])
+    normalized["risk_title"] = _format_display_title(normalized["risk_title"])
+    normalized["overview_title"] = _format_display_title(normalized["overview_title"])
 
     normalized = normalized[EXPECTED_COLUMNS]
 
@@ -414,8 +414,12 @@ def _has_value(series: pd.Series) -> pd.Series:
     return series.notna() & series.astype(str).ne("")
 
 
-def _replace_ascii_arrow(series: pd.Series) -> pd.Series:
-    return series.astype(str).str.replace(" -> ", " \u2192 ", regex=False)
+def _format_display_title(series: pd.Series) -> pd.Series:
+    return (
+        series.astype(str)
+        .str.replace(" -> ", " \u2192 ", regex=False)
+        .str.replace(" - ", " \u00b7 ", n=1, regex=False)
+    )
 
 
 def _display_label_series(series: pd.Series) -> pd.Series:
