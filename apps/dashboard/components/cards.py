@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import mimetypes
+import re
+from datetime import datetime
 from functools import lru_cache
 from html import escape
 from pathlib import Path
@@ -10,6 +12,8 @@ from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
+
+import src.jira_client as jira_client
 
 RISK_LEVELS = ["Critical", "High", "Medium", "Low"]
 DEMO_PRIORITY_RISK_CASE_KEYS = {
@@ -382,12 +386,278 @@ def render_ai_agent_placeholder(case: pd.Series) -> None:
 
 
 def render_ticket_form_placeholder(case: pd.Series) -> None:
-    with st.form("ticket-placeholder-form"):
-        st.text_input("Title", value=f"[Access Drift] {case['risk_title']}")
-        st.text_area("Description", value=case["recommended_action"], height=160)
-        st.selectbox("Priority", ["High", "Medium", "Low"])
-        st.text_input("Assignee", value=case["action_owner"])
-        st.form_submit_button("Create ticket", disabled=True)
+    ticket = _ticket_payload(case)
+    st.markdown(
+        """
+        <style>
+        .st-key-jira_ticket_panel {
+          margin-top: 8px;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-preview-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 8px;
+          color: #172B4D;
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-preview-icon {
+          width: 22px;
+          height: 22px;
+          object-fit: contain;
+          display: block;
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stForm"] {
+          border: 1px solid #DFE1E6;
+          border-radius: 8px;
+          background: #FFFFFF;
+          padding: 18px 20px;
+          box-shadow: 0 1px 2px rgba(9, 30, 66, 0.08);
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stHorizontalBlock"] {
+          gap: 2rem;
+        }
+
+        .st-key-jira_ticket_panel label p {
+          color: #44546F !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stSelectbox"] label {
+          display: block !important;
+        }
+
+        .st-key-jira_ticket_panel input,
+        .st-key-jira_ticket_panel textarea,
+        .st-key-jira_ticket_panel [data-baseweb="select"] > div {
+          border-color: #DFE1E6 !important;
+          border-radius: 4px !important;
+          background: #FFFFFF !important;
+          color: #172B4D !important;
+          font-size: 14px !important;
+          font-weight: 600 !important;
+        }
+
+        .st-key-jira_ticket_panel textarea {
+          line-height: 1.55 !important;
+          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+        }
+
+        .st-key-jira_ticket_panel .st-key-jira_title input {
+          min-height: 48px !important;
+          font-size: 18px !important;
+          font-weight: 700 !important;
+        }
+
+        .st-key-jira_ticket_panel .st-key-jira_explanation textarea {
+          min-height: 390px !important;
+        }
+
+        .st-key-jira_ticket_panel .st-key-jira_detail_panel {
+          min-height: 448px;
+          padding: 12px 16px 14px;
+          border: 1px solid #DFE1E6;
+          border-radius: 8px;
+          background: #FAFBFC;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-side-title {
+          color: #172B4D;
+          font-size: 16px;
+          font-weight: 700;
+          margin-bottom: 6px;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-button-spacer {
+          height: 4px;
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stFormSubmitButton"] button {
+          background: #0C66E4 !important;
+          border-color: #0C66E4 !important;
+          color: #FFFFFF !important;
+          border-radius: 4px !important;
+          min-height: 38px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container(key="jira_ticket_panel"):
+        st.html(
+            f"""
+            <div class="ad-jira-preview-header">
+              {_icon_img("icon-jira.svg", "Jira", "ad-jira-preview-icon")}
+              <span>Jira Issue Preview</span>
+            </div>
+            """
+        )
+        with st.form("ticket-placeholder-form"):
+            left_col, right_col = st.columns([0.66, 0.34], gap="large", vertical_alignment="top")
+            with left_col:
+                title = st.text_input("Title", value=ticket["title"], key="jira_title")
+                explanation = st.text_area("Explanation", value=ticket["explanation"], height=430, key="jira_explanation")
+            with right_col:
+                with st.container(key="jira_detail_panel"):
+                    st.html('<div class="ad-jira-side-title">세부 사항</div>')
+                    priority_options = ["Highest", "High", "Medium", "Low", "Lowest"]
+                    assignee = st.text_input("담당자", value=_display_person_name(ticket["assignee"]))
+                    priority = st.selectbox(
+                        "우선 순위",
+                        priority_options,
+                        index=priority_options.index(ticket["priority"]),
+                    )
+                    label = st.text_input("레이블", value=ticket["label"])
+                    due_date = st.text_input("기한", value="", placeholder="YYYY.MM.DD")
+                    team = st.text_input("Team", value=ticket["team"])
+                    reporter = st.text_input("보고자", value=_display_person_name(ticket["reporter"]))
+                    st.html('<div class="ad-jira-button-spacer"></div>')
+                    submitted = st.form_submit_button("Create Jira issue", use_container_width=True)
+
+    if not submitted:
+        return
+
+    normalized_due_date = _normalize_jira_due_date(due_date)
+    if normalized_due_date is None:
+        st.error("기한은 YYYY.MM.DD 형식으로 입력해야 합니다.")
+        return
+
+    config = jira_client.load_jira_config()
+    if config is None:
+        st.error("Jira secrets 설정이 없습니다. apps/dashboard/.streamlit/secrets.toml의 [jira] 섹션을 확인하세요.")
+        return
+
+    full_explanation = _append_jira_sidebar_fields(explanation, assignee, team, reporter)
+    try:
+        result = jira_client.create_jira_issue(
+            config,
+            title=title,
+            explanation=full_explanation,
+            priority=priority,
+            label=label,
+            due_date=normalized_due_date or "",
+        )
+    except Exception as exc:
+        st.error(str(exc))
+        return
+
+    st.success(f"Jira issue created: {result.key}")
+    st.markdown(f"[Open Jira issue]({result.url})")
+
+
+def _ticket_payload(case: pd.Series) -> dict[str, str]:
+    display_case_id = str(case.get("display_case_id", case.get("case_id", "")))
+    risk_level = str(case.get("risk_level", "")).upper()
+    risk_case_key = str(case.get("risk_case_key", ""))
+    identity_name = str(case.get("identity_name", ""))
+    is_demo_case = (
+        risk_case_key in DEMO_PRIORITY_RISK_CASE_KEYS
+        or display_case_id == "CASE-7B4DC4"
+        or identity_name == "sp-crm-customer-export-prod"
+    )
+
+    if is_demo_case:
+        return {
+            "title": "[CASE-7B4DC4][CRITICAL] NHI residual access review",
+            "explanation": (
+                "퇴사자와 연결된 NHI가 Production 환경의 Critical 민감 자산에 접근 가능한 상태로 확인되어 검토를 요청드립니다.\n\n"
+                "- Case ID: CASE-7B4DC4\n"
+                "- 드리프트 유형: NHI Access Drift \n"
+                "- 대상 NHI: sp-crm-customer-export-prod\n"
+                "- 연관 사용자: CRM 데이터 운영팀 김민수 (퇴사일자: 2026/06/10)\n"
+                "- 민감 자산: customer-export-storage-prod\n"
+                "- 환경/민감도: Production / Critical\n"
+                "- 최종 위험도: CRITICAL\n\n"
+                "■ 위험 근거\n"
+                "퇴사자 김민수가 소유한 활성 App Registration sp-crm-customer-export-prod에 유효한 credential이 남아 있고 "
+                "customer-export-storage-prod 자산 접근 경로가 활성 상태입니다.\n\n"
+                "■ 권장 조치\n"
+                "담당자와 실제 사용 목적을 확인한 후, 퇴사자와 연결된 활성 Client Secret을 즉시 교체해야 합니다. "
+                "이후 Storage Account의 RBAC 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+            ),
+            "priority": "Highest",
+            "assignee": "이다영",
+            "label": "CASE-7B4DC4",
+            "team": "CRM 데이터 운영팀",
+            "reporter": "박지연",
+        }
+
+    title = f"[{display_case_id}][{risk_level}] {case.get('overview_title', case.get('risk_title', 'Access drift'))} review"
+    explanation = (
+        "접근 드리프트 위험이 확인되어 검토를 요청드립니다.\n\n"
+        f"- Case ID: {display_case_id}\n"
+        f"- 드리프트 유형: {case.get('drift_type', '')}\n"
+        f"- 대상 Identity: {case.get('identity_name', '')}\n"
+        f"- 연관 사용자: {case.get('owner_team', '')} {case.get('owner_name', '')}\n"
+        f"- 민감 자산: {case.get('asset_full_name', case.get('asset_name', ''))}\n"
+        f"- 환경/민감도: {case.get('asset_type', '')} / {case.get('asset_sensitivity', '')}\n"
+        f"- 최종 위험도: {risk_level}\n\n"
+        "■ 위험 근거\n"
+        f"{case.get('risk_summary', '')}\n\n"
+        "■ 권장 조치\n"
+        f"{case.get('ai_summary', case.get('recommended_action', ''))}"
+    )
+    return {
+        "title": title,
+        "explanation": explanation,
+        "priority": _jira_priority_from_risk_level(str(case.get("risk_level", ""))),
+        "assignee": str(case.get("action_owner", "")),
+        "label": display_case_id,
+        "team": str(case.get("owner_team", "")),
+        "reporter": str(case.get("reviewer", "")),
+    }
+
+
+def _jira_priority_from_risk_level(risk_level: str) -> str:
+    mapping = {
+        "critical": "Highest",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low",
+    }
+    return mapping.get(str(risk_level).strip().lower(), "Medium")
+
+
+def _normalize_jira_due_date(value: str) -> str | None:
+    text = str(value).strip()
+    if not text:
+        return ""
+    match = re.fullmatch(r"(\d{4})\.(\d{2})\.(\d{2})", text)
+    if not match:
+        return None
+    normalized = "-".join(match.groups())
+    try:
+        datetime.strptime(normalized, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return normalized
+
+
+def _display_person_name(value: str) -> str:
+    text = str(value).strip()
+    if not text:
+        return ""
+    for separator in ["·", "/", "|", ","]:
+        if separator in text:
+            return text.split(separator, 1)[0].strip()
+    return text
+
+
+def _append_jira_sidebar_fields(explanation: str, assignee: str, team: str, reporter: str) -> str:
+    return (
+        f"{explanation}\n\n"
+        "■ Jira 입력 정보\n"
+        f"- 담당자: {assignee}\n"
+        f"- Team: {team}\n"
+        f"- 보고자: {reporter}"
+    )
 
 
 def _legend_row(label: str, value: int, color: str) -> str:
