@@ -134,9 +134,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             min-width: 84px;
             padding: 5px 9px;
             border-radius: 999px;
-            border: 1px solid #b9d2e7;
-            background: #ffffff;
-            color: #0f4f7a;
+            border: 1px solid transparent;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -144,6 +142,18 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             font-weight: 800;
             line-height: 1;
             white-space: nowrap;
+          }}
+
+          .ad-asset-status-open {{
+            border-color: #b9d2e7;
+            background: #eff6ff;
+            color: #0f4f7a;
+          }}
+
+          .ad-asset-status-reviewing {{
+            border-color: #fed7aa;
+            background: #fff7ed;
+            color: #9a3412;
           }}
 
           .ad-asset-status-resolved {{
@@ -233,5 +243,10 @@ def _asset_risk_badge(level: str) -> str:
 
 
 def _asset_status_badge(status: str) -> str:
-    css = "ad-asset-status-resolved" if status == "Resolved" else ""
+    status_classes = {
+        "Open": "ad-asset-status-open",
+        "In Review": "ad-asset-status-reviewing",
+        "Resolved": "ad-asset-status-resolved",
+    }
+    css = status_classes.get(status, "ad-asset-status-open")
     return f'<span class="ad-asset-status-pill {css}">{escape(status)}</span>'
