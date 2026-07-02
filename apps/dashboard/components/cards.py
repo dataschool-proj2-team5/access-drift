@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 
 RISK_LEVELS = ["Critical", "High", "Medium", "Low"]
+DEMO_PRIORITY_RISK_CASE_KEY = "nhi:d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f:asset-customer-export-storage-prod:nhi_residual_access"
 ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
 ICON_DIR = ASSET_DIR / "icons"
 BADGE_DIR = ASSET_DIR / "badges"
@@ -104,12 +105,16 @@ def render_summary_cards(data: pd.DataFrame) -> None:
 
 
 def render_priority_review_list(data: pd.DataFrame) -> None:
-    priority = data[data["risk_level"].isin(RISK_LEVELS)].copy()
+    priority = data[
+        data["risk_level"].isin(RISK_LEVELS)
+        | data["risk_case_key"].astype(str).eq(DEMO_PRIORITY_RISK_CASE_KEY)
+    ].copy()
+    priority["is_demo_priority_case"] = priority["risk_case_key"].astype(str).eq(DEMO_PRIORITY_RISK_CASE_KEY)
     priority["priority_sort_score"] = pd.to_numeric(priority["risk_score"], errors="coerce").fillna(0)
     priority["priority_sort_detected_at"] = pd.to_datetime(priority["detected_at"], errors="coerce")
     priority = priority.sort_values(
-        ["priority_sort_score", "priority_sort_detected_at", "case_id"],
-        ascending=[False, False, True],
+        ["is_demo_priority_case", "priority_sort_score", "priority_sort_detected_at", "case_id"],
+        ascending=[False, False, False, True],
         na_position="last",
     ).head(3)
     priority["risk_title"] = priority["overview_title"].where(priority["overview_title"].ne(""), priority["risk_title"])
