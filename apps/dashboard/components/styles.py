@@ -1106,6 +1106,37 @@ def apply_dashboard_style(page: str | None = None) -> None:
               line-height: 1.2;
             }
 
+            .ad-overview-priority .ad-overview-identity-label {
+              display: inline-flex;
+              align-items: center;
+              gap: 7px;
+              max-width: 100%;
+            }
+
+            .ad-overview-priority .ad-overview-platform-icon {
+              width: 17px;
+              height: 17px;
+              flex: 0 0 auto;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+            }
+
+            .ad-overview-priority img.ad-overview-platform-icon {
+              width: 17px !important;
+              height: 17px !important;
+              max-width: 17px !important;
+              max-height: 17px !important;
+              object-fit: contain;
+            }
+
+            .ad-overview-priority .ad-overview-platform-text {
+              color: #475569;
+              font-size: 9px;
+              font-weight: 900;
+              line-height: 1;
+            }
+
             .ad-overview-priority .ad-row-subline {
               gap: 14px;
               margin-top: 12px;

@@ -9,7 +9,6 @@ from html import escape
 from pathlib import Path
 from textwrap import dedent
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
@@ -150,8 +149,7 @@ def render_priority_review_list(data: pd.DataFrame) -> None:
               </div>
               <div>
                 <div class="ad-col-label">Identity</div>
-                <span class="ad-identity-value">{escape(str(case["identity_name"]))}</span>
-                {_identity_badge(str(case["identity_type"]))}
+                {_overview_identity_label(case)}
               </div>
               <div>
                 <div class="ad-col-label">Detected At</div>
@@ -516,7 +514,7 @@ def render_ticket_form_placeholder(case: pd.Series) -> None:
                         index=priority_options.index(ticket["priority"]),
                     )
                     label = st.text_input("레이블", value=ticket["label"])
-                    due_date = st.text_input("기한", value=_default_jira_due_date(), placeholder="YYYY-MM-DD")
+                    due_date = st.text_input("기한", value="", placeholder="YYYY-MM-DD")
                     team = st.text_input("Team", value=ticket["team"])
                     reporter = st.text_input("보고자", value=_display_person_name(ticket["reporter"]))
                     st.html('<div class="ad-jira-button-spacer"></div>')
@@ -641,10 +639,6 @@ def _normalize_jira_due_date(value: str) -> str | None:
     return normalized
 
 
-def _default_jira_due_date() -> str:
-    return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
-
-
 def _display_person_name(value: str) -> str:
     text = str(value).strip()
     if not text:
@@ -716,6 +710,47 @@ def _status_badge(status: str) -> str:
         return _badge_img(status_badges[status], status, "ad-status-badge-img")
     css = "ad-pill-open" if status == "Open" else "ad-pill-in-review"
     return f'<span class="ad-pill {css}">{escape(status)}</span>'
+
+
+def _overview_identity_label(case: pd.Series) -> str:
+    source_system = str(case.get("source_system", "")).strip().lower()
+    identity_name = escape(str(case.get("identity_name", "")))
+    icon = _platform_identity_icon(source_system)
+    return f'<span class="ad-overview-identity-label">{icon}<span class="ad-identity-value">{identity_name}</span></span>'
+
+
+def _platform_identity_icon(source_system: str) -> str:
+    icon_files = {
+        "azure": "icon-azure.svg",
+        "azure_ad": "icon-azure.svg",
+        "entra": "icon-azure.svg",
+        "entra_id": "icon-azure.svg",
+        "github": "icon-github.svg",
+        "google_workspace": "icon-google-workspace.svg",
+        "slack": "icon-slack.svg",
+    }
+    icon_file = icon_files.get(source_system)
+    if icon_file:
+        alt = _source_system_label(source_system)
+        return (
+            f'<img src="{_asset_data_uri("icons", icon_file)}" alt="{escape(alt)}" '
+            'class="ad-overview-platform-icon" '
+            'style="width:17px;height:17px;max-width:17px;max-height:17px;object-fit:contain;display:inline-block;margin-right:7px;" />'
+        )
+    return '<span class="ad-overview-platform-icon ad-overview-platform-text" style="margin-right:7px;">ID</span>'
+
+
+def _source_system_label(source_system: str) -> str:
+    labels = {
+        "azure": "Azure",
+        "azure_ad": "Azure",
+        "entra": "Azure",
+        "entra_id": "Azure",
+        "github": "GitHub",
+        "google_workspace": "Google Workspace",
+        "slack": "Slack",
+    }
+    return labels.get(source_system, "Identity")
 
 
 def _identity_badge(identity_type: str) -> str:
@@ -807,5 +842,3 @@ def _format_datetime(value: object) -> str:
         timestamp = timestamp.tz_localize("UTC")
     timestamp = timestamp.tz_convert("Asia/Seoul")
     return timestamp.strftime("%Y/%m/%d %H:%M")
-
-
