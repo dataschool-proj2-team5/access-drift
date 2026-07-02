@@ -42,6 +42,8 @@ class DatabricksConfig:
     catalog: str
     gold_schema: str
     app_schema: str
+    actor_id: str = "streamlit_dashboard"
+    actor_name: str = "Streamlit Dashboard"
 
     @property
     def warehouse_id(self) -> str:
@@ -325,6 +327,8 @@ def _load_databricks_config() -> DatabricksConfig | None:
         catalog=str(secrets["catalog"]),
         gold_schema=str(secrets["gold_schema"]),
         app_schema=str(secrets["app_schema"]),
+        actor_id=str(secrets.get("actor_id") or "streamlit_dashboard"),
+        actor_name=str(secrets.get("actor_name") or "Streamlit Dashboard"),
     )
 
 

@@ -12,7 +12,10 @@ import pandas as pd
 import streamlit as st
 
 RISK_LEVELS = ["Critical", "High", "Medium", "Low"]
-DEMO_PRIORITY_RISK_CASE_KEY = "nhi:d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f:asset-customer-export-storage-prod:nhi_residual_access"
+DEMO_PRIORITY_RISK_CASE_KEYS = {
+    "d9419944a82fd5211982ad866cb0ebca889271dcbd854c0c5bd8871769b6fb4f",
+    "nhi:d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f:asset-customer-export-storage-prod:nhi_residual_access",
+}
 ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
 ICON_DIR = ASSET_DIR / "icons"
 BADGE_DIR = ASSET_DIR / "badges"
@@ -105,11 +108,12 @@ def render_summary_cards(data: pd.DataFrame) -> None:
 
 
 def render_priority_review_list(data: pd.DataFrame) -> None:
+    demo_priority_mask = data["risk_case_key"].astype(str).isin(DEMO_PRIORITY_RISK_CASE_KEYS)
     priority = data[
         data["risk_level"].isin(RISK_LEVELS)
-        | data["risk_case_key"].astype(str).eq(DEMO_PRIORITY_RISK_CASE_KEY)
+        | demo_priority_mask
     ].copy()
-    priority["is_demo_priority_case"] = priority["risk_case_key"].astype(str).eq(DEMO_PRIORITY_RISK_CASE_KEY)
+    priority["is_demo_priority_case"] = priority["risk_case_key"].astype(str).isin(DEMO_PRIORITY_RISK_CASE_KEYS)
     priority["priority_sort_score"] = pd.to_numeric(priority["risk_score"], errors="coerce").fillna(0)
     priority["priority_sort_detected_at"] = pd.to_datetime(priority["detected_at"], errors="coerce")
     priority = priority.sort_values(
