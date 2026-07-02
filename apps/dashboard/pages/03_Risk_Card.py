@@ -163,8 +163,11 @@ def main() -> None:
           border-color: var(--ad-blue) !important;
         }
 
-        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] span {
-          color: var(--ad-blue) !important;
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] div,
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] input {
+          color: #0f4f7a !important;
+          -webkit-text-fill-color: #0f4f7a !important;
           font-weight: 700 !important;
         }
 
