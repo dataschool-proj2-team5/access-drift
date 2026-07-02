@@ -9,6 +9,7 @@ from html import escape
 from pathlib import Path
 from textwrap import dedent
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
@@ -515,7 +516,7 @@ def render_ticket_form_placeholder(case: pd.Series) -> None:
                         index=priority_options.index(ticket["priority"]),
                     )
                     label = st.text_input("레이블", value=ticket["label"])
-                    due_date = st.text_input("기한", value="", placeholder="YYYY.MM.DD")
+                    due_date = st.text_input("기한", value=_default_jira_due_date(), placeholder="YYYY.MM.DD")
                     team = st.text_input("Team", value=ticket["team"])
                     reporter = st.text_input("보고자", value=_display_person_name(ticket["reporter"]))
                     st.html('<div class="ad-jira-button-spacer"></div>')
@@ -638,6 +639,10 @@ def _normalize_jira_due_date(value: str) -> str | None:
     except ValueError:
         return None
     return normalized
+
+
+def _default_jira_due_date() -> str:
+    return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y.%m.%d")
 
 
 def _display_person_name(value: str) -> str:
