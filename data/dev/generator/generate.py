@@ -449,7 +449,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="google_workspace_hi_residual_access",
         subject_type="hi",
         subject_id="gws-user-lee.hana",
-        subject_display_name="Lee Hana",
+        subject_display_name="이하나",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-07",
@@ -481,7 +481,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="google_workspace_hi_residual_access",
         subject_type="hi",
         subject_id="gws-user-park.jun",
-        subject_display_name="Park Jun",
+        subject_display_name="박준",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-04",
@@ -513,7 +513,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="google_workspace_hi_residual_access",
         subject_type="hi",
         subject_id="gws-user-choi.seo",
-        subject_display_name="Choi Seo",
+        subject_display_name="최서윤",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-05-29",
@@ -545,7 +545,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="google_workspace_hi_residual_access",
         subject_type="hi",
         subject_id="gws-user-jung.woo",
-        subject_display_name="Jung Woo",
+        subject_display_name="정우진",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-12",
@@ -577,7 +577,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="google_workspace_hi_residual_access",
         subject_type="hi",
         subject_id="gws-user-oh.sehun",
-        subject_display_name="Oh Sehun",
+        subject_display_name="오세훈",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-02",
@@ -609,7 +609,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="slack_channel_hi_residual_access",
         subject_type="hi",
         subject_id="slack-user-kang.yuna",
-        subject_display_name="Kang Yuna",
+        subject_display_name="강유나",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-06",
@@ -641,7 +641,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="slack_channel_hi_residual_access",
         subject_type="hi",
         subject_id="slack-user-lim.taehyun",
-        subject_display_name="Lim Taehyun",
+        subject_display_name="임태현",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-09",
@@ -673,7 +673,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="slack_channel_hi_residual_access",
         subject_type="hi",
         subject_id="slack-user-han.jimin",
-        subject_display_name="Han Jimin",
+        subject_display_name="한지민",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-11",
@@ -705,7 +705,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="slack_channel_hi_residual_access",
         subject_type="hi",
         subject_id="slack-user-seo.minji",
-        subject_display_name="Seo Minji",
+        subject_display_name="서민지",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-08",
@@ -737,7 +737,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         scenario_family="slack_channel_hi_residual_access",
         subject_type="hi",
         subject_id="slack-user-moon.jae",
-        subject_display_name="Moon Jae",
+        subject_display_name="문재현",
         residual_owner_email=None,
         residual_status="terminated",
         residual_date="2026-06-05",
@@ -780,10 +780,32 @@ def _stable_uuid(seed: int, label: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"access-drift:{seed}:{label}"))
 
 
+KOREAN_OWNER_DISPLAY_NAMES = (
+    "정우진",
+    "박서준",
+    "김하나",
+    "최하은",
+    "한지민",
+    "오세훈",
+    "강유나",
+    "임태현",
+    "서민지",
+    "문재현",
+    "윤서연",
+    "장도윤",
+    "배수진",
+    "신지호",
+    "홍유진",
+    "조현우",
+    "남가은",
+    "유준호",
+    "송하린",
+)
+
+
 def _owner_display_name(seed: int, index: int) -> str:
-    fake = Faker("en_US")
-    fake.seed_instance(seed * 10_000 + index)
-    return fake.name()
+    offset = seed % len(KOREAN_OWNER_DISPLAY_NAMES)
+    return KOREAN_OWNER_DISPLAY_NAMES[(index + offset - 1) % len(KOREAN_OWNER_DISPLAY_NAMES)]
 
 
 def _expected_severity(sensitivity: str) -> str:
