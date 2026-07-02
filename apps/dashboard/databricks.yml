@@ -33,6 +33,21 @@ variables:
   actor_name:
     description: Actor name written to action state/event rows from the deployed dashboard
     default: Databricks Apps User
+  jira_base_url:
+    description: Jira site base URL used for ticket creation
+    default: ""
+  jira_email:
+    description: Jira account email used for ticket creation
+    default: ""
+  jira_api_token:
+    description: Jira API token used for ticket creation
+    default: ""
+  jira_project_key:
+    description: Jira project key used for ticket creation
+    default: ""
+  jira_issue_type:
+    description: Jira issue type used for ticket creation
+    default: ""
 
 targets:
   dev:
@@ -70,3 +85,13 @@ resources:
             value: ${var.actor_id}
           - name: ACCESS_DRIFT_ACTOR_NAME
             value: ${var.actor_name}
+          - name: JIRA_BASE_URL
+            value: ${var.jira_base_url}
+          - name: JIRA_EMAIL
+            value: ${var.jira_email}
+          - name: JIRA_API_TOKEN
+            value: ${var.jira_api_token}
+          - name: JIRA_PROJECT_KEY
+            value: ${var.jira_project_key}
+          - name: JIRA_ISSUE_TYPE
+            value: ${var.jira_issue_type}

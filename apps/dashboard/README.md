@@ -72,6 +72,13 @@ access_token = "..."
 catalog = "access_drift_dev"
 gold_schema = "gold"
 app_schema = "app"
+
+[jira]
+base_url = "..."
+email = "..."
+api_token = "..."
+project_key = "..."
+issue_type = "Task"
 ```
 
 토큰, hostname, http path는 코드에 하드코딩하지 않습니다.
@@ -102,6 +109,11 @@ Databricks Apps runtime은 아래 환경 변수를 읽습니다.
 | `DATABRICKS_HOST` | Databricks workspace host |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
 | `DATABRICKS_TOKEN` | Databricks SQL Statement API 호출 token |
+| `JIRA_BASE_URL` | Jira site base URL |
+| `JIRA_EMAIL` | Jira account email |
+| `JIRA_API_TOKEN` | Jira API token |
+| `JIRA_PROJECT_KEY` | Jira project key |
+| `JIRA_ISSUE_TYPE` | Jira issue type |
 
 배포 앱은 아래 값을 기본값으로 사용합니다.
 
@@ -127,6 +139,11 @@ Databricks Apps runtime은 아래 환경 변수를 읽습니다.
 | `DATABRICKS_HOST` | Databricks workspace host |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
 | `DATABRICKS_TOKEN` | Dashboard runtime SQL Statement API token |
+| `JIRA_BASE_URL` | Jira site base URL |
+| `JIRA_EMAIL` | Jira account email |
+| `JIRA_API_TOKEN` | Jira API token |
+| `JIRA_PROJECT_KEY` | Jira project key |
+| `JIRA_ISSUE_TYPE` | Jira issue type |
 
 secret 값은 PR, 로그, 문서에 직접 남기지 않습니다.
 

@@ -58,6 +58,11 @@ jobs:
           --var="databricks_host=${DATABRICKS_HOST}"
           --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
           --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+          --var="jira_base_url=${{ secrets.JIRA_BASE_URL }}"
+          --var="jira_email=${{ secrets.JIRA_EMAIL }}"
+          --var="jira_api_token=${{ secrets.JIRA_API_TOKEN }}"
+          --var="jira_project_key=${{ secrets.JIRA_PROJECT_KEY }}"
+          --var="jira_issue_type=${{ secrets.JIRA_ISSUE_TYPE }}"
 
       - name: Deploy dashboard app
         working-directory: apps/dashboard
@@ -66,6 +71,11 @@ jobs:
           --var="databricks_host=${DATABRICKS_HOST}"
           --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
           --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+          --var="jira_base_url=${{ secrets.JIRA_BASE_URL }}"
+          --var="jira_email=${{ secrets.JIRA_EMAIL }}"
+          --var="jira_api_token=${{ secrets.JIRA_API_TOKEN }}"
+          --var="jira_project_key=${{ secrets.JIRA_PROJECT_KEY }}"
+          --var="jira_issue_type=${{ secrets.JIRA_ISSUE_TYPE }}"
 
       - name: Show dashboard app info
         run: |
