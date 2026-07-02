@@ -59,7 +59,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-table-header,
           .ad-asset-row {{
             display: grid;
-            grid-template-columns: 80px 180px 84px minmax(220px, 0.8fr) 56px 120px 140px 104px 72px;
+            grid-template-columns: 112px 148px 84px minmax(220px, 0.8fr) 56px 120px 140px 104px 72px;
             column-gap: 12px;
             align-items: center;
             min-width: 0;
@@ -88,6 +88,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-case-id {{
             color: #9ba3b1;
             font-size: 13px;
+            white-space: nowrap;
           }}
 
           .ad-asset-value {{
@@ -151,7 +152,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           @media (max-width: 1400px) {{
             .ad-asset-table-header,
             .ad-asset-row {{
-              grid-template-columns: 64px 130px 70px minmax(140px, 0.7fr) 42px 106px 104px 76px 56px;
+              grid-template-columns: 94px 100px 70px minmax(140px, 0.7fr) 42px 106px 104px 76px 56px;
               column-gap: 8px;
             }}
           }}

@@ -40,6 +40,7 @@ def persist_review_status_change(
     risk_case_key: str,
     previous_status: str,
     new_status: str,
+    reason: str | None = None,
 ) -> ActionStateWriteResult:
     previous_stored = to_stored_status(previous_status)
     new_stored = to_stored_status(new_status)
@@ -47,6 +48,7 @@ def persist_review_status_change(
         return ActionStateWriteResult(False, "Review status was unchanged.")
 
     event_id = f"evt-{uuid4()}"
+    note = reason or f"Review status changed from {previous_status} to {new_status} in Streamlit dashboard."
     action_state_table = _qualified_name(config.catalog, config.app_schema, "risk_action_state")
     action_event_table = _qualified_name(config.catalog, config.app_schema, "risk_action_event")
 
@@ -102,7 +104,7 @@ def persist_review_status_change(
           {sql_string(config.actor_id)},
           {sql_string(config.actor_name)},
           current_timestamp(),
-          {sql_string(f"Review status changed from {previous_status} to {new_status} in Streamlit dashboard.")}
+          {sql_string(note)}
         )
         """,
     )

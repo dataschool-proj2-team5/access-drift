@@ -154,7 +154,7 @@ def main() -> None:
     eval_rows = read_jsonl(args.eval_path)
     context = read_context_records(args.context_root)
     validate_landing_records(landing, args.expected_size, args.reference_date)
-    validate_saas_landing_records(saas_landing)
+    validate_saas_landing_records(saas_landing, args.reference_date)
     validate_eval_records(eval_rows, landing, saas_landing, args.expected_size)
     validate_context_records(context, landing, saas_landing, eval_rows, args.expected_size)
     verify_reproducible(

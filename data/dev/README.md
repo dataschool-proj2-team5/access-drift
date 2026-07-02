@@ -38,7 +38,7 @@ GitHub NHI 케이스:
 | --- | --- | --- | --- | --- | --- | --- |
 | `eval-github-nhi-001` | `gh-app-prod-deploy-bot` | owner `kim.minsu@company.com` terminated | active deploy key | active | `gh-repo-payment-service-prod` | admin / high |
 | `eval-github-nhi-002` | `gh-app-security-audit-bot` | owner `jung.woojin@company.com` terminated | active PAT metadata | active | `gh-repo-infra-secrets-prod` | read / high |
-| `eval-github-nhi-003` | `gh-app-data-export-bot` | owner `lee.dayoung@company.com` terminated | active deploy key | active | `gh-repo-customer-export-prod` | write / high |
+| `eval-github-nhi-003` | `gh-app-data-export-bot` | owner `cho.hyunwoo@company.com` terminated | active deploy key | active | `gh-repo-customer-export-prod` | write / high |
 | `eval-github-nhi-004` | `gh-app-finance-ci-bot` | owner `park.seojun@company.com` terminated | active PAT metadata | active | `gh-repo-finance-ledger-prod` | write / high |
 | `eval-github-nhi-005` | `gh-app-support-automation-bot` | owner `kim.hana@company.com` terminated | active deploy key | active | `gh-repo-support-tools-prod` | admin / medium |
 
