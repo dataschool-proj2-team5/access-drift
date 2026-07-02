@@ -357,7 +357,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         subject_type="nhi",
         subject_id="gh-app-data-export-bot",
         subject_display_name="data-export-bot",
-        residual_owner_email="lee.dayoung@company.com",
+        residual_owner_email="cho.hyunwoo@company.com",
         residual_status="terminated",
         residual_date="2026-06-03",
         credential_id="gh-cred-data-export-key",
@@ -379,7 +379,7 @@ SAAS_CASE_SPECS: tuple[SaasCaseSpec, ...] = (
         data_scope_label="고객 Export 배치 코드",
         sensitive_data_examples=("고객 export 쿼리", "스케줄 설정", "데이터 경로"),
         sensitivity_reason="고객 데이터 export 경로와 배치 코드를 포함하는 private repository",
-        label_reason="퇴사 owner lee.dayoung@company.com가 남긴 GitHub App data-export-bot이 고객 export repository에 write 권한으로 접근할 수 있다.",
+        label_reason="퇴사 owner cho.hyunwoo@company.com가 남긴 GitHub App data-export-bot이 고객 export repository에 write 권한으로 접근할 수 있다.",
     ),
     SaasCaseSpec(
         source="github",
@@ -810,6 +810,46 @@ KOREAN_OWNER_DISPLAY_NAMES = (
 )
 
 
+GITHUB_OWNER_IDENTITY = {
+    "kim.minsu@company.com": {
+        "displayName": "김민수",
+        "employmentStatus": "terminated",
+        "terminationDate": "2026-06-10",
+    },
+    "jung.woojin@company.com": {
+        "displayName": "정우진",
+        "employmentStatus": "terminated",
+        "terminationDate": "2026-05-31",
+    },
+    "cho.hyunwoo@company.com": {
+        "displayName": "조현우",
+        "employmentStatus": "terminated",
+        "terminationDate": "2026-06-03",
+    },
+    "park.seojun@company.com": {
+        "displayName": "박서준",
+        "employmentStatus": "terminated",
+        "terminationDate": "2026-05-27",
+    },
+    "kim.hana@company.com": {
+        "displayName": "김하나",
+        "employmentStatus": "terminated",
+        "terminationDate": "2026-06-01",
+    },
+}
+
+
+EXCLUDED_IDENTITY_PATTERNS = (
+    "lee.dayoung",
+    "dayoung.lee",
+    "dayounglee",
+    "lee-dayoung",
+    "dayoung_lee",
+    "dayoung",
+    "이다영",
+)
+
+
 def _owner_display_name(seed: int, index: int) -> str:
     offset = seed % len(KOREAN_OWNER_DISPLAY_NAMES)
     return KOREAN_OWNER_DISPLAY_NAMES[(index + offset - 1) % len(KOREAN_OWNER_DISPLAY_NAMES)]
@@ -1119,6 +1159,44 @@ def _insert_saas_after_review_window(rows: list[dict[str, object]], saas_rows: l
     return [*rows[:review_window], *saas_rows, *rows[review_window:]]
 
 
+def _contains_excluded_identity(value: object) -> bool:
+    text = str(value).lower()
+    return any(pattern.lower() in text for pattern in EXCLUDED_IDENTITY_PATTERNS)
+
+
+def _validate_no_excluded_identity(value: object, field_name: str) -> None:
+    if _contains_excluded_identity(value):
+        raise ValueError(f"{field_name} contains an excluded identity pattern")
+
+
+def _github_owner_identity_records() -> list[dict[str, object]]:
+    records = []
+    for case in SAAS_CASE_SPECS:
+        if case.source != "github" or case.residual_owner_email is None:
+            continue
+        _validate_no_excluded_identity(case.residual_owner_email, "github owner email")
+        owner = GITHUB_OWNER_IDENTITY.get(case.residual_owner_email)
+        if owner is None:
+            raise ValueError(f"missing GitHub owner identity metadata: {case.residual_owner_email}")
+        records.append(
+            {
+                "userPrincipalName": case.residual_owner_email,
+                **owner,
+            }
+        )
+    return records
+
+
+def _dedupe_lifecycle_records(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    by_upn: dict[str, dict[str, object]] = {}
+    for row in rows:
+        upn = str(row["userPrincipalName"]).lower()
+        _validate_no_excluded_identity(upn, "identity lifecycle userPrincipalName")
+        _validate_no_excluded_identity(row["displayName"], "identity lifecycle displayName")
+        by_upn[upn] = row
+    return list(by_upn.values())
+
+
 def build_landing_records(
     specs: Iterable[CaseSpec], reference_date: date
 ) -> dict[str, list[dict[str, object]]]:
@@ -1180,6 +1258,10 @@ def build_landing_records(
                 "lastUsedDateTime": _iso_ts(last_used),
             }
         )
+
+    records["lifecycle"] = _dedupe_lifecycle_records(
+        [*records["lifecycle"], *_github_owner_identity_records()]
+    )
 
     return records
 
@@ -1547,6 +1629,24 @@ def _validate_timestamp(value: object, label: str) -> None:
     datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _iter_record_values(value: object):
+    if isinstance(value, dict):
+        for item in value.values():
+            yield from _iter_record_values(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _iter_record_values(item)
+    else:
+        yield value
+
+
+def _validate_no_excluded_identity_in_records(group: str, rows: Iterable[dict[str, object]]) -> None:
+    for row in rows:
+        for value in _iter_record_values(row):
+            if value is not None:
+                _validate_no_excluded_identity(value, group)
+
+
 def validate_landing_records(
     records: dict[str, list[dict[str, object]]],
     expected_size: int,
@@ -1556,8 +1656,12 @@ def validate_landing_records(
         raise ValueError("unexpected landing record groups")
 
     for group, rows in records.items():
-        if len(rows) != expected_size:
-            raise ValueError(f"{group} expected {expected_size}, got {len(rows)}")
+        _validate_no_excluded_identity_in_records(group, rows)
+        expected_rows = expected_size
+        if group == "lifecycle":
+            expected_rows = expected_size + len(GITHUB_OWNER_IDENTITY) - 1
+        if len(rows) != expected_rows:
+            raise ValueError(f"{group} expected {expected_rows}, got {len(rows)}")
         for row in rows:
             if set(row).intersection(FORBIDDEN_FIELDS):
                 raise ValueError(f"{group} contains a forbidden field")
@@ -1582,7 +1686,7 @@ def validate_landing_records(
         raise ValueError("duplicate keyId")
     if len(assets) != expected_size:
         raise ValueError("duplicate assetId")
-    if len(lifecycle) != expected_size:
+    if len(lifecycle) != expected_size + len(GITHUB_OWNER_IDENTITY) - 1:
         raise ValueError("duplicate userPrincipalName")
 
     if set(owners) != set(apps):
@@ -1593,7 +1697,7 @@ def validate_landing_records(
         raise ValueError("access edge principal references do not match applications")
     if {row["assetId"] for row in records["access_edges"]} != set(assets):
         raise ValueError("access edge asset references do not match assets")
-    if {row["userPrincipalName"] for row in records["application_owners"]} != set(lifecycle):
+    if not {row["userPrincipalName"] for row in records["application_owners"]}.issubset(set(lifecycle)):
         raise ValueError("owner lifecycle references do not match")
 
     for app_id in apps:
@@ -1641,6 +1745,7 @@ def validate_saas_landing_records(
         raise ValueError("unexpected SaaS landing record groups")
 
     for group, rows in records.items():
+        _validate_no_excluded_identity_in_records(group, rows)
         expected_rows = 5
         if len(rows) != expected_rows:
             raise ValueError(f"{group} expected {expected_rows}, got {len(rows)}")
@@ -1719,6 +1824,26 @@ def validate_saas_landing_records(
         _validate_timestamp(row["expiresAt"], "expiresAt")
 
 
+def validate_saas_owner_lifecycle_coverage(
+    landing_records: dict[str, list[dict[str, object]]],
+    saas_landing_records: dict[str, list[dict[str, object]]],
+) -> None:
+    lifecycle_by_upn = {
+        row["userPrincipalName"]: row for row in landing_records["lifecycle"]
+    }
+    for row in saas_landing_records["github_apps"]:
+        owner_email = row["ownerEmail"]
+        if owner_email not in GITHUB_OWNER_IDENTITY:
+            raise ValueError(f"GitHub owner identity metadata missing: {owner_email}")
+        if owner_email not in lifecycle_by_upn:
+            raise ValueError(f"GitHub owner missing from lifecycle seed: {owner_email}")
+        lifecycle = lifecycle_by_upn[owner_email]
+        expected = GITHUB_OWNER_IDENTITY[owner_email]
+        for field, value in expected.items():
+            if lifecycle[field] != value:
+                raise ValueError(f"GitHub owner lifecycle mismatch: {owner_email}.{field}")
+
+
 def validate_eval_records(
     eval_rows: list[dict[str, object]],
     landing_records: dict[str, list[dict[str, object]]],
@@ -1757,6 +1882,7 @@ def validate_eval_records(
     positives = 0
     distractors = 0
     for row in eval_rows:
+        _validate_no_excluded_identity_in_records("eval", [row])
         if set(row) != required:
             raise ValueError(f"eval row has unexpected fields: {set(row)}")
         if row["case_id"] in seen_case_ids:
@@ -1938,6 +2064,7 @@ def generate(
     context = build_context_records(specs)
     validate_landing_records(landing, size, reference_date)
     validate_saas_landing_records(saas_landing, reference_date)
+    validate_saas_owner_lifecycle_coverage(landing, saas_landing)
     validate_eval_records(eval_rows, landing, saas_landing, size)
     validate_context_records(context, landing, saas_landing, eval_rows, size)
     write_landing_records(landing, landing_output_root)
