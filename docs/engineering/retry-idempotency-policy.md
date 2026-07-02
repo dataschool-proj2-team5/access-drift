@@ -2,6 +2,8 @@
 
 이 문서는 dev seed 기준 데이터 파이프라인을 다시 실행할 때 중복과 누락을 피하기 위한 최소 기준을 정리한다.
 
+결정 배경과 Landing 원본 보존 범위는 [ADR-0004](../adr/0004-dev-retry-idempotency-and-landing-lineage.md)를 따른다. 이 문서는 실제 task 재실행 기준과 검증 절차를 다룬다.
+
 ## 기본 판단
 
 #55는 "어느 task부터 다시 실행할 것인가"를 정리한다. 이 문서는 "그 task를 다시 실행해도 데이터가 중복되거나 깨지지 않는가"를 다룬다.
@@ -42,6 +44,7 @@ upstream 입력이 바뀐 경우 downstream은 다시 실행한다. 예를 들�
 ## 현재 보장하지 않는 범위
 
 - run_id별 Landing 원본 보존
+- Landing retention, 자동삭제, ADLS lifecycle policy
 - 대규모 증분 처리용 `MERGE INTO` 또는 partition overwrite
 - partial write를 인위적으로 만든 뒤 자동 복구하는 운영 테스트
 - 자동 retry, alert, run history 기반 복구 UI
