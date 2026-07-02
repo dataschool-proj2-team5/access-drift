@@ -40,6 +40,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
               <div class="ad-asset-value">{escape(str(case["owner"]))}</div>
               <div class="ad-asset-value">{escape(str(case["detected_at_display"]))}</div>
               <div>{_asset_risk_badge(str(case["risk_level"]))}</div>
+              <div>{_asset_status_badge(str(case["review_status"]))}</div>
               <a class="ad-button" href="{risk_card_href}" target="_self">View</a>
             </div>
             """
@@ -59,7 +60,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-table-header,
           .ad-asset-row {{
             display: grid;
-            grid-template-columns: 112px 148px 84px minmax(220px, 0.8fr) 56px 120px 140px 104px 72px;
+            grid-template-columns: 112px 140px 78px minmax(190px, 0.78fr) 52px 110px 132px 92px 104px 64px;
             column-gap: 12px;
             align-items: center;
             min-width: 0;
@@ -116,8 +117,10 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
 
           .ad-asset-table-header > div:nth-child(8),
           .ad-asset-table-header > div:nth-child(9),
+          .ad-asset-table-header > div:nth-child(10),
           .ad-asset-row > div:nth-child(8),
-          .ad-asset-row > a:nth-child(9) {{
+          .ad-asset-row > div:nth-child(9),
+          .ad-asset-row > a:nth-child(10) {{
             justify-self: center;
           }}
 
@@ -125,6 +128,28 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             height: 26px;
             width: auto;
             max-width: 86px;
+          }}
+
+          .ad-asset-status-pill {{
+            min-width: 84px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            border: 1px solid #b9d2e7;
+            background: #ffffff;
+            color: #0f4f7a;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+          }}
+
+          .ad-asset-status-resolved {{
+            border-color: #cbd5e1;
+            color: #475569;
+            background: #f8fafc;
           }}
 
           .ad-asset-row .ad-button {{
@@ -152,7 +177,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           @media (max-width: 1400px) {{
             .ad-asset-table-header,
             .ad-asset-row {{
-              grid-template-columns: 94px 100px 70px minmax(140px, 0.7fr) 42px 106px 104px 76px 56px;
+              grid-template-columns: 88px 94px 64px minmax(128px, 0.7fr) 40px 94px 96px 72px 86px 52px;
               column-gap: 8px;
             }}
           }}
@@ -171,6 +196,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             <div>Owner</div>
             <div>Detected At</div>
             <div>Risk</div>
+            <div>Status</div>
             <div>Action</div>
           </div>
           {''.join(rows)}
@@ -204,3 +230,8 @@ def _asset_risk_badge(level: str) -> str:
     if badge_file:
         return _badge_img(badge_file, level, "ad-risk-badge-img")
     return f'<span class="ad-pill">{escape(level)}</span>'
+
+
+def _asset_status_badge(status: str) -> str:
+    css = "ad-asset-status-resolved" if status == "Resolved" else ""
+    return f'<span class="ad-asset-status-pill {css}">{escape(status)}</span>'
