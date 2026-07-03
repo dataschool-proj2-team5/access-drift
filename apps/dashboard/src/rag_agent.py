@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import urllib.error
 import urllib.request
@@ -215,7 +216,11 @@ def _normalize_token(value: object) -> str:
 
 def _llm_endpoint_name() -> str:
     secrets = _agent_secrets()
-    return str(secrets.get("llm_endpoint") or DEFAULT_LLM_ENDPOINT)
+    return str(
+        os.environ.get("DATABRICKS_LLM_ENDPOINT")
+        or secrets.get("llm_endpoint")
+        or DEFAULT_LLM_ENDPOINT
+    )
 
 
 def _agent_secrets() -> dict:
