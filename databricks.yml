@@ -17,9 +17,6 @@ variables:
   storage_account_name:
     description: ADLS Gen2 storage account name (Bicep output)
     default: acdriftadls
-  openai_endpoint:
-    description: Azure OpenAI endpoint (Bicep output)
-    default: https://acdrift-oai.openai.azure.com/
   cluster_id:
     description: Databricks existing all-purpose cluster id
     default: "0623-064735-g02akt45"
@@ -44,6 +41,45 @@ variables:
   rag_doc_chunks_path:
     description: Bundle-deployed RAG evidence chunk JSONL path
     default: data/dev/rag/doc_chunks.jsonl
+  rag_eval_path:
+    description: Bundle-deployed RAG eval set JSONL path
+    default: data/dev/rag/rag_eval_set.jsonl
+  rag_source_docs_manifest_path:
+    description: Bundle-deployed RAG source document manifest JSONL path
+    default: data/dev/rag/source_docs_manifest.jsonl
+  rag_remediation_history_path:
+    description: Bundle-deployed synthetic remediation history JSONL path
+    default: data/dev/rag/remediation_history.jsonl
+  rag_vs_endpoint:
+    description: Databricks Vector Search endpoint name for RAG
+    default: access_drift_vs
+  rag_embedding_model:
+    description: FM API embedding endpoint for RAG index
+    default: databricks-gte-large-en
+  rag_llm_endpoint:
+    description: >-
+      Generation LLM endpoint. 기본은 Databricks FM API pay-per-token endpoint라
+      외부 OpenAI key/결제 없이 동작한다. External Model(access_drift_llm)로 교체 가능하며,
+      미가용이면 체인이 deterministic fallback으로 동작한다.
+    default: databricks-meta-llama-3-3-70b-instruct
+  rag_external_llm_endpoint:
+    description: Optional External Model endpoint name (rag-ops job 관리 대상, 공용 OpenAI/Azure OpenAI key 확보 시 사용)
+    default: access_drift_llm
+  rag_llm_model_name:
+    description: External Model target model name
+    default: gpt-4o-mini
+  rag_openai_secret_scope:
+    description: Databricks secret scope that stores the OpenAI API key
+    default: access-drift-openai
+  rag_openai_secret_key:
+    description: Databricks secret key name for the OpenAI API key
+    default: api-key
+  rag_ops_dry_run:
+    description: Keep operational endpoint/gateway notebooks in dry-run mode by default
+    default: "true"
+  rag_top_k:
+    description: RAG retrieval top-k
+    default: "4"
   context_output_root:
     description: Bundle-deployed Risk Card context output directory
     default: data/dev/context
@@ -289,4 +325,89 @@ resources:
               catalog: ${var.catalog}
               rag_doc_chunks_path: ${var.rag_doc_chunks_path}
               run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: rag_vector_index_task
+          description: rag.doc_chunks → Vector Search Delta Sync index 생성/동기화
+          depends_on:
+            - task_key: rag_doc_chunks_seed_task
+          notebook_task:
+            notebook_path: ./notebooks/12_rag_vector_index.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              vs_endpoint: ${var.rag_vs_endpoint}
+              embedding_model: ${var.rag_embedding_model}
+          existing_cluster_id: ${var.cluster_id}
+          libraries:
+            - pypi:
+                package: databricks-vectorsearch
+
+        - task_key: rag_chain_task
+          description: gold_core finding → 근거 검색 + 권장 조치 생성(citation/fallback) → rag.recommended_action
+          depends_on:
+            - task_key: rag_vector_index_task
+            - task_key: gold_task
+          notebook_task:
+            notebook_path: ./notebooks/13_rag_chain.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              vs_endpoint: ${var.rag_vs_endpoint}
+              llm_endpoint: ${var.rag_llm_endpoint}
+              top_k: ${var.rag_top_k}
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.cluster_id}
+          libraries:
+            - pypi:
+                package: databricks-vectorsearch
+
+
+    access-drift-rag-ops:
+      name: access-drift-rag-ops
+      tasks:
+        - task_key: rag_source_docs_history_seed_task
+          description: UC source docs manifest + synthetic remediation history seed
+          notebook_task:
+            notebook_path: ./notebooks/17_rag_source_docs_and_history_seed.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              source_docs_manifest_path: ${var.rag_source_docs_manifest_path}
+              remediation_history_path: ${var.rag_remediation_history_path}
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: rag_external_model_endpoint_task
+          description: Create/validate External Model endpoint access_drift_llm -> OpenAI gpt-4o-mini (dry-run by default)
+          notebook_task:
+            notebook_path: ./notebooks/15_register_external_model_endpoint.ipynb
+            base_parameters:
+              endpoint_name: ${var.rag_external_llm_endpoint}
+              model_name: ${var.rag_llm_model_name}
+              secret_scope: ${var.rag_openai_secret_scope}
+              secret_key: ${var.rag_openai_secret_key}
+              dry_run: ${var.rag_ops_dry_run}
+              test_after_create: "true"
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: rag_ai_gateway_policy_task
+          description: Log/apply AI Gateway policy contract for RAG endpoint (dry-run by default)
+          depends_on:
+            - task_key: rag_external_model_endpoint_task
+          notebook_task:
+            notebook_path: ./notebooks/16_configure_ai_gateway_guardrails.ipynb
+            base_parameters:
+              endpoint_name: ${var.rag_external_llm_endpoint}
+              dry_run: ${var.rag_ops_dry_run}
+          existing_cluster_id: ${var.cluster_id}
+
+        - task_key: rag_governance_report_task
+          description: RAG ethics, citation, source-doc, and cost/throughput assessment tables
+          depends_on:
+            - task_key: rag_source_docs_history_seed_task
+          notebook_task:
+            notebook_path: ./notebooks/18_rag_governance_report.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              run_id: "{{job.run_id}}"
+              llm_endpoint: ${var.rag_llm_endpoint}
+              vs_endpoint: ${var.rag_vs_endpoint}
           existing_cluster_id: ${var.cluster_id}
