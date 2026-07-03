@@ -17,28 +17,27 @@ from components.risk_text_panels import (
     render_review_info_card,
 )
 from components.styles import apply_dashboard_style
-import src.action_state as action_state
 import src.data_loader as data_loader
-import src.session_state as session_state
+from src.session_state import (
+    REVIEW_STATUS_OPTIONS,
+    apply_review_status_overrides,
+    set_review_status,
+)
 
 
 card_components = importlib.reload(card_components)
 data_loader = importlib.reload(data_loader)
-action_state = importlib.reload(action_state)
-session_state = importlib.reload(session_state)
 
 
 ICON_DIR = Path(__file__).resolve().parents[1] / "assets" / "icons"
 BADGE_DIR = Path(__file__).resolve().parents[1] / "assets" / "badges"
-PENDING_STATUS_CHANGE_KEY = "access_drift_pending_status_change"
-STATUS_WIDGET_VERSION_KEY = "access_drift_status_widget_versions"
 
 
 def render_access_path_v2_inline(case: pd.Series) -> None:
     owner_caption = f"{escape(str(case['owner_team']))}<br>{escape(str(case['related_person_status']))}"
     identity_caption = escape(str(case["identity_name"]))
     credential_caption = _credential_expiry_caption(case)
-    asset_caption = _asset_caption(case)
+    asset_caption = escape(str(case.get("asset_full_name", case["asset_name"])))
     sensitivity_label = str(case.get("asset_sensitivity", "") or "")
     steps = [
         ("accesspath-icon-human.svg", case["owner_name"], owner_caption, "badge-owner.svg", "Owner", "", 187, 165),
@@ -78,19 +77,7 @@ def render_access_path_v2_inline(case: pd.Series) -> None:
 
 def _credential_expiry_caption(case: pd.Series) -> str:
     expires_at = str(case.get("credential_expires_at", "") or "").strip()
-    if not expires_at:
-        return "\ub9cc\ub8cc\uc77c: -"
-    parsed = pd.to_datetime(expires_at, errors="coerce")
-    display_value = parsed.strftime("%Y/%m/%d") if not pd.isna(parsed) else expires_at
-    return f"\ub9cc\ub8cc\uc77c: {escape(display_value)}"
-
-
-def _asset_caption(case: pd.Series) -> str:
-    asset_name = str(case.get("asset_name", "") or "").strip()
-    asset_full_name = str(case.get("asset_full_name", "") or "").strip()
-    if not asset_full_name or asset_full_name == asset_name:
-        return ""
-    return escape(asset_full_name)
+    return f"만료일: {escape(expires_at) if expires_at else '-'}"
 
 
 def _path_text_badge(label: str) -> str:
@@ -131,87 +118,6 @@ def _path_icon_data_uri(filename: str) -> str:
 
 def _path_icon_img(filename: str, alt: str) -> str:
     return f'<img src="{_path_icon_data_uri(filename)}" alt="{escape(alt)}" class="ad-path-icon" style="width:35px; height:35px; display:block; object-fit:contain;" />'
-
-
-def _get_status_widget_versions() -> dict[str, int]:
-    if STATUS_WIDGET_VERSION_KEY not in st.session_state:
-        st.session_state[STATUS_WIDGET_VERSION_KEY] = {}
-    return st.session_state[STATUS_WIDGET_VERSION_KEY]
-
-
-def _bump_status_widget_version(case_id: str) -> None:
-    versions = _get_status_widget_versions()
-    key = str(case_id)
-    versions[key] = int(versions.get(key, 0)) + 1
-
-
-def _rerun_app() -> None:
-    try:
-        st.rerun(scope="app")
-    except TypeError:
-        st.rerun()
-
-
-def _persist_or_fallback_status_change(pending: dict[str, str], reason: str, using_mock: bool) -> None:
-    case_id = str(pending["case_id"])
-    previous_status = str(pending["previous_status"])
-    new_status = str(pending["new_status"])
-    clean_reason = str(reason).strip()
-
-    config = action_state.get_databricks_action_config()
-    if action_state.can_write_action_state(config, using_mock) and config is not None:
-        try:
-            action_state.persist_review_status_change(
-                config,
-                risk_case_key=str(pending.get("risk_case_key") or case_id),
-                previous_status=previous_status,
-                new_status=new_status,
-                reason=clean_reason,
-            )
-        except Exception:
-            pass
-
-    session_state.set_review_status(case_id, new_status)
-    session_state.add_review_status_change_reason(case_id, previous_status, new_status, clean_reason)
-
-
-def _open_status_change_dialog(using_mock: bool) -> None:
-    pending = st.session_state.get(PENDING_STATUS_CHANGE_KEY)
-    if not pending:
-        return
-
-    dialog = getattr(st, "dialog", None) or getattr(st, "experimental_dialog")
-
-    @dialog("\uc870\uce58 \uc0c1\ud0dc \ubcc0\uacbd")
-    def _render_dialog() -> None:
-        previous_status = str(pending["previous_status"])
-        new_status = str(pending["new_status"])
-        case_label = str(pending["display_case_id"])
-
-        st.markdown(f"**{case_label}** \uc0c1\ud0dc\ub97c `{previous_status}`\uc5d0\uc11c `{new_status}`\ub85c \ubcc0\uacbd\ud569\ub2c8\ub2e4.")
-        reason = st.text_area(
-            "\ubcc0\uacbd \uc0ac\uc720",
-            key=f"status_change_reason_{pending['case_id']}_{new_status}",
-            placeholder="\uc0c1\ud0dc \ubcc0\uacbd \uc0ac\uc720\ub97c \uc785\ub825\ud558\uc138\uc694.",
-            height=120,
-        )
-        cancel_col, confirm_col = st.columns(2)
-        with cancel_col:
-            if st.button("\ucde8\uc18c", use_container_width=True):
-                st.session_state.pop(PENDING_STATUS_CHANGE_KEY, None)
-                _bump_status_widget_version(str(pending["case_id"]))
-                _rerun_app()
-        with confirm_col:
-            if st.button("\uc800\uc7a5", type="primary", use_container_width=True, key="status_change_save"):
-                if not str(reason).strip():
-                    st.warning("\ubcc0\uacbd \uc0ac\uc720\ub97c \uc785\ub825\ud574\uc57c \uc0c1\ud0dc\ub97c \ubcc0\uacbd\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.")
-                    return
-                _persist_or_fallback_status_change(pending, str(reason), using_mock)
-                st.session_state.pop(PENDING_STATUS_CHANGE_KEY, None)
-                _bump_status_widget_version(str(pending["case_id"]))
-                _rerun_app()
-
-    _render_dialog()
 
 
 st.set_page_config(page_title="Access Drift Risk Card", page_icon="AD", layout="wide")
@@ -255,24 +161,9 @@ def main() -> None:
           border-color: var(--ad-blue) !important;
         }
 
-        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] span,
-        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] div,
-        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] input {
-          color: #0f4f7a !important;
-          -webkit-text-fill-color: #0f4f7a !important;
+        .st-key-risk_v2_status_overlay div[data-testid="stSelectbox"] [data-baseweb="select"] span {
+          color: var(--ad-blue) !important;
           font-weight: 700 !important;
-        }
-
-        .st-key-status_change_save button {
-          background: var(--ad-blue) !important;
-          border-color: var(--ad-blue) !important;
-          color: #ffffff !important;
-        }
-
-        .st-key-status_change_save button:hover {
-          background: #002f5f !important;
-          border-color: #002f5f !important;
-          color: #ffffff !important;
         }
 
         </style>
@@ -287,7 +178,7 @@ def main() -> None:
             """
             <div style="display:flex; justify-content:flex-end; margin:0 0 10px;">
               <div class="ad-reviewer-chip" style="display:flex; align-items:center; gap:10px; min-width:150px; padding:9px 12px; background:#fff; border:1px solid #E2E6EB; border-radius:999px; box-shadow:0 1px 2px rgba(15,23,42,0.04); box-sizing:border-box;">
-                <div class="ad-reviewer-avatar" style="width:30px; height:30px; border-radius:999px; background:linear-gradient(135deg,#0A66C2,#74B9FF); border:1px solid #D8E4F0; flex:0 0 30px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:800;">박</div>
+                <div class="ad-reviewer-avatar" style="width:30px; height:30px; border-radius:999px; background:#E8F1FA; border:1px solid #D8E4F0; flex:0 0 30px;"></div>
                 <div style="line-height:1.15; text-align:left; min-width:0;">
                   <div style="font-size:13px; font-weight:700; color:#111827; white-space:nowrap;">&#48149;&#51648;&#50672;</div>
                   <div style="font-size:11px; font-weight:600; color:#6B7280; margin-top:3px; white-space:nowrap;">SecOps&#54016;</div>
@@ -301,7 +192,7 @@ def main() -> None:
     if result.using_mock:
         st.sidebar.info("Using mock data")
 
-    data = session_state.apply_review_status_overrides(result.data).sort_values("risk_score", ascending=False)
+    data = apply_review_status_overrides(result.data).sort_values("risk_score", ascending=False)
     case_ids = data["case_id"].tolist()
     case_label_by_id = dict(zip(data["case_id"].astype(str), data["display_case_id"].astype(str)))
     case_id_by_label = dict(zip(data["display_case_id"].astype(str), data["case_id"].astype(str)))
@@ -328,32 +219,21 @@ def main() -> None:
     st.html(f'<div class="ad-page-caption">{selected_display_case_id} &#183; {case["risk_title"]}</div>')
 
     current_status = str(case["review_status"])
-    status_options = session_state.REVIEW_STATUS_OPTIONS
-    status_index = status_options.index(current_status) if current_status in status_options else 0
+    status_index = REVIEW_STATUS_OPTIONS.index(current_status) if current_status in REVIEW_STATUS_OPTIONS else 0
     card_components.render_risk_header_card_v2(case)
 
     with st.container(key="risk_v2_status_overlay"):
         _, status_col = st.columns([5.05, 1.25], gap="small", vertical_alignment="top")
         with status_col:
-            status_widget_version = _get_status_widget_versions().get(str(selected_case_id), 0)
-            status_widget_key = f"review_status_{selected_case_id}_{status_widget_version}"
             selected_status = st.selectbox(
                 "Review status",
-                status_options,
+                REVIEW_STATUS_OPTIONS,
                 index=status_index,
-                key=status_widget_key,
+                key=f"review_status_{selected_case_id}",
                 label_visibility="collapsed",
             )
-    if selected_status != current_status:
-        st.session_state[PENDING_STATUS_CHANGE_KEY] = {
-            "case_id": str(selected_case_id),
-            "risk_case_key": str(case.get("risk_case_key", selected_case_id)),
-            "display_case_id": selected_display_case_id,
-            "previous_status": current_status,
-            "new_status": selected_status,
-        }
-    _open_status_change_dialog(result.using_mock)
-    case["review_status"] = current_status
+    set_review_status(selected_case_id, selected_status)
+    case["review_status"] = selected_status
 
     risk_tab, action_tab, ticket_tab = st.tabs(["\uc704\ud5d8 \ubd84\uc11d", "\uad8c\uc7a5 \uc870\uce58", "\ud2f0\ucf13 \ubc1c\uae09"])
 

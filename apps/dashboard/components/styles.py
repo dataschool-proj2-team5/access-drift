@@ -611,30 +611,31 @@ def apply_dashboard_style(page: str | None = None) -> None:
 
         .ad-step {
           display: grid;
-          grid-template-columns: 25px 1fr;
-          gap: 10px;
+          grid-template-columns: 42px 1fr;
+          gap: 16px;
           align-items: center;
           margin: 17px 0;
-          font-size: 16px;
-        }
-
-        .ad-action-steps,
-        .ad-action-steps .ad-step,
-        .ad-action-steps .ad-step > div:not(.ad-step-number) {
-          font-size: 16px !important;
-          line-height: 1.45;
+          font-size: 18px;
         }
 
         .ad-step-number {
-          width: 25px;
-          height: 25px;
+          width: 30px;
+          height: 30px;
           border-radius: 999px;
           background: var(--ad-blue);
           color: #fff;
           display: grid;
           place-items: center;
-          font-size: 12px;
+          font-size: 14px;
           font-weight: 900;
+        }
+
+        .ad-step:nth-child(3) .ad-step-number {
+          background: var(--ad-red);
+        }
+
+        .ad-step:nth-child(n+4) .ad-step-number {
+          background: #6f7785;
         }
 
         .ad-agent-header {
@@ -644,6 +645,13 @@ def apply_dashboard_style(page: str | None = None) -> None:
           font-size: 24px;
           font-weight: 800;
           margin-bottom: 18px;
+        }
+
+        .ad-agent-icon {
+          display: block;
+          width: 30px;
+          height: 30px;
+          object-fit: contain;
         }
 
         .ad-pill-icon {
@@ -1143,37 +1151,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
               line-height: 1.2;
             }
 
-            .ad-overview-priority .ad-overview-identity-label {
-              display: inline-flex;
-              align-items: center;
-              gap: 7px;
-              max-width: 100%;
-            }
-
-            .ad-overview-priority .ad-overview-platform-icon {
-              width: 17px;
-              height: 17px;
-              flex: 0 0 auto;
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-            }
-
-            .ad-overview-priority img.ad-overview-platform-icon {
-              width: 17px !important;
-              height: 17px !important;
-              max-width: 17px !important;
-              max-height: 17px !important;
-              object-fit: contain;
-            }
-
-            .ad-overview-priority .ad-overview-platform-text {
-              color: #475569;
-              font-size: 9px;
-              font-weight: 900;
-              line-height: 1;
-            }
-
             .ad-overview-priority .ad-row-subline {
               gap: 14px;
               margin-top: 12px;
@@ -1398,23 +1375,6 @@ def apply_dashboard_style(page: str | None = None) -> None:
             .ad-panel p {
               font-size: 16px;
               line-height: 1.55;
-            }
-
-            .ad-panel .ad-step {
-              grid-template-columns: 25px 1fr !important;
-              gap: 10px !important;
-              font-size: 16px !important;
-            }
-
-            .ad-panel .ad-step > div:not(.ad-step-number) {
-              font-size: 16px !important;
-              line-height: 1.45;
-            }
-
-            .ad-panel .ad-step-number {
-              width: 25px !important;
-              height: 25px !important;
-              font-size: 12px !important;
             }
 
             .ad-factor {
