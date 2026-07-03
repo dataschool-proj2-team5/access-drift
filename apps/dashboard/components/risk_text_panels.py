@@ -11,8 +11,11 @@ from components.cards import (
     _as_list,
     _doc_card,
     _format_datetime,
+    _icon_img,
     _status_badge,
 )
+
+AGENT_GREETING = "내부 런북과 정책 문서를 기반으로 권장 조치를 안내합니다."
 
 
 def render_review_info_card(case: pd.Series) -> None:
@@ -74,10 +77,10 @@ def render_ai_agent_chat(case: pd.Series) -> None:
     pending_key = f"agent_pending_{case_id}"
     scroll_key = f"agent_scroll_bottom_{case_id}"
     if state_key not in st.session_state:
-        seed = _as_list(case["ai_agent_messages"])
-        greeting = seed[0] if seed else "권장 조치 초안을 준비했습니다. 이 케이스에 대해 무엇이든 물어보세요."
-        st.session_state[state_key] = [{"role": "assistant", "content": greeting, "citations": []}]
+        st.session_state[state_key] = [{"role": "assistant", "content": AGENT_GREETING, "citations": []}]
     history = st.session_state[state_key]
+    if history and history[0].get("role") == "assistant":
+        history[0]["content"] = AGENT_GREETING
     pending_question = st.session_state.get(pending_key)
 
     bubbles = [_chat_bubble(turn) for turn in history]
@@ -86,31 +89,35 @@ def render_ai_agent_chat(case: pd.Series) -> None:
 
     scroll_id = _safe_dom_id(f"ad-agent-scroll-{case_id}")
     bubbles_html = ''.join(bubbles)
-    st.html(
-        f"""
-        <div class="ad-card ad-panel" style="margin-bottom:0">
-          <div class="ad-agent-header">AI Agent</div>
-          <div id="{scroll_id}" class="ad-agent-body">
-            {bubbles_html}
-          </div>
-        </div>
-        """
-    )
-    if st.session_state.pop(scroll_key, False):
-        _scroll_agent_to_bottom(scroll_id)
+    with st.container(key="ai_agent_panel"):
+        st.html(
+            f"""
+            <div class="ad-agent-chat-shell">
+              <div class="ad-agent-panel-head">
+                {_icon_img("icon-azure-databricks.svg", "AI Agent", "ad-agent-panel-icon")}
+                <span>AI Agent</span>
+              </div>
+              <div id="{scroll_id}" class="ad-agent-body">
+                {bubbles_html}
+              </div>
+            </div>
+            """
+        )
+        if st.session_state.pop(scroll_key, False):
+            _scroll_agent_to_bottom(scroll_id)
 
-    with st.form(key=f"agent_form_{case_id}", clear_on_submit=True, border=False):
-        input_col, send_col = st.columns([4, 1], gap="small", vertical_alignment="bottom")
-        with input_col:
-            question = st.text_input(
-                "AI Agent에게 질문하기",
-                key=f"agent_input_{case_id}",
-                placeholder="AI Agent에게 질문하기",
-                label_visibility="collapsed",
-                disabled=bool(pending_question),
-            )
-        with send_col:
-            submitted = st.form_submit_button("Send", use_container_width=True, disabled=bool(pending_question))
+        with st.form(key=f"agent_form_{case_id}", clear_on_submit=True, border=False):
+            input_col, send_col = st.columns([4, 1], gap="small", vertical_alignment="bottom")
+            with input_col:
+                question = st.text_input(
+                    "AI Agent에게 질문하기",
+                    key=f"agent_input_{case_id}",
+                    placeholder="AI Agent에게 질문하기",
+                    label_visibility="collapsed",
+                    disabled=bool(pending_question),
+                )
+            with send_col:
+                submitted = st.form_submit_button("Send", use_container_width=True, disabled=bool(pending_question))
 
     if submitted and question.strip():
         cleaned_question = question.strip()

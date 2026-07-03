@@ -809,21 +809,65 @@ def _meta_item(label: str, value: object) -> str:
     """
 
 
-def _doc_card(doc: str, index: int) -> str:
-    parts = [part.strip() for part in doc.split(" / ", 1)]
-    title = parts[0]
-    subtitle = parts[1] if len(parts) > 1 else ""
-    icons = ["icon-pdf.png", "icon-policy-yellow.png", "icon-azure.svg", "icon-policy-green.png"]
-    icon = _icon_img(icons[index % len(icons)], title, "ad-doc-card-icon")
+def _doc_card(doc: object, index: int) -> str:
+    title, subtitle, source, doc_type = _display_doc_parts(doc)
+    icon = _icon_img(_doc_icon(title, source, doc_type, index), title, "ad-doc-card-icon")
+    title_attr = f' title="{escape(source)}"' if source else ""
     return f"""
-    <div class="ad-doc-card">
+    <div class="ad-doc-card"{title_attr}>
       <div class="ad-doc-icon">{icon}</div>
-      <div>
+      <div class="ad-doc-copy">
         <div class="ad-doc-title">{escape(title)}</div>
         <div class="ad-doc-subtitle">{escape(subtitle)}</div>
       </div>
     </div>
     """
+
+
+def _display_doc_parts(doc: object) -> tuple[str, str, str, str]:
+    if isinstance(doc, dict):
+        title = str(doc.get("title") or doc.get("source_title") or doc.get("name") or "").strip()
+        source = str(doc.get("source") or doc.get("source_id") or doc.get("chunk_id") or "").strip()
+        doc_type = str(doc.get("type") or doc.get("doc_type") or "").strip()
+        subtitle = source or _doc_type_label(doc_type) or "Reference"
+        return title or source or "Reference document", subtitle, source, doc_type
+
+    text = str(doc or "").strip()
+    parts = [part.strip() for part in text.split(" / ", 1)]
+    title = parts[0] if parts else "Reference document"
+    subtitle = parts[1] if len(parts) > 1 else "Reference"
+    return title, subtitle, text, ""
+
+
+def _doc_type_label(doc_type: str) -> str:
+    normalized = re.sub(r"[\s\-]+", "_", doc_type.strip().lower())
+    labels = {
+        "rag_evidence": "RAG evidence",
+        "internal_policy": "Policy reference",
+        "internal_playbook": "Runbook",
+        "synthetic_case_history": "Case history",
+        "source_guide": "Source guide",
+        "api_reference": "API reference",
+    }
+    return labels.get(normalized, doc_type.strip())
+
+
+def _doc_icon(title: str, source: str, doc_type: str, index: int) -> str:
+    haystack = " ".join([title, source, doc_type]).lower()
+    if "github" in haystack:
+        return "icon-github.svg"
+    if "google" in haystack:
+        return "icon-google-workspace.svg"
+    if "slack" in haystack:
+        return "icon-slack.svg"
+    if "azure" in haystack or "entra" in haystack or "microsoft" in haystack:
+        return "icon-azure.svg"
+    if "policy" in haystack:
+        return "icon-policy-yellow.png"
+    if "playbook" in haystack or "runbook" in haystack:
+        return "icon-pdf.png"
+    icons = ["icon-pdf.png", "icon-policy-yellow.png", "icon-azure.svg", "icon-policy-green.png"]
+    return icons[index % len(icons)]
 
 
 def _action_step(step: str, index: int) -> str:
@@ -868,9 +912,9 @@ def _badge_img(filename: str, alt: str, class_name: str = "") -> str:
     return _asset_img("badges", filename, alt, class_name)
 
 
-def _as_list(value: object) -> list[str]:
+def _as_list(value: object) -> list[object]:
     if isinstance(value, list):
-        return [str(item) for item in value]
+        return value
     if isinstance(value, str) and value:
         return [item.strip() for item in value.split(";") if item.strip()]
     return []
