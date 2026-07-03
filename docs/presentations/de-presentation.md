@@ -6,27 +6,27 @@
 
 ## DE Overview
 
-신뢰 가능한 Risk 탐지를 위한 데이터 기반
+신뢰 가능한 리스크 탐지를 위한 데이터 기반 구축
 
-- 원천 근거 보존
-- 공통 Silver 모델 정규화
-- 스키마 계약과 품질검증
-- 재실행 안전성
-- 권한과 운영 관측성
+- 탐지 근거 데이터
+- Landing/Bronze 원천 보존
+- Silver 공통 접근 경로 모델 정규화
+- 데이터 계약과 자동화된 품질검증
+- 운영 안정성과 권한 통제
 
 ---
 
-## DE Data Scope
+## Data Scope - 근거 데이터 정의
 
-Access Drift 탐지를 위해 필요한 근거 데이터
+리스크 탐지에 필요한 근거 데이터
 
 | 데이터 영역 | Source 예시 | 설명 |
 | --- | --- | --- |
-| Identity / HR | HR export | 재직/퇴사/이동 상태로 owner 유효성 판단 |
-| IdP / NHI | Microsoft Entra ID, Azure | App Registration, owner, credential 상태 확인 |
-| Asset | Azure, GitHub, Slack | 민감 자산, 환경, 민감도 확인 |
-| Access | Azure, GitHub, Slack | 권한 주체 → 자산 접근 경로 표현 |
-| Eval | internal eval seed | 검증용 정답 케이스로 탐지 결과 확인 |
+| Identity / HR | HR export | 재직/퇴사/이동 |
+| IdP / NHI | Microsoft Entra ID, Azure | App Registration, owner, credential |
+| Asset | Azure, GitHub, Slack | 민감 자산, 환경, 민감도 |
+| Access | Azure, GitHub, Slack | 권한 주체 → 자산 접근 경로 |
+| Eval | internal eval seed | 탐지 결과 검증용 정답 케이스 |
 
 합성 데이터 사용 이유:
 
@@ -39,70 +39,65 @@ Access Drift 탐지를 위해 필요한 근거 데이터
 
 ## Landing & Bronze
 
-원천 근거를 보존하고, Silver 정규화를 준비하는 구간
+원본 파일 보존 및 원천 시스템별 테이블 적재
 
 | 구분 | Landing | Bronze |
 | --- | --- | --- |
 | 목적 | 원본 파일 보존 | 원천 시스템별 테이블 적재 |
 | 형태 | Raw JSONL | 테이블 내 레코드 |
 | 구조 | API/export 형태 | Landing 데이터 기반 스키마 |
-| 보존 | 원본 payload | 원천 ID, 주요 날짜, 적재 시각 |
-| 하지 않음 | 정답 위험도, 시크릿 값 저장 | 리스크 판단, 소스 통합 join |
+| 보존 | 원본 payload | 원천 ID, 인사 이벤트 발생 시각, 적재 시각 |
+| 하지 않음 | 정답 위험도, 시크릿 값 저장 | 원본 의미 수정, 시스템 간 병합 |
 | 다음 단계 | Bronze 적재 입력 | Silver 정규화 입력 |
 
-검증: 입력 누락 없음 · 필수 key 존재 · 금지 필드 없음 · raw payload 보존
+예시 흐름: `landing/raw/azure/...jsonl` → `bronze_azure_*`
 
 ---
 
 ## Silver
 
-source별 데이터를 Risk 탐지에 사용할 공통 모델로 정규화
+여러 원천 데이터를 위험 탐지가 가능한 공통 접근 경로 모델로 정규화
 
-| 테이블 | 역할 |
+| 모델 요소 | 의미 |
 | --- | --- |
-| `silver_principals` | HI/NHI 주체 정규화 |
-| `silver_credentials` | NHI credential metadata |
-| `silver_assets` | 민감 자산 정규화 |
-| `silver_edges` | owner/access 관계 표현 |
+| Principal | HI/NHI 주체 |
+| Credential | NHI 인증 수단 |
+| Asset | 접근 대상 자산 |
+| Edge | Principal 소유 / Credential 보유 / Asset 접근 권한 |
 
-핵심:
+대표 접근 경로:
+퇴사자(HI) --소유--> Azure App(NHI)
+Azure App --활성 Client Secret 보유--> 인증 가능
+Azure App --조회 권한--> 고객 데이터 Storage
 
-- deterministic ID로 재실행 시 같은 입력은 같은 key 생성
-- HI → NHI → Credential → Asset 접근 경로 표현
-- severity, finding, eval label은 Silver 책임이 아님
-
+이후 Detection 레이어에서 Risk 판단
 ---
 
-## Schema Contract & Quality Gates
+## 신뢰성 보장 - 데이터 계약, 자동화된 품질 검증
 
-계약을 정의하고, 적재 데이터와 파이프라인 실행을 검증
+데이터 계약을 자동 검증해 탐지 로직이 신뢰할 수 있는 입력을 보장
 
-| 구분 | 역할 |
-| --- | --- |
-| Schema Contract | required column, enum, ID, relationship 규칙 정의 |
-| SQL Validation | 현재 적재 데이터가 계약을 만족하는지 확인 |
-| DLT Expectations | 파이프라인 실행 중 품질 gate 역할 |
-| CI | PR 단계에서 계약/구현 불일치 조기 탐지 |
-
-핵심 메시지:
-
-> 문서 계약 → SQL 확인 → DLT gate → CI 자동화로 데이터 신뢰성을 보강했습니다.
-
----
-
-## Operations & Expansion
-
-재실행, 권한, 운영 관측성, 후속 확장
-
-| 영역 | 현재 | 후속 |
+| 구분 | 역할 | 잡을 수 있는 오류 예시 |
 | --- | --- | --- |
-| Re-run Safety | deterministic ID, full refresh | `MERGE INTO`, partition overwrite |
-| Governance | Unity Catalog catalog/schema 권한 | lineage / audit 고도화 |
-| Monitoring | SQL validation, DLT event log | SQL Dashboard / Alerts |
-| Ingestion | 재현 가능한 합성 데이터 | 실제 API connector, Auto Loader |
+| 스키마 계약 | required, enum, ID, 관계 규칙 문서화 | 컬럼/관계 기준 누락 |
+| CI | PR 단계에서 계약/구현 불일치 조기 탐지 | 스키마 계약 문서와 DDL/DLT 불일치 |
+| DLT Expectations | 변환 로직 중 도메인 규칙 검증 | 잘못된 edge 방향, credential active 판정 오류 |
+| SQL 검증 | 적재 데이터가 계약을 만족하는지 확인 | null key, 중복 ID, orphan edge |
 
-핵심:
+---
 
-- 같은 입력을 다시 처리해도 같은 ID 생성
-- Gold/Eval/App 접근 경계 분리
-- 품질검증 결과를 운영 모니터링으로 확장 가능
+## 운영 안정성
+
+실패 감지, 재처리, 권한 통제로 파이프라인 운영 안정성 확보
+
+왼쪽:
+
+- DLT/SQL 검증으로 실패 감지
+- DLT task 실패 시 downstream 실행 차단
+- 같은 입력 재처리 시 중복 행 누적 방지
+- Unity Catalog로 민감 데이터 접근/수정 권한 통제
+- SQL Dashboard로 row count / validation 결과 확인
+
+오른쪽:
+
+- SQL Dashboard 캡처
