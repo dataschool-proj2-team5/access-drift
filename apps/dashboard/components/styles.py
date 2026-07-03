@@ -690,30 +690,74 @@ def apply_dashboard_style(page: str | None = None) -> None:
           background: var(--ad-soft);
           border: 1px solid var(--ad-border);
           border-radius: 10px;
-          min-height: 620px;
+          min-height: 420px;
+          max-height: 420px;
+          overflow-y: auto;
+          overflow-x: hidden;
           padding: 18px;
+          scroll-behavior: smooth;
         }
 
         .ad-chat-bubble {
-          max-width: 82%;
+          max-width: min(82%, calc(100% - 24px));
+          box-sizing: border-box;
           border: 1px solid var(--ad-border);
           border-radius: 8px;
           background: #fff;
           padding: 16px;
           margin-bottom: 16px;
           line-height: 1.55;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          word-break: keep-all;
         }
 
         .ad-chat-user {
           margin-left: auto;
           background: var(--ad-blue-soft);
           border-color: var(--ad-blue-soft);
+          word-break: keep-all;
         }
 
         .ad-chat-name {
           color: var(--ad-blue);
           font-weight: 800;
           margin-bottom: 8px;
+        }
+
+        .ad-chat-loading {
+          display: flex;
+          align-items: center;
+          max-width: 92%;
+          color: #6B7280;
+        }
+
+        .ad-chat-loading .ad-chat-name {
+          margin: 0 10px 0 0;
+          white-space: nowrap;
+        }
+
+        .ad-loading-dot {
+          width: 6px;
+          height: 6px;
+          margin-right: 4px;
+          border-radius: 999px;
+          background: var(--ad-blue);
+          opacity: 0.35;
+          animation: ad-loading-pulse 1.2s infinite ease-in-out;
+        }
+
+        .ad-loading-dot:nth-of-type(2) {
+          animation-delay: 0.15s;
+        }
+
+        .ad-loading-dot:nth-of-type(3) {
+          animation-delay: 0.3s;
+        }
+
+        @keyframes ad-loading-pulse {
+          0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+          40% { opacity: 1; transform: translateY(-2px); }
         }
 
         .ad-agent-input {

@@ -12,7 +12,7 @@ import streamlit as st
 
 import components.cards as card_components
 from components.risk_text_panels import (
-    render_ai_agent_placeholder,
+    render_ai_agent_chat,
     render_recommendation_panel,
     render_review_info_card,
 )
@@ -250,7 +250,7 @@ def main() -> None:
         with left:
             render_recommendation_panel(case)
         with right:
-            render_ai_agent_placeholder(case)
+            render_ai_agent_chat(case)
 
     with ticket_tab:
         card_components.render_ticket_form_placeholder(case)
