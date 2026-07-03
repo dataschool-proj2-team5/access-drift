@@ -27,6 +27,9 @@ variables:
   app_schema:
     description: App schema used by dashboard views and action state tables
     default: app
+  llm_endpoint:
+    description: Databricks Serving endpoint used by the dashboard AI Agent
+    default: databricks-meta-llama-3-3-70b-instruct
   actor_id:
     description: Actor id written to action state/event rows from the deployed dashboard
     default: databricks_apps_user
@@ -81,6 +84,8 @@ resources:
             value: ${var.gold_schema}
           - name: ACCESS_DRIFT_APP_SCHEMA
             value: ${var.app_schema}
+          - name: DATABRICKS_LLM_ENDPOINT
+            value: ${var.llm_endpoint}
           - name: ACCESS_DRIFT_ACTOR_ID
             value: ${var.actor_id}
           - name: ACCESS_DRIFT_ACTOR_NAME

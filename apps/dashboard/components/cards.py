@@ -397,7 +397,7 @@ def render_ai_agent_placeholder(case: pd.Series) -> None:
     st.html(
         f"""
         <div class="ad-card ad-panel">
-          <div class="ad-agent-header">{_icon_img("icon-azure-openai.svg", "AI Agent", "ad-agent-icon")} AI Agent</div>
+          <div class="ad-agent-header">AI Agent</div>
           <div class="ad-agent-body">
             <div class="ad-chat-bubble">
               <div class="ad-chat-name">AI Agent</div>

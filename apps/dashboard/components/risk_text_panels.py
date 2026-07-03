@@ -4,13 +4,13 @@ from html import escape
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from components.cards import (
     _action_step,
     _as_list,
     _doc_card,
     _format_datetime,
-    _icon_img,
     _status_badge,
 )
 
@@ -64,30 +64,123 @@ def render_recommendation_panel(case: pd.Series) -> None:
     )
 
 
-def render_ai_agent_placeholder(case: pd.Series) -> None:
-    messages = _as_list(case["ai_agent_messages"])
-    first = messages[0] if len(messages) > 0 else ""
-    question = messages[1] if len(messages) > 1 else ""
-    answer = messages[2] if len(messages) > 2 else ""
+@st.fragment
+def render_ai_agent_chat(case: pd.Series) -> None:
+    """Risk Card context에서 RAG 기반으로 대화하는 AI Agent 패널."""
+    from src import rag_agent
+
+    case_id = str(case.get("case_id", "case"))
+    state_key = f"agent_chat_{case_id}"
+    pending_key = f"agent_pending_{case_id}"
+    scroll_key = f"agent_scroll_bottom_{case_id}"
+    if state_key not in st.session_state:
+        seed = _as_list(case["ai_agent_messages"])
+        greeting = seed[0] if seed else "권장 조치 초안을 준비했습니다. 이 케이스에 대해 무엇이든 물어보세요."
+        st.session_state[state_key] = [{"role": "assistant", "content": greeting, "citations": []}]
+    history = st.session_state[state_key]
+    pending_question = st.session_state.get(pending_key)
+
+    bubbles = [_chat_bubble(turn) for turn in history]
+    if pending_question:
+        bubbles.append(_loading_bubble())
+
+    scroll_id = _safe_dom_id(f"ad-agent-scroll-{case_id}")
+    bubbles_html = ''.join(bubbles)
     st.html(
         f"""
-        <div class="ad-card ad-panel">
-          <div class="ad-agent-header">{_icon_img("icon-azure-openai.svg", "AI Agent", "ad-agent-icon")} AI Agent</div>
-          <div class="ad-agent-body">
-            <div class="ad-chat-bubble">
-              <div class="ad-chat-name">AI Agent</div>
-              {escape(first)}
-            </div>
-            <div class="ad-chat-bubble ad-chat-user">{escape(question)}</div>
-            <div class="ad-chat-bubble">
-              <div class="ad-chat-name">AI Agent</div>
-              {escape(answer)}
-            </div>
-          </div>
-          <div class="ad-agent-input">
-            <span>AI Agent\uc5d0\uac8c \uc9c8\ubb38\ud558\uae30</span>
-            <span class="ad-button ad-button-primary" style="padding:10px 14px">Send</span>
+        <div class="ad-card ad-panel" style="margin-bottom:0">
+          <div class="ad-agent-header">AI Agent</div>
+          <div id="{scroll_id}" class="ad-agent-body">
+            {bubbles_html}
           </div>
         </div>
         """
     )
+    if st.session_state.pop(scroll_key, False):
+        _scroll_agent_to_bottom(scroll_id)
+
+    with st.form(key=f"agent_form_{case_id}", clear_on_submit=True, border=False):
+        input_col, send_col = st.columns([4, 1], gap="small", vertical_alignment="bottom")
+        with input_col:
+            question = st.text_input(
+                "AI Agent에게 질문하기",
+                key=f"agent_input_{case_id}",
+                placeholder="AI Agent에게 질문하기",
+                label_visibility="collapsed",
+                disabled=bool(pending_question),
+            )
+        with send_col:
+            submitted = st.form_submit_button("Send", use_container_width=True, disabled=bool(pending_question))
+
+    if submitted and question.strip():
+        cleaned_question = question.strip()
+        history.append({"role": "user", "content": cleaned_question, "citations": []})
+        st.session_state[state_key] = history
+        st.session_state[pending_key] = cleaned_question
+        st.session_state[scroll_key] = True
+        _rerun_agent_fragment()
+
+    if pending_question:
+        result = rag_agent.answer_question(case, str(pending_question), history)
+        history.append({"role": "assistant", "content": result.text, "citations": result.citations})
+        st.session_state[state_key] = history
+        st.session_state.pop(pending_key, None)
+        _rerun_agent_fragment()
+
+def _rerun_agent_fragment() -> None:
+    try:
+        st.rerun(scope="fragment")
+    except Exception:  # noqa: BLE001
+        st.rerun()
+
+
+def _safe_dom_id(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in value)
+
+
+def _scroll_agent_to_bottom(scroll_id: str) -> None:
+    components.html(
+        f"""
+        <script>
+        const target = window.parent.document.getElementById({scroll_id!r});
+        if (target) {{ target.scrollTop = target.scrollHeight; }}
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+
+def _citation_note(citations: list) -> str:
+    if not citations:
+        return ""
+    items = ", ".join(escape(str(c.get("title") or c.get("chunk_id", ""))) for c in citations)
+    return (
+        f'<div style="margin-top:8px; font-size:11px; color:#6B7280">\uadfc\uac70: {items}</div>'
+    )
+
+
+
+def _chat_bubble(turn: dict) -> str:
+    content = escape(str(turn.get("content", ""))).replace("\n", "<br>")
+    if turn.get("role") == "user":
+        return f'<div class="ad-chat-bubble ad-chat-user">{content}</div>'
+    citation_html = _citation_note(turn.get("citations", []))
+    return f'<div class="ad-chat-bubble"><div class="ad-chat-name">AI Agent</div>{content}{citation_html}</div>'
+
+
+def _loading_bubble() -> str:
+    return (
+        '<div class="ad-chat-bubble ad-chat-loading">'
+        '<div class="ad-chat-name">AI Agent</div>'
+        '<span class="ad-loading-dot"></span>'
+        '<span class="ad-loading-dot"></span>'
+        '<span class="ad-loading-dot"></span>'
+        '<span style="margin-left:8px">근거 문서를 검색하고 답변을 생성하는 중입니다.</span>'
+        '</div>'
+    )
+
+def render_ai_agent_placeholder(case: pd.Series) -> None:
+    # \uc774\uc804 \uc815\uc801 placeholder \ud638\ud658\uc6a9 \u2014 \uc2e4\uc81c \ud654\uba74\uc740 render_ai_agent_chat\uc744 \uc0ac\uc6a9\ud55c\ub2e4.
+    render_ai_agent_chat(case)

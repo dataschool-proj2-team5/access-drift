@@ -18,7 +18,8 @@ Access Drift 대시보드는 Databricks app view를 기반으로 access drift ri
 - **Risk Card**
   - 선택한 case의 상세 분석 화면
   - Access Path, Risk Summary, Risk Factors
-  - 권장 조치, 참고 문서, 실행 단계, AI Agent placeholder
+  - 권장 조치(RAG/fallback AI Summary + 참조 문서 + 실행 단계)
+  - AI Agent 챗봇: 케이스 컨텍스트에서 Vector Search 근거 검색 + Databricks FM endpoint로 답변 생성 (citation 강제, 실패 시 deterministic fallback)
   - Review Status는 Streamlit session 안에서만 변경됩니다.
 
 ## 로컬 실행
@@ -30,6 +31,8 @@ streamlit run app.py
 ```
 
 브라우저에서 Streamlit이 안내하는 로컬 주소로 접속합니다. 기본 포트는 보통 `8501`입니다.
+
+> 팀원이 각자 PC에서 AI Agent 챗봇까지 포함해 실행하는 단계별 절차는 [RUN_LOCAL.md](RUN_LOCAL.md)를 참고하세요. Databricks 연결은 `.streamlit/secrets.toml`이 필요하며, 템플릿은 [.streamlit/secrets.toml.example](.streamlit/secrets.toml.example)에 있습니다.
 
 ## 데이터 로딩 우선순위
 
@@ -72,6 +75,9 @@ access_token = "..."
 catalog = "access_drift_dev"
 gold_schema = "gold"
 app_schema = "app"
+# AI Agent 챗봇이 쓰는 생성 LLM endpoint (생략 시 databricks-meta-llama-3-3-70b-instruct).
+# Databricks FM API pay-per-token endpoint라 외부 OpenAI key/결제가 필요 없다.
+llm_endpoint = "databricks-meta-llama-3-3-70b-instruct"
 
 [jira]
 base_url = "..."
@@ -109,6 +115,7 @@ Databricks Apps runtime은 아래 환경 변수를 읽습니다.
 | `DATABRICKS_HOST` | Databricks workspace host |
 | `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP path |
 | `DATABRICKS_TOKEN` | Databricks SQL Statement API 호출 token |
+| `DATABRICKS_LLM_ENDPOINT` | AI Agent가 호출할 Databricks Serving endpoint |
 | `JIRA_BASE_URL` | Jira site base URL |
 | `JIRA_EMAIL` | Jira account email |
 | `JIRA_API_TOKEN` | Jira API token |
@@ -122,6 +129,7 @@ Databricks Apps runtime은 아래 환경 변수를 읽습니다.
 | Catalog | `access_drift_dev` |
 | Gold schema | `gold` |
 | App schema | `app` |
+| LLM endpoint | `databricks-meta-llama-3-3-70b-instruct` |
 | Action actor id | `databricks_apps_user` |
 | Action actor name | `Databricks Apps User` |
 
@@ -187,6 +195,7 @@ apps/dashboard/
 │  ├─ action_state.py
 │  ├─ data_loader.py
 │  ├─ mock_data.py
+│  ├─ rag_agent.py
 │  ├─ schema.py
 │  └─ session_state.py
 ├─ assets/
@@ -202,13 +211,13 @@ apps/dashboard/
 - 페이지별 조합은 `pages/`에서 처리합니다.
 - 소스별 컬럼 매핑, display normalization, fallback 로직은 `src/data_loader.py`에 유지합니다.
 - 내부 컬럼 계약은 `src/schema.py`와 `data/README.md`를 함께 갱신합니다.
+- AI Agent 챗봇의 검색/생성/fallback 로직은 `src/rag_agent.py`에 유지하며, `docs/contracts/rag-chain.md`의 citation 강제·환각 방지 규칙을 따릅니다.
 - Databricks Apps 배포 설정은 `app.yml`, `databricks.yml`, GitHub Actions workflow를 함께 확인합니다.
 - Review Status write-back은 `src/action_state.py`를 통해 Databricks `app.risk_action_state`, `app.risk_action_event`에 반영합니다.
 - Ticket 발급은 Jira secrets가 있는 환경에서만 동작합니다.
-- RAG/AI Agent 연동은 아직 placeholder입니다.
 
 ## 현재 제한 사항
 
 - Databricks 연결 또는 write-back이 실패하면 mock/session fallback으로 동작할 수 있습니다.
 - Jira ticket 발급은 Jira secrets가 없는 환경에서는 사용할 수 없습니다.
-- AI Agent, RAG는 placeholder입니다.
+- AI Agent 챗봇 대화 이력은 Streamlit session에만 유지되며 저장하지 않습니다.
