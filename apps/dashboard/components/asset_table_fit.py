@@ -35,7 +35,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
               <div class="ad-asset-value ad-asset-case-id">{escape(str(display_case_id))}</div>
               <div class="ad-asset-value">{escape(str(case["drift_label"]))}</div>
               <div class="ad-asset-value">{_environment_label(case)}</div>
-              <div class="ad-asset-value">{escape(str(case["identity_name"]))}</div>
+              <div class="ad-asset-value">{_identity_display(case)}</div>
               <div class="ad-asset-value">{escape(str(case["identity_type"]))}</div>
               <div class="ad-asset-value">{escape(str(case["owner"]))}</div>
               <div class="ad-asset-value">{escape(str(case["detected_at_display"]))}</div>
@@ -59,7 +59,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-table-header,
           .ad-asset-row {{
             display: grid;
-            grid-template-columns: 112px 140px 78px minmax(190px, 1fr) 52px 110px 132px 104px 52px;
+            grid-template-columns: 112px 140px 96px minmax(172px, 1fr) 52px 110px 132px 104px 52px;
             column-gap: 12px;
             align-items: center;
             width: 100%;
@@ -148,6 +148,11 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             justify-self: center;
           }}
 
+          .ad-asset-table-header > div:nth-child(8) {{
+            padding-left: 18px;
+            box-sizing: border-box;
+          }}
+
           .ad-asset-row .ad-risk-badge-img {{
             height: 26px;
             width: auto;
@@ -178,7 +183,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           @media (max-width: 1400px) {{
             .ad-asset-table-header,
             .ad-asset-row {{
-              grid-template-columns: 88px 94px 64px minmax(128px, 1fr) 40px 94px 96px 76px 52px;
+              grid-template-columns: 88px 94px 78px minmax(114px, 1fr) 40px 94px 96px 76px 52px;
               column-gap: 8px;
             }}
           }}
@@ -212,7 +217,7 @@ def _environment_for_case(case: pd.Series) -> str:
         "azure_ad": "Azure",
         "entra": "Azure",
         "github": "GitHub",
-        "google_workspace": "GW",
+        "google_workspace": "Workspace",
         "slack": "Slack",
         "postman": "Postman",
         "jira": "Jira",
@@ -238,6 +243,14 @@ def _environment_for_case(case: pd.Series) -> str:
     if "confluence" in combined:
         return "Confluence"
     return "Azure"
+
+
+def _identity_display(case: pd.Series) -> str:
+    identity_type = str(case.get("identity_type", "")).strip().upper()
+    identity_email = str(case.get("identity_email", "")).strip()
+    if identity_type == "HI" and identity_email and identity_email.lower() != "nan":
+        return escape(identity_email)
+    return escape(str(case.get("identity_name", "")))
 
 
 def _environment_label(case: pd.Series) -> str:

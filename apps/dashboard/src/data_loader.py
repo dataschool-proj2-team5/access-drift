@@ -173,6 +173,7 @@ def _normalize_app_view_rows(
     normalized["principal_kind"] = _first_present(rows, ["principal_kind", "principal_kind_detail", "principal_kind_path"])
     normalized["principal_type"] = _first_present(rows, ["principal_type", "principal_type_detail", "principal_type_path"])
     normalized["identity_name"] = _first_present(rows, ["identity_name", "subject_display_name", "subject_display_name_detail", "subject_display_name_path"])
+    normalized["identity_email"] = _first_present(rows, ["identity_email", "subject_email", "subject_email_detail", "subject_email_path"])
     normalized["identity_type"] = _normalize_identity_type(_first_present(rows, ["identity_type", "subject_type", "subject_type_detail", "subject_type_path"]))
     normalized["object_name"] = _first_present(rows, ["subject_display_name_detail", "subject_display_name_path", "identity_name"])
     normalized["object_type"] = _humanize_label_series(
@@ -246,6 +247,7 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["principal_kind"] = _first_present(gold_core, ["principal_kind"])
     normalized["principal_type"] = _first_present(gold_core, ["principal_type", "subject_type"])
     normalized["identity_name"] = _first_present(gold_core, ["subject_display_name"])
+    normalized["identity_email"] = _first_present(gold_core, ["identity_email", "subject_email", "email"])
     normalized["identity_type"] = _normalize_identity_type(_first_present(gold_core, ["subject_type"]))
     normalized["object_name"] = _first_present(gold_core, ["subject_display_name"])
     normalized["object_type"] = _humanize_label_series(_first_present(gold_core, ["subject_type"]))
@@ -635,7 +637,6 @@ def _risk_factors_from_row(row: pd.Series) -> list[str]:
     credential_active = _row_value(row, ["factor_credential_active", "credential_is_active", "credential_is_active_detail"])
     permission = _row_value(row, ["factor_permission", "access_permission", "access_permission_detail", "access_permission_path"])
     sensitivity = _row_value(row, ["factor_asset_sensitivity", "asset_sensitivity", "asset_sensitivity_detail", "asset_sensitivity_path"])
-    sensitive_access = _row_value(row, ["factor_sensitive_access"])
 
     if owner_status:
         factors.append(f"Owner status: {owner_status}")
@@ -645,8 +646,6 @@ def _risk_factors_from_row(row: pd.Series) -> list[str]:
         factors.append(f"Permission: {permission}")
     if sensitivity:
         factors.append(f"Asset sensitivity: {sensitivity}")
-    if str(sensitive_access).lower() in {"true", "1", "yes"}:
-        factors.append("Sensitive asset access")
     return factors
 
 

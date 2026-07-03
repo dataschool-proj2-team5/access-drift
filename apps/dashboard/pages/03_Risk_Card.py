@@ -78,7 +78,11 @@ def render_access_path_v2_inline(case: pd.Series) -> None:
 
 def _credential_expiry_caption(case: pd.Series) -> str:
     expires_at = str(case.get("credential_expires_at", "") or "").strip()
-    return f"\ub9cc\ub8cc\uc77c: {escape(expires_at) if expires_at else '-'}"
+    if not expires_at:
+        return "\ub9cc\ub8cc\uc77c: -"
+    parsed = pd.to_datetime(expires_at, errors="coerce")
+    display_value = parsed.strftime("%Y/%m/%d") if not pd.isna(parsed) else expires_at
+    return f"\ub9cc\ub8cc\uc77c: {escape(display_value)}"
 
 
 def _asset_caption(case: pd.Series) -> str:
