@@ -83,6 +83,9 @@ Access Path에서 `asset_name`은 요약 표시용으로 쓰고, 원본 asset �
 | `risk_title` | Risk Card 제목입니다. |
 | `risk_level` | Critical, High, Medium, Low 같은 표시용 위험도입니다. |
 | `drift_type` | Access drift 유형입니다. |
+| `source_system` | 원천 시스템입니다. Asset List의 Environment 표시에서 우선 사용합니다. |
+| `principal_kind` | HI/NHI 등 정규화된 principal kind입니다. |
+| `principal_type` | user, app_registration, service_principal 등 정규화된 principal type입니다. |
 | `identity_name` | 위험과 연결된 identity, principal, account 이름입니다. |
 | `identity_type` | Identity 유형입니다. |
 | `object_name` | Credential 또는 access object 이름입니다. |

@@ -6,7 +6,7 @@ from urllib.parse import quote
 import pandas as pd
 import streamlit as st
 
-from components.cards import _badge_img, _format_datetime
+from components.cards import _asset_data_uri, _badge_img, _format_datetime
 
 
 VISIBLE_RISK_LEVELS = ["Critical", "High", "Medium"]
@@ -34,8 +34,8 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             <div class="ad-asset-row">
               <div class="ad-asset-value ad-asset-case-id">{escape(str(display_case_id))}</div>
               <div class="ad-asset-value">{escape(str(case["drift_label"]))}</div>
-              <div class="ad-asset-value">{escape(str(case["environment"]))}</div>
-              <div class="ad-asset-value">{escape(str(case["identity_name"]))}</div>
+              <div class="ad-asset-value">{_environment_label(case)}</div>
+              <div class="ad-asset-value">{_identity_display(case)}</div>
               <div class="ad-asset-value">{escape(str(case["identity_type"]))}</div>
               <div class="ad-asset-value">{escape(str(case["owner"]))}</div>
               <div class="ad-asset-value">{escape(str(case["detected_at_display"]))}</div>
@@ -59,9 +59,11 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-table-header,
           .ad-asset-row {{
             display: grid;
-            grid-template-columns: 80px 180px 84px minmax(220px, 0.8fr) 56px 120px 140px 104px 72px;
+            grid-template-columns: 112px 140px 96px minmax(172px, 1fr) 52px 110px 132px 104px 52px;
             column-gap: 12px;
             align-items: center;
+            width: 100%;
+            box-sizing: border-box;
             min-width: 0;
           }}
 
@@ -88,6 +90,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           .ad-asset-case-id {{
             color: #9ba3b1;
             font-size: 13px;
+            white-space: nowrap;
           }}
 
           .ad-asset-value {{
@@ -113,11 +116,41 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             white-space: nowrap;
           }}
 
-          .ad-asset-table-header > div:nth-child(8),
-          .ad-asset-table-header > div:nth-child(9),
+          .ad-asset-table-header > div:nth-child(3),
+          .ad-asset-row > div:nth-child(3) {{
+            padding-right: 8px;
+          }}
+
+          .ad-asset-environment-label {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+          }}
+
+          .ad-asset-environment-icon {{
+            width: 15px;
+            height: 15px;
+            flex: 0 0 auto;
+            display: inline-block;
+            object-fit: contain;
+          }}
+
+          .ad-asset-environment-text {{
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }}
+
           .ad-asset-row > div:nth-child(8),
           .ad-asset-row > a:nth-child(9) {{
             justify-self: center;
+          }}
+
+          .ad-asset-table-header > div:nth-child(8) {{
+            padding-left: 18px;
+            box-sizing: border-box;
           }}
 
           .ad-asset-row .ad-risk-badge-img {{
@@ -138,7 +171,6 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
             align-items: center;
             justify-content: center;
             font-size: 13px;
-            justify-self: center;
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
           }}
 
@@ -151,7 +183,7 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
           @media (max-width: 1400px) {{
             .ad-asset-table-header,
             .ad-asset-row {{
-              grid-template-columns: 64px 130px 70px minmax(140px, 0.7fr) 42px 106px 104px 76px 56px;
+              grid-template-columns: 88px 94px 78px minmax(114px, 1fr) 40px 94px 96px 76px 52px;
               column-gap: 8px;
             }}
           }}
@@ -179,6 +211,21 @@ def render_asset_table_fit(data: pd.DataFrame) -> None:
 
 
 def _environment_for_case(case: pd.Series) -> str:
+    source_system = str(case.get("source_system", "")).strip().lower()
+    source_labels = {
+        "azure": "Azure",
+        "azure_ad": "Azure",
+        "entra": "Azure",
+        "github": "GitHub",
+        "google_workspace": "Workspace",
+        "slack": "Slack",
+        "postman": "Postman",
+        "jira": "Jira",
+        "confluence": "Confluence",
+    }
+    if source_system in source_labels:
+        return source_labels[source_system]
+
     identity_name = str(case.get("identity_name", "")).lower()
     object_name = str(case.get("object_name", "")).lower()
     drift_type = str(case.get("drift_type", "")).lower()
@@ -196,6 +243,40 @@ def _environment_for_case(case: pd.Series) -> str:
     if "confluence" in combined:
         return "Confluence"
     return "Azure"
+
+
+def _identity_display(case: pd.Series) -> str:
+    identity_type = str(case.get("identity_type", "")).strip().upper()
+    identity_email = str(case.get("identity_email", "")).strip()
+    if identity_type == "HI" and identity_email and identity_email.lower() != "nan":
+        return escape(identity_email)
+    return escape(str(case.get("identity_name", "")))
+
+
+def _environment_label(case: pd.Series) -> str:
+    source_system = str(case.get("source_system", "")).strip().lower()
+    environment = escape(str(case.get("environment", "")))
+    icon = _environment_icon(source_system)
+    return f'<span class="ad-asset-environment-label">{icon}<span class="ad-asset-environment-text">{environment}</span></span>'
+
+
+def _environment_icon(source_system: str) -> str:
+    icon_files = {
+        "azure": "icon-azure.svg",
+        "azure_ad": "icon-azure.svg",
+        "entra": "icon-azure.svg",
+        "entra_id": "icon-azure.svg",
+        "github": "icon-github.svg",
+        "google_workspace": "icon-google-workspace.svg",
+        "slack": "icon-slack.svg",
+    }
+    icon_file = icon_files.get(source_system, "icon-azure.svg")
+    alt = _environment_for_case(pd.Series({"source_system": source_system}))
+    return (
+        f'<img src="{_asset_data_uri("icons", icon_file)}" alt="{escape(alt)}" '
+        'class="ad-asset-environment-icon" '
+        'style="width:15px;height:15px;max-width:15px;max-height:15px;object-fit:contain;" />'
+    )
 
 
 def _asset_risk_badge(level: str) -> str:

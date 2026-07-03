@@ -47,21 +47,25 @@ def main() -> None:
           }
 
           .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
-            background: transparent !important;
-            border: 1px solid #d1d5db !important;
-            box-shadow: none !important;
+            background: #ffffff !important;
+            border: 1px solid #2f5f87 !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
           }
 
           .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover,
           .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {
-            background: transparent !important;
-            border-color: #9ca3af !important;
-            box-shadow: none !important;
+            background: #ffffff !important;
+            border-color: var(--ad-blue) !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
           }
 
+          .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] span,
           .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] div,
           .st-key-asset_status_filter div[data-testid="stSelectbox"] [data-baseweb="select"] input {
             background: transparent !important;
+            color: #0f4f7a !important;
+            -webkit-text-fill-color: #0f4f7a !important;
+            font-weight: 700 !important;
           }
         </style>
         """,

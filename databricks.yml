@@ -8,6 +8,7 @@ workspace:
 sync:
   paths:
     - notebooks
+    - pipelines
     - data/poc/landing/raw
     - data/poc/eval
     - data/dev
@@ -87,26 +88,47 @@ variables:
     description: Whether context seed files must exist for context_seed_task
     default: "true"
   bronze_dlt_target_schema:
-    description: Target schema for Bronze DLT expectation validation
-    default: dlt_test
+    description: Target schema for Bronze DLT writer
+    default: bronze
   bronze_dlt_event_log_schema:
     description: Schema for Bronze DLT pipeline event logs
-    default: dlt_test
+    default: bronze
   bronze_snapshot_schema:
     description: Existing Bronze schema to snapshot before and after dlt-test smoke validation
     default: bronze
   bronze_dlt_raw_base_path:
-    description: Raw input base path for Bronze DLT expectation validation
-    default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/valid/landing/raw
+    description: Raw input base path for Bronze DLT writer
+    default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev
   bronze_dlt_fixture_mode:
     description: Whether fixture-only metadata overrides are enabled
-    default: "true"
+    default: "false"
   bronze_dlt_fixture_source_root:
     description: Bundle-deployed Bronze DLT fixture root
     default: data/dlt-test
   bronze_dlt_fixture_raw_root:
     description: ADLS root used only for Bronze DLT fixture validation
     default: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test
+  silver_dlt_source_schema:
+    description: Source schema for Silver DLT writer
+    default: bronze
+  silver_dlt_source_table_prefix:
+    description: Prefix for Silver DLT source tables
+    default: ""
+  silver_dlt_target_schema:
+    description: Target schema for Silver DLT writer
+    default: silver
+  silver_dlt_event_log_schema:
+    description: Schema for Silver DLT pipeline event logs
+    default: silver
+  silver_publish_replace_existing_tables:
+    description: Whether Silver publish step may rename existing Delta tables before creating stable views
+    default: "false"
+  dlt_cutover_enabled:
+    description: Whether one-time Bronze/Silver DLT cutover preparation may run
+    default: "false"
+  dlt_cutover_replace_existing_tables:
+    description: Whether DLT cutover preparation may rename existing Bronze Delta tables to legacy names
+    default: "false"
   dev_seed_size:
     description: Number of dev synthetic cases to generate
     default: "20"
@@ -134,11 +156,204 @@ targets:
   # dev: 본개발 실행 target. 대표 데모 케이스도 dev 합성 데이터에 포함한다.
   dev:
     default: true
+    resources:
+      pipelines:
+        bronze_dlt_writer:
+          name: access-drift-bronze-dlt-${bundle.target}
+          catalog: ${var.catalog}
+          target: ${var.bronze_dlt_target_schema}
+          serverless: true
+          development: true
+          continuous: false
+          edition: ADVANCED
+          libraries:
+            - file:
+                path: ./pipelines/bronze_dlt.py
+          configuration:
+            bronze.raw_base_path: ${var.bronze_dlt_raw_base_path}
+            bronze.fixture_mode: ${var.bronze_dlt_fixture_mode}
+            pipelines.metrics.flowTimeReporter.enabled: "true"
+          event_log:
+            catalog: ${var.catalog}
+            schema: ${var.bronze_dlt_event_log_schema}
+            name: bronze_dlt_event_log
 
-  # dlt-test: 기존 dev job 배포와 분리된 Bronze expectation 검증 전용 target.
+        silver_dlt_writer:
+          name: access-drift-silver-dlt-${bundle.target}
+          catalog: ${var.catalog}
+          target: ${var.silver_dlt_target_schema}
+          serverless: true
+          development: true
+          continuous: false
+          edition: ADVANCED
+          libraries:
+            - file:
+                path: ./pipelines/silver_dlt.py
+          configuration:
+            silver.source_catalog: ${var.catalog}
+            silver.source_schema: ${var.silver_dlt_source_schema}
+            silver.source_table_prefix: ${var.silver_dlt_source_table_prefix}
+            pipelines.metrics.flowTimeReporter.enabled: "true"
+          event_log:
+            catalog: ${var.catalog}
+            schema: ${var.silver_dlt_event_log_schema}
+            name: silver_dlt_event_log
+
+      jobs:
+        access-drift-pipeline:
+          name: access-drift-pipeline
+          tasks:
+            - task_key: migration_task
+              description: DDL 적용 — DLT 외 객체 생성, Bronze/Silver DDL은 DLT가 소유
+              notebook_task:
+                notebook_path: ./notebooks/00_apply_migrations.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  skip_bronze_silver_ddl: "true"
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: generate_dev_seed_task
+              description: Databricks workspace에서 dev 합성 Landing/Eval/Context JSONL 생성
+              notebook_task:
+                notebook_path: ./notebooks/09_generate_dev_seed.ipynb
+                base_parameters:
+                  seed_data_path: ${var.seed_data_path}
+                  eval_seed_path: ${var.eval_seed_path}
+                  context_output_root: ${var.context_output_root}
+                  dev_seed_size: ${var.dev_seed_size}
+                  dev_seed: ${var.dev_seed}
+                  dev_reference_date: ${var.dev_reference_date}
+                  generate_dev_seed_enabled: ${var.generate_dev_seed_enabled}
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: synthetic_data_task
+              description: 생성된 bundle seed 파일을 target별 ADLS raw 경로에 복사
+              depends_on:
+                - task_key: migration_task
+                - task_key: generate_dev_seed_task
+              notebook_task:
+                notebook_path: ./notebooks/01_synthetic_data.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  storage_account: ${var.storage_account_name}
+                  raw_base: ${var.raw_base_path}
+                  seed_data_path: ${var.seed_data_path}
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: bronze_dlt_task
+              description: ADLS raw JSONL → Bronze DLT materialized views + expectation
+              depends_on:
+                - task_key: synthetic_data_task
+                - task_key: prepare_dlt_cutover_task
+              pipeline_task:
+                pipeline_id: ${resources.pipelines.bronze_dlt_writer.id}
+                full_refresh: true
+
+            - task_key: prepare_dlt_cutover_task
+              description: One-time DLT cutover guard — 기존 Bronze table을 legacy rename할지 점검
+              depends_on:
+                - task_key: migration_task
+              notebook_task:
+                notebook_path: ./notebooks/13_prepare_dlt_cutover.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  bronze_schema: ${var.bronze_dlt_target_schema}
+                  cutover_enabled: ${var.dlt_cutover_enabled}
+                  replace_existing_tables: ${var.dlt_cutover_replace_existing_tables}
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: silver_dlt_task
+              description: Bronze DLT → Silver DLT staging materialized views + integrity audit
+              depends_on:
+                - task_key: bronze_dlt_task
+              pipeline_task:
+                pipeline_id: ${resources.pipelines.silver_dlt_writer.id}
+                full_refresh: true
+
+            - task_key: publish_silver_views_task
+              description: Silver DLT staging output을 stable Silver view로 publish
+              depends_on:
+                - task_key: silver_dlt_task
+              notebook_task:
+                notebook_path: ./notebooks/12_publish_silver_views.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  schema: ${var.silver_dlt_target_schema}
+                  staging_prefix: silver_dlt_
+                  replace_existing_tables: ${var.silver_publish_replace_existing_tables}
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: eval_seed_task
+              description: eval ground_truth_case seed 적재 + Silver 매칭 검증 (탐지 파이프라인과 독립)
+              depends_on:
+                - task_key: publish_silver_views_task
+              notebook_task:
+                notebook_path: ./notebooks/04_eval_seed.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  eval_seed_path: ${var.eval_seed_path}
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: context_seed_task
+              description: Risk Card context seed 적재 + Silver/Eval 매칭 검증
+              depends_on:
+                - task_key: eval_seed_task
+              notebook_task:
+                notebook_path: ./notebooks/08_context_seed.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  asset_context_path: ${var.asset_context_path}
+                  assignment_routing_path: ${var.assignment_routing_path}
+                  context_seed_required: ${var.context_seed_required}
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: intermediate_task
+              description: Silver → NHI residual access finding 후보 생성
+              depends_on:
+                - task_key: publish_silver_views_task
+              notebook_task:
+                notebook_path: ./notebooks/05_intermediate.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  run_id: "{{job.run_id}}"
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: gold_task
+              description: Intermediate finding → Risk Card용 Gold Core 적재
+              depends_on:
+                - task_key: intermediate_task
+              notebook_task:
+                notebook_path: ./notebooks/06_gold.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  run_id: "{{job.run_id}}"
+              existing_cluster_id: ${var.cluster_id}
+
+            - task_key: rag_doc_chunks_seed_task
+              description: RAG evidence chunk → rag.doc_chunks 적재
+              depends_on:
+                - task_key: migration_task
+              notebook_task:
+                notebook_path: ./notebooks/10_rag_evidence_seed.ipynb
+                base_parameters:
+                  catalog: ${var.catalog}
+                  rag_doc_chunks_path: ${var.rag_doc_chunks_path}
+                  run_id: "{{job.run_id}}"
+              existing_cluster_id: ${var.cluster_id}
+
+  # dlt-test: 기존 dev job 배포와 분리된 Bronze/Silver expectation 검증 전용 target.
   dlt-test:
     workspace:
       root_path: /Shared/access-drift-dlt-test
+    variables:
+      bronze_dlt_target_schema: dlt_test
+      bronze_dlt_event_log_schema: dlt_test
+      bronze_dlt_raw_base_path: abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dlt-test/valid/landing/raw
+      bronze_dlt_fixture_mode: "true"
+      silver_dlt_source_schema: dlt_test
+      silver_dlt_source_table_prefix: silver_valid_
+      silver_dlt_target_schema: dlt_test
+      silver_dlt_event_log_schema: dlt_test
     sync:
       paths:
         - data/dlt-test
@@ -164,6 +379,27 @@ targets:
             schema: ${var.bronze_dlt_event_log_schema}
             name: bronze_dlt_expectations_event_log
 
+        silver-dlt-expectations:
+          name: access-drift-silver-expectations-${bundle.target}
+          catalog: ${var.catalog}
+          target: ${var.silver_dlt_target_schema}
+          serverless: true
+          development: true
+          continuous: false
+          edition: ADVANCED
+          libraries:
+            - file:
+                path: ./notebooks/10_silver_dlt_expectations.py
+          configuration:
+            silver.source_catalog: ${var.catalog}
+            silver.source_schema: ${var.silver_dlt_source_schema}
+            silver.source_table_prefix: ${var.silver_dlt_source_table_prefix}
+            pipelines.metrics.flowTimeReporter.enabled: "true"
+          event_log:
+            catalog: ${var.catalog}
+            schema: ${var.silver_dlt_event_log_schema}
+            name: silver_dlt_expectations_event_log
+
       jobs:
         bronze-dlt-fixture-setup:
           name: access-drift-bronze-dlt-fixture-setup
@@ -176,6 +412,19 @@ targets:
                   fixture_source_root: ${var.bronze_dlt_fixture_source_root}
                   fixture_workspace_root: ${workspace.file_path}
                   fixture_raw_root: ${var.bronze_dlt_fixture_raw_root}
+              existing_cluster_id: ${var.cluster_id}
+
+        silver-dlt-fixture-setup:
+          name: access-drift-silver-dlt-fixture-setup
+          tasks:
+            - task_key: prepare_silver_dlt_fixtures
+              description: 기존 Bronze를 격리된 valid/invalid/empty Silver DLT 입력으로 준비
+              notebook_task:
+                notebook_path: ./notebooks/10_prepare_silver_dlt_fixtures.py
+                base_parameters:
+                  catalog: ${var.catalog}
+                  source_schema: bronze
+                  target_schema: ${var.silver_dlt_source_schema}
               existing_cluster_id: ${var.cluster_id}
 
         bronze-dlt-result-check:
@@ -208,8 +457,8 @@ targets:
 
 resources:
   jobs:
-    access-drift-pipeline:
-      name: access-drift-pipeline
+    access-drift-legacy-pipeline:
+      name: access-drift-legacy-pipeline
       tasks:
         - task_key: migration_task
           description: DDL 적용 — sql/databricks/migrations/*.sql 순서대로 실행

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import mimetypes
+import re
+from datetime import datetime
 from functools import lru_cache
 from html import escape
 from pathlib import Path
@@ -11,7 +13,13 @@ from urllib.parse import quote
 import pandas as pd
 import streamlit as st
 
+import src.jira_client as jira_client
+
 RISK_LEVELS = ["Critical", "High", "Medium", "Low"]
+DEMO_PRIORITY_RISK_CASE_KEYS = {
+    "d9419944a82fd5211982ad866cb0ebca889271dcbd854c0c5bd8871769b6fb4f",
+    "nhi:d8f4a5b6-7c8d-4e91-9f02-1a2b3c4d5e6f:asset-customer-export-storage-prod:nhi_residual_access",
+}
 ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
 ICON_DIR = ASSET_DIR / "icons"
 BADGE_DIR = ASSET_DIR / "badges"
@@ -104,12 +112,17 @@ def render_summary_cards(data: pd.DataFrame) -> None:
 
 
 def render_priority_review_list(data: pd.DataFrame) -> None:
-    priority = data[data["risk_level"].isin(RISK_LEVELS)].copy()
+    demo_priority_mask = data["risk_case_key"].astype(str).isin(DEMO_PRIORITY_RISK_CASE_KEYS)
+    priority = data[
+        data["risk_level"].isin(RISK_LEVELS)
+        | demo_priority_mask
+    ].copy()
+    priority["is_demo_priority_case"] = priority["risk_case_key"].astype(str).isin(DEMO_PRIORITY_RISK_CASE_KEYS)
     priority["priority_sort_score"] = pd.to_numeric(priority["risk_score"], errors="coerce").fillna(0)
     priority["priority_sort_detected_at"] = pd.to_datetime(priority["detected_at"], errors="coerce")
     priority = priority.sort_values(
-        ["priority_sort_score", "priority_sort_detected_at", "case_id"],
-        ascending=[False, False, True],
+        ["is_demo_priority_case", "priority_sort_score", "priority_sort_detected_at", "case_id"],
+        ascending=[False, False, False, True],
         na_position="last",
     ).head(3)
     priority["risk_title"] = priority["overview_title"].where(priority["overview_title"].ne(""), priority["risk_title"])
@@ -136,8 +149,7 @@ def render_priority_review_list(data: pd.DataFrame) -> None:
               </div>
               <div>
                 <div class="ad-col-label">Identity</div>
-                <span class="ad-identity-value">{escape(str(case["identity_name"]))}</span>
-                {_identity_badge(str(case["identity_type"]))}
+                {_overview_identity_label(case)}
               </div>
               <div>
                 <div class="ad-col-label">Detected At</div>
@@ -227,10 +239,7 @@ def render_risk_factors_card_v2(case: pd.Series) -> None:
         f"Permission level: {case['permission_level']}",
         f"Rotation status: {case['rotation_status']}",
     ]
-    factors = [
-        "소유자 계정 비활성화" if factor == "HR/IdP 계정 비활성화" else factor
-        for factor in factors
-    ]
+    factors = _risk_factor_labels(factors)
     factor_html = []
     for index, factor in enumerate(factors):
         icon_file = "riskfactors-icon-check.svg" if index == 0 else "riskfactors-icon-noncheck.svg"
@@ -272,6 +281,7 @@ def render_risk_factors_card(case: pd.Series) -> None:
         f"Permission level: {case['permission_level']}",
         f"Rotation status: {case['rotation_status']}",
     ]
+    factors = _risk_factor_labels(factors)
     factor_html = []
     for index, factor in enumerate(factors):
         icon_file = "riskfactors-icon-check.svg" if index == 0 else "riskfactors-icon-noncheck.svg"
@@ -292,6 +302,42 @@ def render_risk_factors_card(case: pd.Series) -> None:
         </div>
         """
     )
+
+
+def _risk_factor_labels(factors: list[str]) -> list[str]:
+    return [label for factor in factors if (label := _risk_factor_label(factor))]
+
+
+def _risk_factor_label(factor: str) -> str:
+    text = str(factor).strip()
+    if not text or text == "Sensitive asset access":
+        return ""
+
+    lower = text.lower()
+    if text == "HR/IdP 계정 비활성화":
+        return "소유자 계정 비활성화"
+    if lower.startswith("owner status:"):
+        status = text.split(":", 1)[1].strip()
+        if status.lower() in {"inactive", "terminated", "disabled", "offboarded"}:
+            return "소유자 계정 비활성화"
+        return f"소유자 상태 {status}"
+    if lower == "credential active":
+        return "Credential 활성 상태"
+    if lower.startswith("credential status:"):
+        status = text.split(":", 1)[1].strip()
+        if status.lower() == "active":
+            return "Credential 활성 상태"
+        return f"Credential 상태 {status}"
+    if lower.startswith("permission:") or lower.startswith("permission level:"):
+        permission = text.split(":", 1)[1].strip()
+        return f"Storage 권한 {permission}" if "read/list" in permission.lower() else f"권한 {permission}"
+    if lower.startswith("asset sensitivity:"):
+        sensitivity = text.split(":", 1)[1].strip()
+        return f"자산 민감도 {sensitivity}"
+    if lower.startswith("rotation status:"):
+        status = text.split(":", 1)[1].strip()
+        return f"Rotation 상태 {status}"
+    return text
 
 
 def render_review_info_card(case: pd.Series) -> None:
@@ -335,7 +381,7 @@ def render_recommendation_panel(case: pd.Series) -> None:
             {''.join(_doc_card(doc, index) for index, doc in enumerate(docs))}
           </div>
           <h3>실행 단계 <span style="color:#aeb5bf; font-size:16px">ⓘ</span></h3>
-          <div>
+          <div class="ad-action-steps">
             {''.join(_action_step(step, index + 1) for index, step in enumerate(plan))}
           </div>
         </div>
@@ -351,7 +397,7 @@ def render_ai_agent_placeholder(case: pd.Series) -> None:
     st.html(
         f"""
         <div class="ad-card ad-panel">
-          <div class="ad-agent-header">{_icon_img("icon-azure-openai.svg", "AI Agent", "ad-agent-icon")} AI Agent</div>
+          <div class="ad-agent-header">AI Agent</div>
           <div class="ad-agent-body">
             <div class="ad-chat-bubble">
               <div class="ad-chat-name">AI Agent</div>
@@ -373,12 +419,278 @@ def render_ai_agent_placeholder(case: pd.Series) -> None:
 
 
 def render_ticket_form_placeholder(case: pd.Series) -> None:
-    with st.form("ticket-placeholder-form"):
-        st.text_input("Title", value=f"[Access Drift] {case['risk_title']}")
-        st.text_area("Description", value=case["recommended_action"], height=160)
-        st.selectbox("Priority", ["High", "Medium", "Low"])
-        st.text_input("Assignee", value=case["action_owner"])
-        st.form_submit_button("Create ticket", disabled=True)
+    ticket = _ticket_payload(case)
+    st.markdown(
+        """
+        <style>
+        .st-key-jira_ticket_panel {
+          margin-top: 8px;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-preview-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 8px;
+          color: #172B4D;
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-preview-icon {
+          width: 22px;
+          height: 22px;
+          object-fit: contain;
+          display: block;
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stForm"] {
+          border: 1px solid #DFE1E6;
+          border-radius: 8px;
+          background: #FFFFFF;
+          padding: 18px 20px;
+          box-shadow: 0 1px 2px rgba(9, 30, 66, 0.08);
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stHorizontalBlock"] {
+          gap: 2rem;
+        }
+
+        .st-key-jira_ticket_panel label p {
+          color: #44546F !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stSelectbox"] label {
+          display: block !important;
+        }
+
+        .st-key-jira_ticket_panel input,
+        .st-key-jira_ticket_panel textarea,
+        .st-key-jira_ticket_panel [data-baseweb="select"] > div {
+          border-color: #DFE1E6 !important;
+          border-radius: 4px !important;
+          background: #FFFFFF !important;
+          color: #172B4D !important;
+          font-size: 14px !important;
+          font-weight: 600 !important;
+        }
+
+        .st-key-jira_ticket_panel textarea {
+          line-height: 1.55 !important;
+          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+        }
+
+        .st-key-jira_ticket_panel .st-key-jira_title input {
+          min-height: 48px !important;
+          font-size: 18px !important;
+          font-weight: 700 !important;
+        }
+
+        .st-key-jira_ticket_panel .st-key-jira_explanation textarea {
+          min-height: 390px !important;
+        }
+
+        .st-key-jira_ticket_panel .st-key-jira_detail_panel {
+          min-height: 448px;
+          padding: 12px 16px 14px;
+          border: 1px solid #DFE1E6;
+          border-radius: 8px;
+          background: #FAFBFC;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-side-title {
+          color: #172B4D;
+          font-size: 16px;
+          font-weight: 700;
+          margin-bottom: 6px;
+        }
+
+        .st-key-jira_ticket_panel .ad-jira-button-spacer {
+          height: 4px;
+        }
+
+        .st-key-jira_ticket_panel div[data-testid="stFormSubmitButton"] button {
+          background: #0C66E4 !important;
+          border-color: #0C66E4 !important;
+          color: #FFFFFF !important;
+          border-radius: 4px !important;
+          min-height: 38px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container(key="jira_ticket_panel"):
+        st.html(
+            f"""
+            <div class="ad-jira-preview-header">
+              {_icon_img("icon-jira.svg", "Jira", "ad-jira-preview-icon")}
+              <span>Jira Issue Preview</span>
+            </div>
+            """
+        )
+        with st.form("ticket-placeholder-form"):
+            left_col, right_col = st.columns([0.66, 0.34], gap="large", vertical_alignment="top")
+            with left_col:
+                title = st.text_input("Title", value=ticket["title"], key="jira_title")
+                explanation = st.text_area("Explanation", value=ticket["explanation"], height=430, key="jira_explanation")
+            with right_col:
+                with st.container(key="jira_detail_panel"):
+                    st.html('<div class="ad-jira-side-title">세부 사항</div>')
+                    priority_options = ["Highest", "High", "Medium", "Low", "Lowest"]
+                    assignee = st.text_input("담당자", value=_display_person_name(ticket["assignee"]))
+                    priority = st.selectbox(
+                        "우선 순위",
+                        priority_options,
+                        index=priority_options.index(ticket["priority"]),
+                    )
+                    label = st.text_input("레이블", value=ticket["label"])
+                    due_date = st.text_input("기한", value="", placeholder="YYYY-MM-DD")
+                    team = st.text_input("Team", value=ticket["team"])
+                    reporter = st.text_input("보고자", value=_display_person_name(ticket["reporter"]))
+                    st.html('<div class="ad-jira-button-spacer"></div>')
+                    submitted = st.form_submit_button("Create Jira issue", use_container_width=True)
+
+    if not submitted:
+        return
+
+    normalized_due_date = _normalize_jira_due_date(due_date)
+    if normalized_due_date is None:
+        st.error("기한은 YYYY-MM-DD 형식으로 입력해야 합니다.")
+        return
+
+    config = jira_client.load_jira_config()
+    if config is None:
+        st.error("Jira 설정이 없습니다. 로컬 secrets.toml의 [jira] 섹션 또는 Databricks Apps 환경 변수를 확인하세요.")
+        return
+
+    full_explanation = _append_jira_sidebar_fields(explanation, assignee, team, reporter)
+    try:
+        result = jira_client.create_jira_issue(
+            config,
+            title=title,
+            explanation=full_explanation,
+            priority=priority,
+            label=label,
+            due_date=normalized_due_date or "",
+        )
+    except Exception as exc:
+        st.error(str(exc))
+        return
+
+    st.success(f"Jira issue created: {result.key}")
+    st.markdown(f"[Open Jira issue]({result.url})")
+
+
+def _ticket_payload(case: pd.Series) -> dict[str, str]:
+    display_case_id = str(case.get("display_case_id", case.get("case_id", "")))
+    risk_level = str(case.get("risk_level", "")).upper()
+    risk_case_key = str(case.get("risk_case_key", ""))
+    identity_name = str(case.get("identity_name", ""))
+    is_demo_case = (
+        risk_case_key in DEMO_PRIORITY_RISK_CASE_KEYS
+        or display_case_id == "CASE-7B4DC4"
+        or identity_name == "sp-crm-customer-export-prod"
+    )
+
+    if is_demo_case:
+        return {
+            "title": "[CASE-7B4DC4][CRITICAL] NHI residual access review",
+            "explanation": (
+                "퇴사자와 연결된 NHI가 Production 환경의 Critical 민감 자산에 접근 가능한 상태로 확인되어 검토를 요청드립니다.\n\n"
+                "- Case ID: CASE-7B4DC4\n"
+                "- 드리프트 유형: NHI Access Drift \n"
+                "- 대상 NHI: sp-crm-customer-export-prod\n"
+                "- 연관 사용자: CRM 데이터 운영팀 김민수 (퇴사일자: 2026/06/10)\n"
+                "- 민감 자산: customer-export-storage-prod\n"
+                "- 환경/민감도: Production / Critical\n"
+                "- 최종 위험도: CRITICAL\n\n"
+                "■ 위험 근거\n"
+                "퇴사자 김민수가 소유한 활성 App Registration sp-crm-customer-export-prod에 유효한 credential이 남아 있고 "
+                "customer-export-storage-prod 자산 접근 경로가 활성 상태입니다.\n\n"
+                "■ 권장 조치\n"
+                "담당자와 실제 사용 목적을 확인한 후, 퇴사자와 연결된 활성 Client Secret을 즉시 교체해야 합니다. "
+                "이후 Storage Account의 RBAC 권한 및 공개 접근 설정에 대한 점검이 필요합니다."
+            ),
+            "priority": "Highest",
+            "assignee": "이다영",
+            "label": "CASE-7B4DC4",
+            "team": "CRM 데이터 운영팀",
+            "reporter": "박지연",
+        }
+
+    title = f"[{display_case_id}][{risk_level}] {case.get('overview_title', case.get('risk_title', 'Access drift'))} review"
+    explanation = (
+        "접근 드리프트 위험이 확인되어 검토를 요청드립니다.\n\n"
+        f"- Case ID: {display_case_id}\n"
+        f"- 드리프트 유형: {case.get('drift_type', '')}\n"
+        f"- 대상 Identity: {case.get('identity_name', '')}\n"
+        f"- 연관 사용자: {case.get('owner_team', '')} {case.get('owner_name', '')}\n"
+        f"- 민감 자산: {case.get('asset_full_name', case.get('asset_name', ''))}\n"
+        f"- 환경/민감도: {case.get('asset_type', '')} / {case.get('asset_sensitivity', '')}\n"
+        f"- 최종 위험도: {risk_level}\n\n"
+        "■ 위험 근거\n"
+        f"{case.get('risk_summary', '')}\n\n"
+        "■ 권장 조치\n"
+        f"{case.get('ai_summary', case.get('recommended_action', ''))}"
+    )
+    return {
+        "title": title,
+        "explanation": explanation,
+        "priority": _jira_priority_from_risk_level(str(case.get("risk_level", ""))),
+        "assignee": str(case.get("action_owner", "")),
+        "label": display_case_id,
+        "team": str(case.get("owner_team", "")),
+        "reporter": str(case.get("reviewer", "")),
+    }
+
+
+def _jira_priority_from_risk_level(risk_level: str) -> str:
+    mapping = {
+        "critical": "Highest",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low",
+    }
+    return mapping.get(str(risk_level).strip().lower(), "Medium")
+
+
+def _normalize_jira_due_date(value: str) -> str | None:
+    text = str(value).strip()
+    if not text:
+        return ""
+    match = re.fullmatch(r"(\d{4})[-.](\d{2})[-.](\d{2})", text)
+    if not match:
+        return None
+    normalized = "-".join(match.groups())
+    try:
+        datetime.strptime(normalized, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return normalized
+
+
+def _display_person_name(value: str) -> str:
+    text = str(value).strip()
+    if not text:
+        return ""
+    for separator in ["·", "/", "|", ","]:
+        if separator in text:
+            return text.split(separator, 1)[0].strip()
+    return text
+
+
+def _append_jira_sidebar_fields(explanation: str, assignee: str, team: str, reporter: str) -> str:
+    return (
+        f"{explanation}\n\n"
+        "■ Jira 입력 정보\n"
+        f"- 담당자: {assignee}\n"
+        f"- Team: {team}\n"
+        f"- 보고자: {reporter}"
+    )
 
 
 def _legend_row(label: str, value: int, color: str) -> str:
@@ -434,6 +746,55 @@ def _status_badge(status: str) -> str:
     return f'<span class="ad-pill {css}">{escape(status)}</span>'
 
 
+def _overview_identity_label(case: pd.Series) -> str:
+    source_system = str(case.get("source_system", "")).strip().lower()
+    identity_name = escape(_display_identity_value(case))
+    icon = _platform_identity_icon(source_system)
+    return f'<span class="ad-overview-identity-label">{icon}<span class="ad-identity-value">{identity_name}</span></span>'
+
+
+def _display_identity_value(case: pd.Series) -> str:
+    identity_type = str(case.get("identity_type", "")).strip().upper()
+    identity_email = str(case.get("identity_email", "")).strip()
+    if identity_type == "HI" and identity_email and identity_email.lower() != "nan":
+        return identity_email
+    return str(case.get("identity_name", ""))
+
+
+def _platform_identity_icon(source_system: str) -> str:
+    icon_files = {
+        "azure": "icon-azure.svg",
+        "azure_ad": "icon-azure.svg",
+        "entra": "icon-azure.svg",
+        "entra_id": "icon-azure.svg",
+        "github": "icon-github.svg",
+        "google_workspace": "icon-google-workspace.svg",
+        "slack": "icon-slack.svg",
+    }
+    icon_file = icon_files.get(source_system)
+    if icon_file:
+        alt = _source_system_label(source_system)
+        return (
+            f'<img src="{_asset_data_uri("icons", icon_file)}" alt="{escape(alt)}" '
+            'class="ad-overview-platform-icon" '
+            'style="width:17px;height:17px;max-width:17px;max-height:17px;object-fit:contain;display:inline-block;margin-right:7px;" />'
+        )
+    return '<span class="ad-overview-platform-icon ad-overview-platform-text" style="margin-right:7px;">ID</span>'
+
+
+def _source_system_label(source_system: str) -> str:
+    labels = {
+        "azure": "Azure",
+        "azure_ad": "Azure",
+        "entra": "Azure",
+        "entra_id": "Azure",
+        "github": "GitHub",
+        "google_workspace": "Google Workspace",
+        "slack": "Slack",
+    }
+    return labels.get(source_system, "Identity")
+
+
 def _identity_badge(identity_type: str) -> str:
     badge_file = "badge-nhi.svg" if identity_type == "NHI" else "badge-hi.svg"
     return _badge_img(badge_file, identity_type, "ad-identity-badge-img")
@@ -466,12 +827,25 @@ def _doc_card(doc: str, index: int) -> str:
 
 
 def _action_step(step: str, index: int) -> str:
+    color = _action_step_color(step)
     return f"""
-    <div class="ad-step">
-      <div class="ad-step-number">{index}</div>
-      <div>{escape(step)}</div>
+    <div class="ad-step" style="display:grid; grid-template-columns:25px 1fr; gap:10px; align-items:center; margin:17px 0; font-size:16px !important; line-height:1.45;">
+      <div class="ad-step-number" style="width:25px; height:25px; min-width:25px; border-radius:999px; display:grid; place-items:center; font-size:12px !important; background:{color};">{index}</div>
+      <div style="font-size:16px !important; line-height:1.45;">{escape(step)}</div>
     </div>
     """
+
+
+def _action_step_color(step: str) -> str:
+    normalized = step.lower()
+    if any(keyword in normalized for keyword in ["점검", "audit", "check"]):
+        return "#6f7785"
+    if any(
+        keyword in normalized
+        for keyword in ["교체", "폐기", "회수", "삭제", "rotation", "rotate", "revoke", "replace"]
+    ):
+        return "#f23d42"
+    return "#003b68"
 
 
 def _asset_data_uri(directory: str, filename: str) -> str:
@@ -506,7 +880,7 @@ def _format_datetime(value: object) -> str:
     timestamp = pd.to_datetime(value, errors="coerce")
     if pd.isna(timestamp):
         return ""
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize("UTC")
+    timestamp = timestamp.tz_convert("Asia/Seoul")
     return timestamp.strftime("%Y/%m/%d %H:%M")
-
-
-

@@ -1,0 +1,102 @@
+bundle:
+  name: access-drift-dashboard
+
+workspace:
+  host: https://adb-7405615323116390.10.azuredatabricks.net
+  root_path: /Users/${workspace.current_user.userName}/.bundle/access-drift-dashboard
+
+variables:
+  app_name:
+    description: Databricks Apps resource name
+    default: access-drift-dashboard-dev
+  databricks_host:
+    description: Databricks workspace host used by the dashboard app runtime
+    default: https://adb-7405615323116390.10.azuredatabricks.net
+  databricks_http_path:
+    description: Databricks SQL Warehouse HTTP path used by the dashboard app runtime
+    default: ""
+  databricks_token:
+    description: Databricks token used by the dashboard app runtime
+    default: ""
+  catalog:
+    description: Unity Catalog catalog used by dashboard app views
+    default: access_drift_dev
+  gold_schema:
+    description: Gold schema used by fallback dashboard reads
+    default: gold
+  app_schema:
+    description: App schema used by dashboard views and action state tables
+    default: app
+  llm_endpoint:
+    description: Databricks Serving endpoint used by the dashboard AI Agent
+    default: databricks-meta-llama-3-3-70b-instruct
+  actor_id:
+    description: Actor id written to action state/event rows from the deployed dashboard
+    default: databricks_apps_user
+  actor_name:
+    description: Actor name written to action state/event rows from the deployed dashboard
+    default: Databricks Apps User
+  jira_base_url:
+    description: Jira site base URL used for ticket creation
+    default: ""
+  jira_email:
+    description: Jira account email used for ticket creation
+    default: ""
+  jira_api_token:
+    description: Jira API token used for ticket creation
+    default: ""
+  jira_project_key:
+    description: Jira project key used for ticket creation
+    default: ""
+  jira_issue_type:
+    description: Jira issue type used for ticket creation
+    default: ""
+
+targets:
+  dev:
+    default: true
+
+resources:
+  apps:
+    access-drift-dashboard:
+      name: ${var.app_name}
+      description: Access Drift Streamlit dashboard for Risk Overview and Risk Card review
+      source_code_path: .
+      config:
+        command:
+          - streamlit
+          - run
+          - app.py
+          - --server.port
+          - "8000"
+          - --server.address
+          - 0.0.0.0
+        env:
+          - name: DATABRICKS_HOST
+            value: ${var.databricks_host}
+          - name: DATABRICKS_HTTP_PATH
+            value: ${var.databricks_http_path}
+          - name: DATABRICKS_TOKEN
+            value: ${var.databricks_token}
+          - name: ACCESS_DRIFT_CATALOG
+            value: ${var.catalog}
+          - name: ACCESS_DRIFT_GOLD_SCHEMA
+            value: ${var.gold_schema}
+          - name: ACCESS_DRIFT_APP_SCHEMA
+            value: ${var.app_schema}
+          - name: DATABRICKS_LLM_ENDPOINT
+            value: ${var.llm_endpoint}
+          - name: ACCESS_DRIFT_ACTOR_ID
+            value: ${var.actor_id}
+          - name: ACCESS_DRIFT_ACTOR_NAME
+            value: ${var.actor_name}
+          - name: JIRA_BASE_URL
+            value: ${var.jira_base_url}
+          - name: JIRA_EMAIL
+            value: ${var.jira_email}
+          - name: JIRA_API_TOKEN
+            value: ${var.jira_api_token}
+          - name: JIRA_PROJECT_KEY
+            value: ${var.jira_project_key}
+          - name: JIRA_ISSUE_TYPE
+            value: ${var.jira_issue_type}

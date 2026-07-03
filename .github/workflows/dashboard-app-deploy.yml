@@ -1,0 +1,89 @@
+name: Dashboard Databricks Apps Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/dashboard/**
+      - .github/workflows/dashboard-app-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: dashboard-databricks-apps-deploy
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_AUTH_TYPE: azure-cli
+  DATABRICKS_CONFIG_FILE: /dev/null
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DASHBOARD_APP_NAME: access-drift-dashboard-dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Databricks CLI
+        uses: databricks/setup-cli@main
+        with:
+          version: 1.4.0
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Compile dashboard Python files
+        run: python -m compileall apps/dashboard/src apps/dashboard/pages apps/dashboard/app.py
+
+      - name: Validate dashboard app bundle
+        working-directory: apps/dashboard
+        run: >
+          databricks bundle validate -t dev
+          --var="databricks_host=${DATABRICKS_HOST}"
+          --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
+          --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+          --var="jira_base_url=${{ secrets.JIRA_BASE_URL }}"
+          --var="jira_email=${{ secrets.JIRA_EMAIL }}"
+          --var="jira_api_token=${{ secrets.JIRA_API_TOKEN }}"
+          --var="jira_project_key=${{ secrets.JIRA_PROJECT_KEY }}"
+          --var="jira_issue_type=${{ secrets.JIRA_ISSUE_TYPE }}"
+
+      - name: Deploy dashboard app
+        working-directory: apps/dashboard
+        run: >
+          databricks apps deploy -t dev --auto-approve --skip-validation
+          --var="databricks_host=${DATABRICKS_HOST}"
+          --var="databricks_http_path=${{ secrets.DATABRICKS_HTTP_PATH }}"
+          --var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+          --var="jira_base_url=${{ secrets.JIRA_BASE_URL }}"
+          --var="jira_email=${{ secrets.JIRA_EMAIL }}"
+          --var="jira_api_token=${{ secrets.JIRA_API_TOKEN }}"
+          --var="jira_project_key=${{ secrets.JIRA_PROJECT_KEY }}"
+          --var="jira_issue_type=${{ secrets.JIRA_ISSUE_TYPE }}"
+
+      - name: Show dashboard app info
+        run: |
+          mkdir -p artifacts/dashboard-app
+          databricks apps get "$DASHBOARD_APP_NAME" -o json | tee artifacts/dashboard-app/app-info.json
+
+      - name: Upload dashboard app info
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-app-info
+          path: artifacts/dashboard-app/app-info.json
