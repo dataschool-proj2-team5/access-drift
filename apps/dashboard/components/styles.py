@@ -690,24 +690,33 @@ def apply_dashboard_style(page: str | None = None) -> None:
           background: var(--ad-soft);
           border: 1px solid var(--ad-border);
           border-radius: 10px;
-          min-height: 620px;
+          min-height: 420px;
+          max-height: 420px;
+          overflow-y: auto;
+          overflow-x: hidden;
           padding: 18px;
+          scroll-behavior: smooth;
         }
 
         .ad-chat-bubble {
-          max-width: 82%;
+          max-width: min(82%, calc(100% - 24px));
+          box-sizing: border-box;
           border: 1px solid var(--ad-border);
           border-radius: 8px;
           background: #fff;
           padding: 16px;
           margin-bottom: 16px;
           line-height: 1.55;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          word-break: keep-all;
         }
 
         .ad-chat-user {
           margin-left: auto;
           background: var(--ad-blue-soft);
           border-color: var(--ad-blue-soft);
+          word-break: keep-all;
         }
 
         .ad-chat-name {

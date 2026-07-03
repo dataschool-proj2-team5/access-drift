@@ -136,10 +136,39 @@ def _generate(
     result = _post_json(
         config,
         f"{config.host_url}/serving-endpoints/{llm_endpoint}/invocations",
-        {"messages": messages, "temperature": 0.0, "max_tokens": 512},
+        _llm_payload(llm_endpoint, messages, max_tokens=512),
         timeout=LLM_TIMEOUT_SECONDS,
     )
-    return str(result["choices"][0]["message"]["content"]).strip()
+    return _message_content_text(result["choices"][0]["message"].get("content"))
+
+
+def _message_content_text(content: object) -> str:
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict):
+                # Claude/Anthropic responses can include reasoning/signature blocks. Keep only display text.
+                if block.get("type") == "text" and block.get("text"):
+                    parts.append(str(block["text"]))
+                elif "text" in block and block.get("type") not in {"reasoning", "signature"}:
+                    parts.append(str(block["text"]))
+            elif isinstance(block, str):
+                parts.append(block)
+        return "\n".join(part.strip() for part in parts if part and part.strip()).strip()
+    if isinstance(content, dict):
+        text = content.get("text") or content.get("content") or ""
+        return str(text).strip()
+    return str(content or "").strip()
+
+
+def _llm_payload(llm_endpoint: str, messages: list[dict], max_tokens: int) -> dict:
+    payload = {"messages": messages, "max_tokens": max_tokens}
+    # Databricks Claude/Anthropic endpoints reject temperature, while OpenAI/Llama accept it.
+    if "claude" not in llm_endpoint.lower() and "anthropic" not in llm_endpoint.lower():
+        payload["temperature"] = 0.0
+    return payload
 
 
 def _case_summary(case: pd.Series) -> str:

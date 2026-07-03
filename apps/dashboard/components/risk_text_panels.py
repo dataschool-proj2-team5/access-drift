@@ -4,6 +4,7 @@ from html import escape
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from components.cards import (
     _action_step,
@@ -64,6 +65,7 @@ def render_recommendation_panel(case: pd.Series) -> None:
     )
 
 
+@st.fragment
 def render_ai_agent_chat(case: pd.Series) -> None:
     """Risk Card context에서 RAG 기반으로 대화하는 AI Agent 패널."""
     from src import rag_agent
@@ -71,6 +73,7 @@ def render_ai_agent_chat(case: pd.Series) -> None:
     case_id = str(case.get("case_id", "case"))
     state_key = f"agent_chat_{case_id}"
     pending_key = f"agent_pending_{case_id}"
+    scroll_key = f"agent_scroll_bottom_{case_id}"
     if state_key not in st.session_state:
         seed = _as_list(case["ai_agent_messages"])
         greeting = seed[0] if seed else "권장 조치 초안을 준비했습니다. 이 케이스에 대해 무엇이든 물어보세요."
@@ -82,16 +85,20 @@ def render_ai_agent_chat(case: pd.Series) -> None:
     if pending_question:
         bubbles.append(_loading_bubble())
 
+    scroll_id = _safe_dom_id(f"ad-agent-scroll-{case_id}")
+    bubbles_html = ''.join(bubbles)
     st.html(
         f"""
         <div class="ad-card ad-panel" style="margin-bottom:0">
           <div class="ad-agent-header">{_icon_img("icon-azure-openai.svg", "AI Agent", "ad-agent-icon")} AI Agent</div>
-          <div class="ad-agent-body" style="max-height:420px; overflow-y:auto">
-            {''.join(bubbles)}
+          <div id="{scroll_id}" class="ad-agent-body">
+            {bubbles_html}
           </div>
         </div>
         """
     )
+    if st.session_state.pop(scroll_key, False):
+        _scroll_agent_to_bottom(scroll_id)
 
     with st.form(key=f"agent_form_{case_id}", clear_on_submit=True, border=False):
         input_col, send_col = st.columns([4, 1], gap="small", vertical_alignment="bottom")
@@ -111,14 +118,40 @@ def render_ai_agent_chat(case: pd.Series) -> None:
         history.append({"role": "user", "content": cleaned_question, "citations": []})
         st.session_state[state_key] = history
         st.session_state[pending_key] = cleaned_question
-        st.rerun()
+        st.session_state[scroll_key] = True
+        _rerun_agent_fragment()
 
     if pending_question:
         result = rag_agent.answer_question(case, str(pending_question), history)
         history.append({"role": "assistant", "content": result.text, "citations": result.citations})
         st.session_state[state_key] = history
         st.session_state.pop(pending_key, None)
+        _rerun_agent_fragment()
+
+def _rerun_agent_fragment() -> None:
+    try:
+        st.rerun(scope="fragment")
+    except Exception:  # noqa: BLE001
         st.rerun()
+
+
+def _safe_dom_id(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in value)
+
+
+def _scroll_agent_to_bottom(scroll_id: str) -> None:
+    components.html(
+        f"""
+        <script>
+        const target = window.parent.document.getElementById({scroll_id!r});
+        if (target) {{ target.scrollTop = target.scrollHeight; }}
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 
 def _citation_note(citations: list) -> str:
     if not citations:
