@@ -24,6 +24,7 @@ CARD_DETAIL_VIEW = "risk_card_detail_view"
 ACCESS_PATH_VIEW = "risk_access_path_view"
 ACTION_STATE_TABLE = "risk_action_state"
 GOLD_CORE_TABLE = "gold_core"
+RAG_RECOMMENDED_ACTION_TABLE = "recommended_action"
 
 
 @dataclass(frozen=True)
@@ -90,8 +91,9 @@ def load_databricks_dashboard_data(config: DatabricksConfig) -> pd.DataFrame:
     detail = _query_databricks_table(config, config.app_schema, CARD_DETAIL_VIEW)
     access_path = _query_databricks_table(config, config.app_schema, ACCESS_PATH_VIEW)
     action_state = _query_databricks_table(config, config.app_schema, ACTION_STATE_TABLE)
+    rag = _query_databricks_table(config, "rag", RAG_RECOMMENDED_ACTION_TABLE)
 
-    return _normalize_app_view_rows(case_list, detail, access_path, action_state)
+    return _normalize_app_view_rows(case_list, detail, access_path, action_state, rag)
 
 
 def normalize_to_internal_schema(data: pd.DataFrame) -> pd.DataFrame:
@@ -150,12 +152,15 @@ def _normalize_app_view_rows(
     detail: pd.DataFrame,
     access_path: pd.DataFrame,
     action_state: pd.DataFrame,
+    rag: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     rows = case_list.copy()
 
     rows = _merge_by_case_key(rows, detail, "detail")
     rows = _merge_by_case_key(rows, access_path, "path")
     rows = _merge_by_case_key(rows, action_state, "state")
+    if rag is not None:
+        rows = _merge_by_case_key(rows, rag, "rag")
 
     normalized = pd.DataFrame()
     normalized["risk_case_key"] = _first_present(rows, ["risk_case_key"])
@@ -202,14 +207,15 @@ def _normalize_app_view_rows(
     normalized["review_status"] = _normalize_review_status(_first_present(rows, ["status", "action_status", "action_status_detail"]))
     normalized["reviewer"] = _person_team(_first_present(rows, ["reviewer_name", "reviewer_name_detail", "reviewer_name_state"]), _first_present(rows, ["reviewer_team", "reviewer_team_detail", "reviewer_team_state"]))
     normalized["action_owner"] = _person_team(_first_present(rows, ["assignee_name", "assignee_name_detail"]), _first_present(rows, ["assignee_team", "assignee_team_detail"]))
-    normalized["recommended_action"] = _first_present(rows, ["deterministic_recommended_action", "recommended_action"])
+    rag_answer = _first_present(rows, ["rag_answer_text", "answer_text", "answer_text_rag"])
+    normalized["recommended_action"] = rag_answer.where(_has_value(rag_answer), _first_present(rows, ["deterministic_recommended_action", "recommended_action"]))
     normalized["risk_summary"] = _first_present(rows, ["risk_summary", "evidence_summary"])
     normalized["risk_factors"] = rows.apply(_risk_factors_from_row, axis=1)
-    normalized["action_plan"] = [[] for _ in range(len(rows))]
-    normalized["ai_agent_messages"] = [[] for _ in range(len(rows))]
+    normalized["action_plan"] = rows.apply(_action_plan_from_row, axis=1)
+    normalized["ai_agent_messages"] = rows.apply(_ai_messages_from_row, axis=1)
     normalized["overview_title"] = _first_present(rows, ["drift_type_label", "card_title", "drift_type"])
-    normalized["ai_summary"] = _first_present(rows, ["risk_summary", "deterministic_recommended_action"])
-    normalized["reference_docs"] = [[] for _ in range(len(rows))]
+    normalized["ai_summary"] = rows.apply(_ai_summary_from_row, axis=1)
+    normalized["reference_docs"] = rows.apply(_reference_docs_from_row, axis=1)
 
     return normalized
 
@@ -260,6 +266,105 @@ def _normalize_gold_core_rows(gold_core: pd.DataFrame) -> pd.DataFrame:
     normalized["reference_docs"] = [[] for _ in range(len(gold_core))]
     return normalized
 
+
+
+def _json_array(value: object) -> list[object]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if value is None or pd.isna(value):
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _row_first_value(row: pd.Series, columns: list[str], default: object = "") -> object:
+    for column in columns:
+        if column in row and not pd.isna(row[column]) and str(row[column]) != "":
+            return row[column]
+    return default
+
+
+def _reference_docs_from_row(row: pd.Series) -> list[dict[str, str]]:
+    chunk_ids = _json_array(_row_first_value(row, ["rag_citations", "citations", "citations_rag"], "[]"))
+    titles = _json_array(_row_first_value(row, ["rag_citation_titles", "citation_titles", "citation_titles_rag"], "[]"))
+    docs = []
+    for index, chunk_id in enumerate(chunk_ids):
+        title = str(titles[index]) if index < len(titles) and titles[index] else str(chunk_id)
+        docs.append({"title": title, "source": str(chunk_id), "type": "RAG evidence"})
+    return docs
+
+
+def _action_plan_from_row(row: pd.Series) -> list[str]:
+    answer = str(_row_first_value(row, ["rag_answer_text", "answer_text", "answer_text_rag", "deterministic_recommended_action", "recommended_action"], ""))
+    parts = _extract_action_steps(answer)
+    return parts[:5] if parts else []
+
+
+def _ai_summary_from_row(row: pd.Series) -> str:
+    answer = str(_row_first_value(row, ["rag_answer_text", "answer_text", "answer_text_rag", "deterministic_recommended_action", "recommended_action", "risk_summary"], ""))
+    steps = _extract_action_steps(answer)
+    if steps:
+        return " ".join(steps[:2])
+    return _clean_recommendation_text(answer)
+
+
+def _extract_action_steps(answer: str) -> list[str]:
+    cleaned = _clean_recommendation_text(answer)
+    if not cleaned:
+        return []
+
+    numbered_parts = re.split(r"(?:^|\s)(?:\d+)[.)]\s+", cleaned)
+    candidates = numbered_parts[1:] if len(numbered_parts) > 1 else re.split(r"[\n]+|(?<=[.!?。])\s+", cleaned)
+
+    steps: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        step = _strip_step_noise(candidate)
+        if not step or step in seen:
+            continue
+        steps.append(step)
+        seen.add(step)
+    return steps
+
+
+def _clean_recommendation_text(answer: str) -> str:
+    text = str(answer or "").strip()
+    if not text:
+        return ""
+    text = re.sub(r"^(?:RAG|Deterministic fallback)(?:\s*[·:]\s*[^:]+)?:\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _strip_step_noise(text: str) -> str:
+    text = re.sub(r"\s*\[[^\]]+\]", "", str(text or ""))
+    text = text.strip(" -•\t\n\r")
+    text = re.sub(r"^\d+[.)]\s*", "", text).strip()
+    text = re.sub(r"\s+", " ", text)
+    if not text or re.fullmatch(r"\d+[.)]?", text):
+        return ""
+    if re.fullmatch(r"\[[^\]]+\]", text):
+        return ""
+    return text
+
+
+def _ai_messages_from_row(row: pd.Series) -> list[str]:
+    source = str(_row_first_value(row, ["rag_answer_source", "answer_source", "answer_source_rag"], "deterministic_fallback"))
+    docs = _reference_docs_from_row(row)
+    doc_note = f"참조 문서 {len(docs)}건을 확인했습니다." if docs else "현재는 인용 가능한 LLM 응답이 없어 deterministic fallback을 사용했습니다."
+    return [
+        "권장 조치 초안을 준비했습니다.",
+        "이 조치는 어떤 근거로 제안되었나요?",
+        f"answer_source={source}. {doc_note}",
+    ]
 
 def _query_databricks_table(config: DatabricksConfig, schema_name: str, table_name: str) -> pd.DataFrame:
     statement = f"SELECT * FROM {_qualified_name(config.catalog, schema_name, table_name)} LIMIT 1000"
