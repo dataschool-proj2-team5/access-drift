@@ -212,7 +212,7 @@ def _environment_for_case(case: pd.Series) -> str:
         "azure_ad": "Azure",
         "entra": "Azure",
         "github": "GitHub",
-        "google_workspace": "GW",
+        "google_workspace": "Workspace",
         "slack": "Slack",
         "postman": "Postman",
         "jira": "Jira",
