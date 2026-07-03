@@ -570,23 +570,25 @@ def apply_dashboard_style(page: str | None = None) -> None:
         .ad-doc-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 18px;
-          margin: 18px 0 30px;
+          gap: 14px 18px;
+          margin: 16px 0 28px;
         }
 
         .ad-doc-card {
           border: 1px solid var(--ad-border);
           border-radius: 8px;
-          padding: 18px;
+          padding: 16px 18px;
           display: grid;
-          grid-template-columns: 48px 1fr;
-          gap: 16px;
+          grid-template-columns: 40px minmax(0, 1fr);
+          gap: 14px;
           align-items: center;
+          min-width: 0;
+          background: #ffffff;
         }
 
         .ad-doc-icon {
-          width: 38px;
-          height: 38px;
+          width: 34px;
+          height: 34px;
           border-radius: 8px;
           display: grid;
           place-items: center;
@@ -594,19 +596,32 @@ def apply_dashboard_style(page: str | None = None) -> None:
 
         .ad-doc-icon img {
           display: block;
-          width: 38px;
-          height: 38px;
+          width: 34px;
+          height: 34px;
           object-fit: contain;
+        }
+
+        .ad-doc-copy {
+          min-width: 0;
         }
 
         .ad-doc-title {
           font-weight: 800;
-          font-size: 17px;
+          font-size: 16px;
+          line-height: 1.22;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .ad-doc-subtitle {
           color: var(--ad-muted);
-          margin-top: 3px;
+          font-size: 14px;
+          line-height: 1.25;
+          margin-top: 5px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .ad-step {
@@ -646,6 +661,55 @@ def apply_dashboard_style(page: str | None = None) -> None:
           margin-bottom: 18px;
         }
 
+        .st-key-ai_agent_panel {
+          border: 1px solid var(--ad-border);
+          border-radius: 8px;
+          background: #ffffff;
+          padding: 16px;
+          min-height: 715px !important;
+          height: 715px !important;
+          max-height: 715px !important;
+          box-sizing: border-box !important;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .st-key-ai_agent_panel > div[data-testid="stElementContainer"] {
+          flex: 1 1 auto;
+          min-height: 0;
+          display: flex;
+        }
+
+        .st-key-ai_agent_panel > div[data-testid="stElementContainer"] > div[data-testid="stHtml"] {
+          flex: 1 1 auto;
+          min-height: 0;
+          width: 100%;
+        }
+
+        .ad-agent-chat-shell {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+
+        .ad-agent-panel-head {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 20px;
+          font-weight: 800;
+          color: var(--ad-text);
+          margin-bottom: 10px;
+        }
+
+        .ad-agent-panel-icon {
+          width: 24px;
+          height: 24px;
+          object-fit: contain;
+          display: block;
+        }
+
         .ad-pill-icon {
           display: block;
           width: 14px;
@@ -679,42 +743,98 @@ def apply_dashboard_style(page: str | None = None) -> None:
         }
 
         .ad-agent-body {
-          background: var(--ad-soft);
+          background: #f8fafc;
           border: 1px solid var(--ad-border);
           border-radius: 10px;
-          min-height: 420px;
-          max-height: 420px;
+          flex: 1 1 auto;
+          min-height: 0;
+          max-height: none;
           overflow-y: auto;
           overflow-x: hidden;
-          padding: 18px;
+          padding: 14px;
           scroll-behavior: smooth;
         }
 
+        .st-key-ai_agent_panel div[data-testid="stForm"] {
+          flex: 0 0 auto;
+          margin: 12px 0 0 !important;
+          border: 0 !important;
+          border-radius: 8px;
+          background: transparent !important;
+          padding: 0;
+          box-shadow: none !important;
+          box-sizing: border-box;
+        }
+
+        .st-key-ai_agent_panel div[data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+          gap: 12px;
+          align-items: center;
+        }
+
+        .st-key-ai_agent_panel div[data-testid="stTextInput"] {
+          margin: 0;
+        }
+
+        .st-key-ai_agent_panel div[data-testid="stTextInput"] input {
+          min-height: 44px;
+          border: 0 !important;
+          box-shadow: none !important;
+          background: #f3f5f8 !important;
+          border-radius: 7px !important;
+          color: var(--ad-text);
+          font-size: 14px;
+          font-weight: 600;
+          padding: 0 16px !important;
+        }
+
+        .st-key-ai_agent_panel div[data-testid="stTextInput"] input::placeholder {
+          color: #aeb5bf;
+          opacity: 1;
+        }
+
+        .st-key-ai_agent_panel div[data-testid="stFormSubmitButton"] button {
+          min-height: 38px;
+          border-radius: 4px;
+          background: var(--ad-blue) !important;
+          border-color: var(--ad-blue) !important;
+          color: #ffffff !important;
+          font-size: 12px;
+          font-weight: 800;
+        }
+
         .ad-chat-bubble {
-          max-width: min(82%, calc(100% - 24px));
+          width: fit-content;
+          max-width: min(86%, calc(100% - 18px));
           box-sizing: border-box;
           border: 1px solid var(--ad-border);
           border-radius: 8px;
           background: #fff;
-          padding: 16px;
-          margin-bottom: 16px;
-          line-height: 1.55;
+          padding: 11px 13px;
+          margin-bottom: 10px;
+          color: #1f2937;
+          font-size: 13px;
+          font-weight: 500 !important;
+          line-height: 1.48;
           white-space: pre-wrap;
           overflow-wrap: anywhere;
           word-break: keep-all;
+          box-shadow: 0 1px 1px rgba(15, 23, 42, 0.02);
         }
 
         .ad-chat-user {
           margin-left: auto;
-          background: var(--ad-blue-soft);
-          border-color: var(--ad-blue-soft);
+          margin-right: 0;
+          background: #edf6ff;
+          border-color: #d9ecff;
           word-break: keep-all;
         }
 
         .ad-chat-name {
           color: var(--ad-blue);
           font-weight: 800;
-          margin-bottom: 8px;
+          margin-bottom: 5px;
+          font-size: 12px;
+          line-height: 1.2;
         }
 
         .ad-chat-loading {
@@ -722,10 +842,11 @@ def apply_dashboard_style(page: str | None = None) -> None:
           align-items: center;
           max-width: 92%;
           color: #6B7280;
+          gap: 3px;
         }
 
         .ad-chat-loading .ad-chat-name {
-          margin: 0 10px 0 0;
+          margin: 0 6px 0 0;
           white-space: nowrap;
         }
 
