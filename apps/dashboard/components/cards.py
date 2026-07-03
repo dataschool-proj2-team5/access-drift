@@ -239,10 +239,7 @@ def render_risk_factors_card_v2(case: pd.Series) -> None:
         f"Permission level: {case['permission_level']}",
         f"Rotation status: {case['rotation_status']}",
     ]
-    factors = [
-        "소유자 계정 비활성화" if factor == "HR/IdP 계정 비활성화" else factor
-        for factor in factors
-    ]
+    factors = _risk_factor_labels(factors)
     factor_html = []
     for index, factor in enumerate(factors):
         icon_file = "riskfactors-icon-check.svg" if index == 0 else "riskfactors-icon-noncheck.svg"
@@ -284,6 +281,7 @@ def render_risk_factors_card(case: pd.Series) -> None:
         f"Permission level: {case['permission_level']}",
         f"Rotation status: {case['rotation_status']}",
     ]
+    factors = _risk_factor_labels(factors)
     factor_html = []
     for index, factor in enumerate(factors):
         icon_file = "riskfactors-icon-check.svg" if index == 0 else "riskfactors-icon-noncheck.svg"
@@ -304,6 +302,42 @@ def render_risk_factors_card(case: pd.Series) -> None:
         </div>
         """
     )
+
+
+def _risk_factor_labels(factors: list[str]) -> list[str]:
+    return [label for factor in factors if (label := _risk_factor_label(factor))]
+
+
+def _risk_factor_label(factor: str) -> str:
+    text = str(factor).strip()
+    if not text or text == "Sensitive asset access":
+        return ""
+
+    lower = text.lower()
+    if text == "HR/IdP 계정 비활성화":
+        return "소유자 계정 비활성화"
+    if lower.startswith("owner status:"):
+        status = text.split(":", 1)[1].strip()
+        if status.lower() in {"inactive", "terminated", "disabled", "offboarded"}:
+            return "소유자 계정 비활성화"
+        return f"소유자 상태 {status}"
+    if lower == "credential active":
+        return "Credential 활성 상태"
+    if lower.startswith("credential status:"):
+        status = text.split(":", 1)[1].strip()
+        if status.lower() == "active":
+            return "Credential 활성 상태"
+        return f"Credential 상태 {status}"
+    if lower.startswith("permission:") or lower.startswith("permission level:"):
+        permission = text.split(":", 1)[1].strip()
+        return f"Storage 권한 {permission}" if "read/list" in permission.lower() else f"권한 {permission}"
+    if lower.startswith("asset sensitivity:"):
+        sensitivity = text.split(":", 1)[1].strip()
+        return f"자산 민감도 {sensitivity}"
+    if lower.startswith("rotation status:"):
+        status = text.split(":", 1)[1].strip()
+        return f"Rotation 상태 {status}"
+    return text
 
 
 def render_review_info_card(case: pd.Series) -> None:
@@ -714,9 +748,17 @@ def _status_badge(status: str) -> str:
 
 def _overview_identity_label(case: pd.Series) -> str:
     source_system = str(case.get("source_system", "")).strip().lower()
-    identity_name = escape(str(case.get("identity_name", "")))
+    identity_name = escape(_display_identity_value(case))
     icon = _platform_identity_icon(source_system)
     return f'<span class="ad-overview-identity-label">{icon}<span class="ad-identity-value">{identity_name}</span></span>'
+
+
+def _display_identity_value(case: pd.Series) -> str:
+    identity_type = str(case.get("identity_type", "")).strip().upper()
+    identity_email = str(case.get("identity_email", "")).strip()
+    if identity_type == "HI" and identity_email and identity_email.lower() != "nan":
+        return identity_email
+    return str(case.get("identity_name", ""))
 
 
 def _platform_identity_icon(source_system: str) -> str:
