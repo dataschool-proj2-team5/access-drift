@@ -142,7 +142,7 @@ bootstrap 스크립트는 지정된 principal에 다음 권한을 부여합니�
 Account-level group 구성이 바로 어렵다면, dev catalog 검증을 위해 개별 사용자 이메일에 권한을 부여할 수 있습니다.
 
 ```bash
-PRINCIPALS="4dt002@msacademy.msai.kr 4dt014@msacademy.msai.kr" \
+PRINCIPALS="user1@example.com user2@example.com" \
 ./infra/databricks/grant-dev-user-permissions.sh
 ```
 
@@ -151,7 +151,7 @@ PRINCIPALS="4dt002@msacademy.msai.kr 4dt014@msacademy.msai.kr" \
 필요하면 권한 범위를 좁혀 실행할 수 있습니다.
 
 ```bash
-PRINCIPALS="4dt002@msacademy.msai.kr" \
+PRINCIPALS="user1@example.com" \
 EXTERNAL_LOCATION_PRIVILEGES="READ_FILES WRITE_FILES" \
 ./infra/databricks/grant-dev-user-permissions.sh
 ```
