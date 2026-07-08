@@ -6,7 +6,7 @@
 
 ## DE Overview
 
-신뢰 가능한 리스크 탐지를 위한 데이터 기반 구축
+신뢰 가능한 데이터 파이프라인 구축
 
 - 탐지 근거 데이터
 - Landing/Bronze 원천 보존
@@ -14,26 +14,56 @@
 - 데이터 계약과 자동화된 품질검증
 - 운영 안정성과 권한 통제
 
+발표 시 언급:
+
+- 원본 데이터를 보존하고, 여러 source의 identity와 접근 정보를 공통 Silver 모델로 정규화
+- 탐지와 Risk Card가 사용할 수 있는 접근 모델을 만드는 과정 중심으로 설명
+- 이후 DS 파트에서 이 접근 모델을 기반으로 Risk 판단과 eval 검증을 설명
+
+발표 대본 초안:
+
+DE 파트에서는 탐지 모델 자체보다는, 탐지가 신뢰할 수 있는 데이터 기반을 어떻게 만들었는지를 설명합니다. 이 프로젝트는 단순히 대시보드에 데이터를 보여주는 것이 아니라, 퇴사자, 자동화 계정, 인증수단, 자산 접근 권한을 연결해서 위험 경로를 찾는 구조입니다. 그래서 원본을 보존하고, 여러 source에서 온 데이터를 공통 모델로 정규화하고, 그 결과를 검증 가능한 상태로 만드는 것이 DE의 핵심 역할입니다.
+
+흐름은 크게 네 가지로 볼 수 있습니다. 먼저 Landing과 Bronze에서는 원본 데이터를 보존하고 source별로 적재합니다. 그 다음 Silver에서는 여러 source의 데이터를 공통 접근 경로 모델로 정규화합니다. 이후 데이터 계약과 품질 검증으로 탐지 로직이 믿고 사용할 수 있는지 확인하고, 마지막으로 실패 감지, 재처리, 권한 통제, 모니터링을 통해 운영 관점의 안정성을 확보합니다.
+
+이후 DS 파트에서는 이 공통 접근 모델을 기반으로 어떤 조건을 조합해 Risk Case를 판단했는지, 그리고 eval을 통해 탐지 품질을 어떻게 검증했는지를 설명하는 흐름으로 이어집니다.
+
 ---
 
-## Data Scope - 근거 데이터 정의
+## 탐지용 데이터 설계
 
 리스크 탐지에 필요한 근거 데이터
 
 | 데이터 영역 | Source 예시 | 설명 |
 | --- | --- | --- |
-| Identity / HR | HR export | 재직/퇴사/이동 |
-| IdP / NHI | Microsoft Entra ID, Azure | App Registration, owner, credential |
-| Asset | Azure, GitHub, Slack | 민감 자산, 환경, 민감도 |
-| Access | Azure, GitHub, Slack | 권한 주체 → 자산 접근 경로 |
-| Eval | internal eval seed | 탐지 결과 검증용 정답 케이스 |
+| Identity / HR | 사내 HR 시스템, HR export | 재직/퇴사/이동 |
+| IdP / NHI | Microsoft Entra ID, Azure IAM | App Registration, owner, credential |
+| Asset | Azure Storage, GitHub repo, 사내 자산 목록 | 민감 자산, 환경, 민감도 |
+| Access | Azure IAM, GitHub permission, 사내 접근 관리 파일 | 권한 주체 → 자산 접근 관계 |
 
-합성 데이터 사용 이유:
+합성 데이터 설계 기준:
 
-- HR, Asset, Access 데이터는 회사마다 수집 시스템과 정책이 다름
-- IdP/NHI는 대표 API 응답 구조를 참고해 실제 export와 유사하게 구성
-- 구현 기준은 Microsoft Entra ID / Azure를 대표 케이스로 사용
-- seed 기반으로 동일 데이터 재생성 및 규모 확장 가능
+- HR·자산·접근 데이터의 회사별 수집 방식 차이 고려
+- Entra ID / Azure 대표 케이스
+- 실제 export shape 유지
+- seed 기반 재생성·확장
+
+발표 시 언급:
+
+- HR, 자산, 접근 권한 데이터는 회사마다 관리 시스템과 정책이 다르기 때문에 특정 고객사의 실제 데이터에 의존하지 않고 합성 데이터로 구성
+- IdP/NHI는 Entra ID와 Azure를 대표 케이스로 잡고 실제 export 형태와 유사하게 구성
+- Asset과 Access는 Cloud/SaaS source뿐 아니라 사내 자산 목록과 접근 관리 파일도 들어올 수 있는 구조로 설명
+- Eval label은 탐지 근거 데이터가 아니므로 DS 검증 파트에서 별도 설명
+
+발표 대본 초안:
+
+탐지용 데이터는 크게 네 가지 영역으로 나눴습니다. 첫째는 Identity와 HR 데이터입니다. 누가 재직 중인지, 퇴사했는지, 조직 이동이 있었는지 같은 상태 정보입니다. 둘째는 IdP와 NHI 데이터입니다. 여기에는 Entra ID의 App Registration, owner, credential 같은 자동화 계정 관련 정보가 들어갑니다.
+
+셋째는 Asset 데이터입니다. 접근 대상이 되는 저장소, GitHub repo, SaaS 자산 같은 대상과 민감도 정보를 말합니다. 넷째는 Access 데이터입니다. 어떤 주체가 어떤 자산에 접근할 수 있는지, 읽기 권한인지 관리자 권한인지 같은 접근 관계입니다.
+
+이 데이터를 합성 데이터로 구성한 이유는, 실제 회사마다 HR 시스템, 자산 목록, 접근 관리 방식이 다르기 때문입니다. 어떤 회사는 HR export가 있고, 어떤 회사는 별도 IAM 시스템이 있고, 자산 목록도 Cloud/SaaS API에서 오거나 사내 파일로 관리될 수 있습니다. 그래서 특정 고객사 구조에 묶이지 않도록 데이터 영역을 먼저 정의하고, 구현 기준은 Entra ID와 Azure를 대표 케이스로 잡았습니다.
+
+중요한 점은 합성 데이터라고 해서 임의로 만든 장난감 데이터가 아니라는 것입니다. 실제 export나 API 응답 형태를 참고해서 source shape를 유지했고, seed 기반으로 동일 데이터를 다시 생성할 수 있게 했습니다. 이 구조 덕분에 같은 조건으로 파이프라인을 재실행하거나, 나중에 GitHub나 SaaS source를 추가하는 확장도 가능합니다.
 
 ---
 
@@ -52,6 +82,24 @@
 
 예시 흐름: `landing/raw/azure/...jsonl` → `bronze_azure_*`
 
+발표 시 언급:
+
+- 이 장에서는 원본 보존과 원천형 적재를 분리해서 설명
+- Landing은 ADLS의 raw/landing 경로에 해당하는 논리 레이어로, 외부 source에서 받은 API/export 파일을 가능한 한 원본 형태로 보존
+- Bronze는 Landing 파일을 source별 테이블로 적재해 이후 SQL/DLT 검증과 Silver 정규화가 가능하게 만드는 단계
+- Landing/Bronze에는 정답 위험도나 expected severity를 넣지 않음. 이 단계는 탐지 정답지가 아니라 관측된 근거 데이터 저장소
+- secret/token/private key 원문도 저장하지 않고, credential id, key id, secret name, 상태, 만료일 같은 metadata만 사용
+- Bronze에서는 source 내부 식별자, 인사 이벤트 발생 시각, 적재 시각을 남겨 추적과 재처리가 가능하게 함
+- source 간 병합이나 Risk 판단은 이 단계에서 하지 않고, Silver 이후 공통 모델과 Detection에서 처리
+
+발표 대본 초안:
+
+Landing과 Bronze는 비슷해 보일 수 있지만 책임이 다릅니다. Landing은 외부 시스템에서 받은 파일을 원본 형태로 보존하는 레이어입니다. 나중에 데이터가 잘못 변환됐는지 확인하거나, 같은 입력으로 다시 처리해야 할 때 기준점이 됩니다.
+
+Bronze는 이 원본 파일을 source별 테이블로 적재하는 단계입니다. 예를 들어 Azure에서 온 app, credential, 권한 데이터는 source별 구조를 유지한 채 적재됩니다. 여기서 중요한 점은 Bronze가 의미를 바꾸거나 여러 시스템을 합치는 단계가 아니라는 것입니다. source가 제공한 식별자와 발생 시점, 적재 시점을 남기고, 이후 Silver에서 공통 모델로 정규화할 수 있는 상태를 만드는 데 집중합니다.
+
+또 하나 중요한 점은 보안 데이터 취급입니다. 이 프로젝트는 secret 값 자체를 저장하거나 보여주지 않습니다. 대신 secret이 존재하는지, active 상태인지, 만료일이 언제인지 같은 metadata만 사용합니다. 즉, 탐지에 필요한 근거는 남기되 민감한 credential 원문은 데이터 파이프라인 안에 넣지 않는 방식입니다.
+
 ---
 
 ## Silver
@@ -63,19 +111,41 @@
 | Principal | HI/NHI 주체 |
 | Credential | NHI 인증 수단 |
 | Asset | 접근 대상 자산 |
-| Edge | Principal 소유 / Credential 보유 / Asset 접근 권한 |
+| Edge | Principal 소유 / Credential 보유 / Asset 접근 관계 |
 
-대표 접근 경로:
-퇴사자(HI) --소유--> Azure App(NHI)
-Azure App --활성 Client Secret 보유--> 인증 가능
-Azure App --조회 권한--> 고객 데이터 Storage
+개별 관계 예시:
 
-이후 Detection 레이어에서 Risk 판단
+- 퇴사자(HI) --소유--> Azure App
+- Azure App --인증수단 보유--> 활성 Client Secret
+- Azure App --조회 권한--> 고객 데이터 Storage
+
+발표 시 언급:
+
+- Silver는 Risk를 판단하지 않고, 주체·인증수단·자산·관계를 공통 모델로 정규화
+- Principal은 사람 계정과 자동화 계정을 같은 축에서 볼 수 있게 만든 주체 모델
+- Credential은 자동화 계정이 사용할 수 있는 인증 수단 metadata
+- Asset은 실제 접근 대상이 되는 저장소, repo, SaaS 자산 같은 대상
+- Edge는 owner 관계, credential 보유 관계, asset 접근 관계를 표현
+- 예시에서는 퇴사자(HI)가 Azure App을 소유하고, Azure App은 활성 Client Secret을 보유하며, 동시에 고객 데이터 Storage 조회 권한을 가진다는 개별 관계를 표현
+- 이 관계들을 조합해 Critical 같은 Risk Case로 판단하는 작업은 Detection 레이어에서 수행
+
+발표 대본 초안:
+
+Silver의 목적은 여러 source에서 온 데이터를 위험 탐지가 가능한 공통 접근 모델로 바꾸는 것입니다. 여기서 바로 Risk를 판단하지는 않습니다. Silver는 판단 결과를 만드는 레이어가 아니라, 판단에 필요한 주체, 인증수단, 자산, 관계를 같은 구조로 정리하는 레이어입니다.
+
+모델은 크게 네 가지입니다. Principal은 사람 계정과 자동화 계정을 모두 포함하는 주체입니다. 이 프로젝트에서는 퇴사자 같은 HI와 Azure App 같은 NHI를 같은 축에서 볼 수 있게 만듭니다. Credential은 NHI가 사용할 수 있는 인증 수단입니다. 예를 들어 client secret이 여기에 해당합니다. Asset은 접근 대상 자산이고, Edge는 이 요소들 사이의 관계입니다.
+
+오른쪽 예시를 보면 Silver는 세 가지 사실을 따로 표현합니다. 첫째, 퇴사자 김민수 같은 HI가 Azure App을 owner로 관리했다는 관계입니다. 둘째, 그 Azure App이 활성 Client Secret을 보유하고 있다는 관계입니다. 셋째, 같은 Azure App이 고객 데이터 Storage에 조회 권한을 가지고 있다는 관계입니다.
+
+여기서 중요한 점은 Silver가 이 세 관계를 보고 바로 Critical이라고 판단하지 않는다는 것입니다. Silver는 각각의 관계가 조회 가능한 상태를 만드는 데 집중합니다. 이후 Detection 레이어가 이 관계를 조합해서 "퇴사자가 관리하던 자동화 계정에 인증수단이 남아 있고, 이 계정이 민감 자산에 접근 가능하다"는 Risk Case를 판단합니다.
+
+따라서 Silver는 source별 데이터 구조를 숨기고, 탐지 로직이 공통 모델만 보고 판단할 수 있게 만드는 중간 계약 역할을 합니다. source가 Azure에서 GitHub나 SaaS로 늘어나더라도 Detection은 Principal, Credential, Asset, Edge라는 같은 모델을 기준으로 확장할 수 있습니다.
+
 ---
 
-## 신뢰성 보장 - 데이터 계약, 자동화된 품질 검증
+## 데이터 신뢰성
 
-데이터 계약을 자동 검증해 탐지 로직이 신뢰할 수 있는 입력을 보장
+데이터 계약과 자동화된 품질 검증
 
 | 구분 | 역할 | 잡을 수 있는 오류 예시 |
 | --- | --- | --- |
@@ -84,20 +154,50 @@ Azure App --조회 권한--> 고객 데이터 Storage
 | DLT Expectations | 변환 로직 중 도메인 규칙 검증 | 잘못된 edge 방향, credential active 판정 오류 |
 | SQL 검증 | 적재 데이터가 계약을 만족하는지 확인 | null key, 중복 ID, orphan edge |
 
+발표 시 언급:
+
+- 원본을 보존하고 Silver 모델로 정규화한 뒤, 탐지 로직이 믿고 쓸 수 있는 입력인지 검증하는 단계
+- 스키마 계약은 문서화된 기준, CI는 계약과 구현의 불일치 조기 탐지
+- DLT Expectations는 변환 중 도메인 규칙을 검증하고, SQL 검증은 적재된 데이터의 참조 무결성과 row count를 확인
+
+발표 대본 초안:
+
+데이터 신뢰성 페이지는 "파이프라인이 돌았다"에서 끝나는 것이 아니라, 탐지에 사용할 수 있는 데이터인지 확인하는 장치들을 설명하는 페이지입니다. 이 프로젝트에서는 스키마 계약, CI, DLT Expectations, SQL 검증을 나눠서 사용했습니다.
+
+스키마 계약은 사람이 읽을 수 있는 기준입니다. 예를 들어 어떤 값이 필수인지, 어떤 상태값만 허용되는지, 관계 방향이 어떻게 잡혀야 하는지를 문서로 정의합니다. CI는 이 계약과 실제 구현이 어긋나는지 변경 단계에서 먼저 확인하는 역할입니다. 문서와 구현이 따로 움직이는 상황을 줄이기 위한 장치입니다.
+
+DLT Expectations는 변환 중에 잡아야 하는 품질 규칙을 담당합니다. 예를 들어 관계 방향이 잘못됐거나, 인증수단 상태 판단에 필요한 값이 비어 있거나, Silver 모델에서 필수 관계가 깨지는 경우를 빠르게 잡는 데 사용합니다. 여기서 실패하면 후속 작업이 진행되지 않기 때문에, 깨진 데이터가 다음 레이어로 전파되는 것을 막을 수 있습니다.
+
+SQL 검증은 적재 이후의 데이터 상태를 보는 역할입니다. 필수 키 누락, 중복, 연결이 끊긴 관계, row count 이상 같은 것을 확인합니다. DLT가 변환 중 품질 게이트라면, SQL 검증은 적재된 결과가 실제로 기대한 상태인지 확인하는 운영 관점의 검증입니다.
+
+정리하면, 계약은 기준을 정의하고, CI는 변경 시점을 확인하고, DLT는 변환 중 품질을 막고, SQL은 적재 결과를 확인하는 구조입니다.
+
 ---
 
 ## 운영 안정성
 
-실패 감지, 재처리, 권한 통제로 파이프라인 운영 안정성 확보
+실패 감지 · 재처리 · 권한 통제 · 모니터링
 
-왼쪽:
+- **실패 감지:** DLT/SQL 검증, 실패 시 후속 작업 미실행
+- **재처리:** 같은 입력 재실행 시 중복 행 누적 방지
+- **권한 통제:** Unity Catalog로 민감 데이터 접근/수정 권한 관리
+- **모니터링:** SQL Dashboard로 row count / validation 결과 확인
 
-- DLT/SQL 검증으로 실패 감지
-- DLT task 실패 시 downstream 실행 차단
-- 같은 입력 재처리 시 중복 행 누적 방지
-- Unity Catalog로 민감 데이터 접근/수정 권한 통제
-- SQL Dashboard로 row count / validation 결과 확인
+발표 시 언급:
 
-오른쪽:
+- 품질 검증이 실패하면 후속 task가 실행되지 않도록 해서 깨진 데이터가 다음 레이어로 넘어가지 않게 함
+- 같은 입력을 다시 처리해도 중복이 쌓이지 않도록 재처리 기준을 둠
+- 민감 데이터 권한은 Unity Catalog로 관리하고, 운영 상태는 SQL Dashboard에서 row count와 validation 결과로 확인
+- SQL Dashboard는 레이어별 row count, Silver orphan/eval unmatched, Gold severity, action state를 보는 조기경보판 역할
 
-- SQL Dashboard 캡처
+발표 대본 초안:
+
+운영 안정성은 네 가지 관점으로 정리했습니다. 실패 감지, 재처리, 권한 통제, 모니터링입니다.
+
+먼저 실패 감지는 DLT와 SQL 검증을 통해 처리합니다. 중요한 점은 실패를 발견하는 것에서 끝나지 않고, 실패 시 후속 작업을 실행하지 않도록 한다는 것입니다. 예를 들어 Silver 품질 검증이 실패했는데 Detection이나 Gold가 계속 실행되면, 잘못된 데이터가 Risk Card까지 전파될 수 있습니다. 그래서 품질 검증 실패는 후속 작업 미실행으로 이어지는 구조가 필요합니다.
+
+재처리는 같은 입력을 다시 실행했을 때 결과가 중복으로 누적되지 않는 것이 핵심입니다. 현재 데이터 규모에서는 전체 재처리가 더 단순하고 적절합니다. 대신 같은 입력을 다시 처리해도 row가 계속 늘어나지 않도록 기준을 잡았습니다. 나중에 데이터 규모가 커지면 증분 처리로 확장할 수 있습니다.
+
+권한 통제는 Unity Catalog를 기준으로 설명합니다. App, Eval, Pipeline이 접근해야 하는 데이터 범위가 다르기 때문에, 역할별 접근 경계를 분리하는 것이 중요합니다. 특히 eval label이나 내부 검증 데이터는 앱이 직접 참조하지 않고, 앱은 소비용 결과를 중심으로 읽는 구조가 맞습니다.
+
+마지막으로 SQL Dashboard는 운영 상태를 보는 조기경보판입니다. 레이어별 row count로 파이프라인이 정상적으로 흘렀는지 확인하고, Silver 관계 오류나 eval 미매칭으로 정합성 문제를 확인하고, Gold severity나 action state로 실제 운영 화면에 필요한 결과가 만들어졌는지 볼 수 있습니다.

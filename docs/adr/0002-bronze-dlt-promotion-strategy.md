@@ -38,9 +38,9 @@ Migration은 테이블이 없을 때 일반 Delta table을 만들고 notebook은
 2026-06-30에 다음을 확인했다.
 
 - 기존 Bronze 6개는 `MANAGED` / `DELTA`이며 owner는
-  `4dt032@msacademy.msai.kr`이다.
+  `workspace-user@example.com`이다.
 - `dlt_test`의 6개 출력은 `MATERIALIZED_VIEW`이며 owner는
-  `4dt029@msacademy.msai.kr`, `pipelines.pipelineId`는
+  `pipeline-owner@example.com`, `pipelines.pipelineId`는
   `138f43e1-2028-4043-9a42-4c7822afb30a`다.
 - `fixture_mode=false`와
   `abfss://lakehouse@acdriftadls.dfs.core.windows.net/raw/dev`를 사용한 격리
